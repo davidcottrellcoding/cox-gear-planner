@@ -1,0 +1,234 @@
+package com.coxgearplanner;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import javax.inject.Inject;
+import javax.swing.SwingUtilities;
+import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import com.google.inject.Provides;
+
+@PluginDescriptor(
+	name = "CoX Gear Planner",
+	description = "Suggests a Chambers of Xeric gear setup from your bank and group storage based on the raid's room layout",
+	tags = {"cox", "raids", "chambers", "xeric", "gear", "gim", "group", "loadout"}
+)
+public class CoxGearPlannerPlugin extends Plugin
+{
+	// Item container ids. Raw values are used because the InventoryID API
+	// has been migrated between RuneLite versions.
+	private static final int CONTAINER_INVENTORY = 93;
+	private static final int CONTAINER_EQUIPMENT = 94;
+	private static final int CONTAINER_BANK = 95;
+	// Group ironman shared storage. 660 is the stored container; 659 is the
+	// in-flight container shown while the storage UI is open.
+	private static final int CONTAINER_GROUP_STORAGE = 660;
+	private static final int CONTAINER_GROUP_STORAGE_TEMP = 659;
+
+	private static final String KEY_BANK = "bankItemsJson";
+	private static final String KEY_GROUP = "groupItemsJson";
+	private static final Type ITEM_MAP_TYPE = new TypeToken<Map<Integer, Integer>>()
+	{
+	}.getType();
+
+	@Inject
+	private Client client;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	@Inject
+	private ConfigManager configManager;
+
+	@Inject
+	private CoxGearPlannerConfig config;
+
+	@Inject
+	private ItemManager itemManager;
+
+	@Inject
+	private Gson gson;
+
+	private final Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
+
+	private CoxGearPlannerPanel panel;
+	private NavigationButton navButton;
+
+	@Provides
+	CoxGearPlannerConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(CoxGearPlannerConfig.class);
+	}
+
+	@Override
+	protected void startUp()
+	{
+		if (config.rememberBank())
+		{
+			items.put(ItemSource.BANK, loadPersisted(KEY_BANK));
+			items.put(ItemSource.GROUP_STORAGE, loadPersisted(KEY_GROUP));
+		}
+
+		panel = new CoxGearPlannerPanel(this);
+		navButton = NavigationButton.builder()
+			.tooltip("CoX Gear Planner")
+			.icon(createIcon())
+			.priority(7)
+			.panel(panel)
+			.build();
+		clientToolbar.addNavigation(navButton);
+		SwingUtilities.invokeLater(panel::refreshStatus);
+	}
+
+	@Override
+	protected void shutDown()
+	{
+		clientToolbar.removeNavigation(navButton);
+		navButton = null;
+		panel = null;
+	}
+
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		ItemSource source;
+		switch (event.getContainerId())
+		{
+			case CONTAINER_INVENTORY:
+				source = ItemSource.INVENTORY;
+				break;
+			case CONTAINER_EQUIPMENT:
+				source = ItemSource.EQUIPMENT;
+				break;
+			case CONTAINER_BANK:
+				source = ItemSource.BANK;
+				break;
+			case CONTAINER_GROUP_STORAGE:
+			case CONTAINER_GROUP_STORAGE_TEMP:
+				source = ItemSource.GROUP_STORAGE;
+				break;
+			default:
+				return;
+		}
+
+		Map<Integer, Integer> snapshot = snapshot(event.getItemContainer());
+		items.put(source, snapshot);
+
+		if (config.rememberBank())
+		{
+			if (source == ItemSource.BANK)
+			{
+				persist(KEY_BANK, snapshot);
+			}
+			else if (source == ItemSource.GROUP_STORAGE)
+			{
+				persist(KEY_GROUP, snapshot);
+			}
+		}
+
+		if (panel != null)
+		{
+			SwingUtilities.invokeLater(panel::refreshStatus);
+		}
+	}
+
+	private Map<Integer, Integer> snapshot(ItemContainer container)
+	{
+		Map<Integer, Integer> result = new HashMap<>();
+		if (container == null)
+		{
+			return result;
+		}
+
+		for (Item item : container.getItems())
+		{
+			if (item == null || item.getId() <= 0 || item.getQuantity() <= 0)
+			{
+				continue;
+			}
+			// Collapse noted items and placeholders onto the base item id
+			int canonical = itemManager.canonicalize(item.getId());
+			result.merge(canonical, item.getQuantity(), Integer::sum);
+		}
+		return result;
+	}
+
+	/**
+	 * Thread-safe-enough copy for the Swing side: the maps are replaced
+	 * wholesale on the client thread, never mutated in place.
+	 */
+	public Map<ItemSource, Map<Integer, Integer>> getItemsSnapshot()
+	{
+		Map<ItemSource, Map<Integer, Integer>> copy = new EnumMap<>(ItemSource.class);
+		for (Map.Entry<ItemSource, Map<Integer, Integer>> entry : items.entrySet())
+		{
+			copy.put(entry.getKey(), entry.getValue());
+		}
+		return copy;
+	}
+
+	public CoxGearPlannerConfig getConfig()
+	{
+		return config;
+	}
+
+	private void persist(String key, Map<Integer, Integer> map)
+	{
+		configManager.setConfiguration(CoxGearPlannerConfig.GROUP, key, gson.toJson(map));
+	}
+
+	private Map<Integer, Integer> loadPersisted(String key)
+	{
+		String json = configManager.getConfiguration(CoxGearPlannerConfig.GROUP, key);
+		if (json == null || json.isEmpty())
+		{
+			return Collections.emptyMap();
+		}
+
+		try
+		{
+			Map<Integer, Integer> map = gson.fromJson(json, ITEM_MAP_TYPE);
+			return map != null ? map : Collections.emptyMap();
+		}
+		catch (RuntimeException e)
+		{
+			return Collections.emptyMap();
+		}
+	}
+
+	private static BufferedImage createIcon()
+	{
+		BufferedImage image = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setColor(new Color(93, 57, 24));
+		g.fillRoundRect(1, 1, 22, 22, 6, 6);
+		g.setColor(new Color(219, 175, 82));
+		g.setStroke(new BasicStroke(1.5f));
+		g.drawRoundRect(1, 1, 22, 22, 6, 6);
+		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 11));
+		g.drawString("CX", 4, 16);
+		g.dispose();
+		return image;
+	}
+}

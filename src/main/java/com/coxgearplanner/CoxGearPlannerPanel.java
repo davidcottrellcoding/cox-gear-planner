@@ -1,0 +1,307 @@
+package com.coxgearplanner;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PluginPanel;
+
+public class CoxGearPlannerPanel extends PluginPanel
+{
+	private static final Color COLOR_ON_HAND = new Color(105, 200, 105);
+	private static final Color COLOR_BANK = new Color(220, 220, 220);
+	private static final Color COLOR_GROUP = new Color(130, 190, 255);
+	private static final Color COLOR_MISSING = new Color(235, 100, 100);
+
+	private final CoxGearPlannerPlugin plugin;
+	private final Map<CoxRoom, JCheckBox> roomBoxes = new EnumMap<>(CoxRoom.class);
+	private final JLabel statusLabel = new JLabel();
+	private final JPanel resultsPanel = new JPanel();
+
+	CoxGearPlannerPanel(CoxGearPlannerPlugin plugin)
+	{
+		this.plugin = plugin;
+
+		setLayout(new BorderLayout(0, 8));
+		setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+		add(buildTopPanel(), BorderLayout.NORTH);
+
+		resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
+		resultsPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		add(resultsPanel, BorderLayout.CENTER);
+	}
+
+	private JPanel buildTopPanel()
+	{
+		JPanel top = new JPanel();
+		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+		top.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+		JLabel title = new JLabel("CoX Gear Planner");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Color.WHITE);
+		title.setAlignmentX(Component.LEFT_ALIGNMENT);
+		top.add(title);
+
+		statusLabel.setFont(FontManager.getRunescapeSmallFont());
+		statusLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		top.add(statusLabel);
+		top.add(Box.createVerticalStrut(8));
+
+		top.add(sectionLabel("Rooms in your layout"));
+		top.add(roomGrid(true));
+		top.add(Box.createVerticalStrut(4));
+		top.add(sectionLabel("Puzzle rooms"));
+		top.add(roomGrid(false));
+		top.add(Box.createVerticalStrut(8));
+
+		JPanel buttons = new JPanel(new GridLayout(0, 1, 0, 4));
+		buttons.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		JButton importButton = new JButton("Import layout from clipboard");
+		importButton.setToolTipText("Reads copied scout text (e.g. from a scouting Discord or the Raids plugin) and ticks any room names it finds");
+		importButton.addActionListener(e -> importFromClipboard());
+		buttons.add(importButton);
+
+		JButton clearButton = new JButton("Clear rooms");
+		clearButton.addActionListener(e ->
+		{
+			for (Map.Entry<CoxRoom, JCheckBox> entry : roomBoxes.entrySet())
+			{
+				entry.getValue().setSelected(entry.getKey() == CoxRoom.OLM);
+			}
+		});
+		buttons.add(clearButton);
+
+		JButton suggestButton = new JButton("Suggest gear setup");
+		suggestButton.addActionListener(e -> suggest());
+		buttons.add(suggestButton);
+
+		top.add(buttons);
+		return top;
+	}
+
+	private JLabel sectionLabel(String text)
+	{
+		JLabel label = new JLabel(text);
+		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setForeground(ColorScheme.BRAND_ORANGE);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private JPanel roomGrid(boolean bosses)
+	{
+		JPanel grid = new JPanel(new GridLayout(0, 2, 2, 0));
+		grid.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		for (CoxRoom room : CoxRoom.values())
+		{
+			if (room.isBoss() != bosses)
+			{
+				continue;
+			}
+			JCheckBox box = new JCheckBox(room.getDisplayName());
+			box.setFont(FontManager.getRunescapeSmallFont());
+			box.setForeground(Color.WHITE);
+			box.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			if (room == CoxRoom.OLM)
+			{
+				// Olm ends every raid
+				box.setSelected(true);
+			}
+			roomBoxes.put(room, box);
+			grid.add(box);
+		}
+		return grid;
+	}
+
+	void refreshStatus()
+	{
+		Map<ItemSource, Map<Integer, Integer>> items = plugin.getItemsSnapshot();
+		StringBuilder sb = new StringBuilder("<html>Known items — ");
+		boolean any = false;
+		for (ItemSource source : ItemSource.values())
+		{
+			Map<Integer, Integer> pool = items.get(source);
+			int size = pool == null ? 0 : pool.size();
+			if (any)
+			{
+				sb.append(" · ");
+			}
+			sb.append(source.getDisplayName()).append(": ").append(size);
+			any = true;
+		}
+		sb.append("<br>Open your bank and group storage once to sync.</html>");
+		statusLabel.setText(sb.toString());
+	}
+
+	private void importFromClipboard()
+	{
+		String text;
+		try
+		{
+			text = (String) Toolkit.getDefaultToolkit()
+				.getSystemClipboard()
+				.getData(DataFlavor.stringFlavor);
+		}
+		catch (Exception e)
+		{
+			statusLabel.setText("<html><font color='#eb6464'>Clipboard has no text to import.</font></html>");
+			return;
+		}
+
+		if (text == null)
+		{
+			return;
+		}
+
+		String lower = text.toLowerCase();
+		int matched = 0;
+		for (CoxRoom room : CoxRoom.values())
+		{
+			for (String alias : room.getAliases())
+			{
+				if (lower.contains(alias))
+				{
+					roomBoxes.get(room).setSelected(true);
+					matched++;
+					break;
+				}
+			}
+		}
+		statusLabel.setText("<html>Matched " + matched + " room(s) from clipboard text.</html>");
+	}
+
+	private void suggest()
+	{
+		Set<CoxRoom> rooms = EnumSet.noneOf(CoxRoom.class);
+		for (Map.Entry<CoxRoom, JCheckBox> entry : roomBoxes.entrySet())
+		{
+			if (entry.getValue().isSelected())
+			{
+				rooms.add(entry.getKey());
+			}
+		}
+
+		resultsPanel.removeAll();
+
+		if (rooms.isEmpty())
+		{
+			JLabel none = new JLabel("Select the rooms in your raid first.");
+			none.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			none.setFont(FontManager.getRunescapeSmallFont());
+			resultsPanel.add(none);
+			revalidateResults();
+			return;
+		}
+
+		List<SetupBuilder.Section> sections = SetupBuilder.build(
+			rooms,
+			plugin.getItemsSnapshot(),
+			plugin.getConfig().includeGroupStorage());
+
+		for (SetupBuilder.Section section : sections)
+		{
+			JLabel header = new JLabel("<html>" + section.getTitle() + "</html>");
+			header.setFont(FontManager.getRunescapeBoldFont());
+			header.setForeground(ColorScheme.BRAND_ORANGE);
+			header.setAlignmentX(Component.LEFT_ALIGNMENT);
+			header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+			resultsPanel.add(header);
+
+			for (SetupBuilder.Line line : section.getLines())
+			{
+				resultsPanel.add(lineLabel(line));
+			}
+		}
+
+		JLabel legend = new JLabel("<html><br>"
+			+ colored("■", COLOR_ON_HAND) + " on you &nbsp;"
+			+ colored("■", COLOR_BANK) + " bank &nbsp;"
+			+ colored("■", COLOR_GROUP) + " group &nbsp;"
+			+ colored("■", COLOR_MISSING) + " missing</html>");
+		legend.setFont(FontManager.getRunescapeSmallFont());
+		legend.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		legend.setAlignmentX(Component.LEFT_ALIGNMENT);
+		resultsPanel.add(legend);
+
+		revalidateResults();
+	}
+
+	private JLabel lineLabel(SetupBuilder.Line line)
+	{
+		Color color;
+		String suffix;
+		if (line.isMissing())
+		{
+			color = COLOR_MISSING;
+			suffix = "";
+		}
+		else if (line.getSource() == ItemSource.BANK)
+		{
+			color = COLOR_BANK;
+			suffix = " [bank]";
+		}
+		else if (line.getSource() == ItemSource.GROUP_STORAGE)
+		{
+			color = COLOR_GROUP;
+			suffix = " [group]";
+		}
+		else if (line.getSource() == null)
+		{
+			// informational line, e.g. shield suppressed by a two-hander
+			color = ColorScheme.LIGHT_GRAY_COLOR;
+			suffix = "";
+		}
+		else
+		{
+			color = COLOR_ON_HAND;
+			suffix = " [on you]";
+		}
+
+		String qty = line.getQuantity() > 1 && "Ammo".equals(line.getLabel())
+			? " x" + line.getQuantity()
+			: "";
+
+		JLabel label = new JLabel("<html><b>" + line.getLabel() + ":</b> "
+			+ line.getItemName() + qty + suffix + "</html>");
+		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setForeground(color);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private static String colored(String text, Color color)
+	{
+		return "<font color='" + String.format("#%02x%02x%02x",
+			color.getRed(), color.getGreen(), color.getBlue()) + "'>" + text + "</font>";
+	}
+
+	private void revalidateResults()
+	{
+		resultsPanel.revalidate();
+		resultsPanel.repaint();
+	}
+}
