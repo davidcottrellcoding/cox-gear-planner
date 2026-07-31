@@ -18,6 +18,9 @@ public class EquipmentTotals
 	int rangedStr;
 	double magicDmgPercent;
 	int speedTicks = 4;
+	// Crystal armour set bonus vs crystal bow / bow of faerdhinen
+	double crystalAcc;
+	double crystalDmg;
 
 	void add(ItemStats stats)
 	{
@@ -52,6 +55,8 @@ public class EquipmentTotals
 		c.rangedStr = rangedStr;
 		c.magicDmgPercent = magicDmgPercent;
 		c.speedTicks = speedTicks;
+		c.crystalAcc = crystalAcc;
+		c.crystalDmg = crystalDmg;
 		return c;
 	}
 }

@@ -36,8 +36,18 @@ public class RoomTimeEstimator
 	// Which ranged weapons consume which ammo class
 	private static final Set<Integer> ARROW_WEAPONS = new HashSet<>(Arrays.asList(20997, 12788));
 	private static final Set<Integer> BOLT_WEAPONS = new HashSet<>(Arrays.asList(26374, 21012, 11785, 21902, 9185));
-	private static final Set<Integer> ARROW_IDS = new HashSet<>(Arrays.asList(11212, 21326, 892));
-	private static final Set<Integer> BOLT_IDS = new HashSet<>(Arrays.asList(9243, 9242));
+	private static final Set<Integer> ARROW_IDS = new HashSet<>(Arrays.asList(11212, 21326, 892, 890));
+	private static final Set<Integer> BOLT_IDS = new HashSet<>(Arrays.asList(21946, 21944, 9243, 9242));
+
+	// Bow of faerdhinen + crystal armour set effect (per piece: acc%, dmg%)
+	private static final Set<Integer> BOFA = new HashSet<>(Arrays.asList(
+		25865, 25867, 25884, 25886, 25888, 25890, 25892, 25894, 25896));
+	private static final Set<Integer> CRYSTAL_HELM = new HashSet<>(Arrays.asList(
+		23971, 27705, 27717, 27729, 27741, 27753, 27765, 27777));
+	private static final Set<Integer> CRYSTAL_BODY = new HashSet<>(Arrays.asList(
+		23975, 27697, 27709, 27721, 27733, 27745, 27757, 27769));
+	private static final Set<Integer> CRYSTAL_LEGS = new HashSet<>(Arrays.asList(
+		23979, 27701, 27713, 27725, 27737, 27749, 27761, 27773));
 
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
 	private static final int BLOWPIPE_DART_RSTR = 20;
@@ -208,6 +218,7 @@ public class RoomTimeEstimator
 			if (pick != null)
 			{
 				totals.add(itemManager.getItemStats(pick.getItemId()));
+				addCrystalSetBonus(totals, pick.getItemId());
 			}
 		}
 
@@ -238,6 +249,26 @@ public class RoomTimeEstimator
 		if (ammo != null)
 		{
 			totals.add(itemManager.getItemStats(ammo.getItemId()));
+		}
+	}
+
+	/** Crystal armour boosts the crystal bow / bofa: helm 5%/2.5%, body 15%/7.5%, legs 10%/5%. */
+	static void addCrystalSetBonus(EquipmentTotals totals, int itemId)
+	{
+		if (CRYSTAL_HELM.contains(itemId))
+		{
+			totals.crystalAcc += 0.05;
+			totals.crystalDmg += 0.025;
+		}
+		else if (CRYSTAL_BODY.contains(itemId))
+		{
+			totals.crystalAcc += 0.15;
+			totals.crystalDmg += 0.075;
+		}
+		else if (CRYSTAL_LEGS.contains(itemId))
+		{
+			totals.crystalAcc += 0.10;
+			totals.crystalDmg += 0.05;
 		}
 	}
 
@@ -350,6 +381,11 @@ public class RoomTimeEstimator
 		{
 			atkRoll *= 1.30;
 			avgMax = Math.floor(maxHit * 1.25);
+		}
+		else if (BOFA.contains(weaponId) && eq.crystalAcc > 0)
+		{
+			atkRoll *= 1 + eq.crystalAcc;
+			avgMax = Math.floor(maxHit * (1 + eq.crystalDmg));
 		}
 
 		double acc = CombatFormulas.accuracy(atkRoll, defRoll);

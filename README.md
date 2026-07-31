@@ -85,6 +85,22 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Comprehensive gear database (v1.4)
+
+Every slot in every style now has mid → high tier options, so the planner can
+always find *something* you own: crystal armour (all recolours), god/blessed
+d'hide, barrows pieces **in any degrade state**, bloodbark, infinity, obsidian,
+inquisitor's, blood moon, Elidinis' ward, mage's book, odium ward, spiked
+manacles, guardian boots, Ring of shadows, fremennik helms, ornamented
+variants of the zenyte jewellery, dragon/diamond/ruby bolts (e) and more.
+
+The **crystal armour set effect with the bow of faerdhinen is modelled**
+(helm 5% acc / 2.5% dmg, body 15% / 7.5%, legs 10% / 5%), so a bowfa +
+full crystal setup is ranked with its real +30% accuracy / +15% damage —
+crystal armour beats black d'hide by a mile for bowfa users, and the room
+times reflect that. Bolt proc effects (ruby/diamond) are not simulated;
+bolts are ranked by their listed order.
+
 ## Running the plugin
 
 Requires only a JDK (11+). From the project folder:
