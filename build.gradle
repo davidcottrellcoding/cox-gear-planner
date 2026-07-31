@@ -29,3 +29,12 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 11
 }
+
+// Launches a RuneLite dev client with the plugin loaded: gradlew runClient
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = 'Run a RuneLite client with the CoX Gear Planner plugin loaded'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.coxgearplanner.CoxGearPlannerPluginTest'
+    enableAssertions = true
+}

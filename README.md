@@ -67,17 +67,33 @@ and a summary of how many inventory slots you free for how little time lost.
 Items shared between styles (e.g. barrows gloves in two loadouts) are shown as
 "already worn". Weapons are never flagged — the weapon is the style switch.
 
-## Building
+## Running the plugin
 
-Requires JDK 11+ (any recent JDK works).
+Requires only a JDK (11+). From the project folder:
 
 ```
-gradle build
+.\gradlew.bat runClient      (Windows)
+./gradlew runClient          (Mac/Linux)
 ```
 
-The built jar is in `build/libs/`. To run a dev client with the plugin loaded,
-run `CoxGearPlannerPluginTest` from your IDE (standard RuneLite external plugin
-workflow), then enable **CoX Gear Planner** in the plugin list.
+This launches a RuneLite developer client with the plugin loaded. Enable
+**CoX Gear Planner** in the plugin list (wrench icon), then click the "CX"
+sidebar icon. The first run downloads Gradle and the RuneLite client, so it
+takes a few minutes; later runs are fast.
+
+Notes on the dev client:
+
+- Logging in with a **legacy username/password account** works directly.
+- **Jagex accounts** can't type a password into a non-launcher client; see the
+  RuneLite wiki page "Using Jagex Accounts" for the developer workaround.
+- This client is separate from your normal installation but shares the same
+  `.runelite` settings folder, so your profile/plugin settings carry over.
+
+`gradle build` alone produces the jar in `build/libs/`, and running
+`CoxGearPlannerPluginTest` from an IDE (with `-ea`) is the equivalent IDE
+workflow. For everyday use inside the *normal* RuneLite client, the plugin
+would need to be submitted to the RuneLite Plugin Hub — sideloading jars into
+the launcher-installed client is deliberately not supported by RuneLite.
 
 ## Notes and limitations
 
