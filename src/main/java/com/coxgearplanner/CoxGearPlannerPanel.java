@@ -55,7 +55,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 		top.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-		JLabel title = new JLabel("CoX Gear Planner");
+		JLabel title = new JLabel("CoX Gear Planner v" + CoxGearPlannerPlugin.VERSION);
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setForeground(Color.WHITE);
 		title.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -153,7 +153,8 @@ public class CoxGearPlannerPanel extends PluginPanel
 			sb.append(source.getDisplayName()).append(": ").append(size);
 			any = true;
 		}
-		sb.append("<br>Open your bank and group storage once to sync.</html>");
+		sb.append("<br>Open your bank and group storage once to sync;"
+			+ " contents are remembered from the last time you opened them.</html>");
 		statusLabel.setText(sb.toString());
 	}
 
@@ -250,6 +251,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 			for (SetupBuilder.Line line : section.getLines())
 			{
+				if (line.isMissing() && plugin.getConfig().hideMissing())
+				{
+					continue;
+				}
 				resultsPanel.add(lineLabel(line));
 			}
 		}
@@ -371,6 +376,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		for (SetupBuilder.Line line : loadout.getEquipped())
 		{
+			if (line.isMissing() && plugin.getConfig().hideMissing())
+			{
+				continue;
+			}
 			resultsPanel.add(lineLabel(line));
 		}
 
@@ -384,6 +393,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		for (RaidLoadoutBuilder.Entry entry : loadout.getInventory())
 		{
+			if (entry.isMissing() && plugin.getConfig().hideMissing())
+			{
+				continue;
+			}
 			Color color = entry.isMissing() ? COLOR_MISSING
 				: entry.getSource() == ItemSource.BANK ? COLOR_BANK
 				: entry.getSource() == ItemSource.GROUP_STORAGE ? COLOR_GROUP

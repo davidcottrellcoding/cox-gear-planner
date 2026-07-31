@@ -77,4 +77,15 @@ public interface CoxGearPlannerConfig extends Config
 	{
 		return 3;
 	}
+
+	@ConfigItem(
+		keyName = "hideMissing",
+		name = "Hide unowned recommendations",
+		description = "Only plan with gear you actually own — hide the red 'BiS to chase' lines for slots where you own nothing",
+		position = 7
+	)
+	default boolean hideMissing()
+	{
+		return false;
+	}
 }

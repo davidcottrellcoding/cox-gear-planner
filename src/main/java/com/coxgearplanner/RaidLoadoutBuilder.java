@@ -194,7 +194,7 @@ public final class RaidLoadoutBuilder
 			{
 				String best = GearDatabase.utility(need).get(0).getName();
 				inventory.put(missingKey--, new Entry(
-					"none owned (best: " + best + ")", null,
+					"nothing you own — BiS to chase: " + best, null,
 					need.getDisplayName().toLowerCase() + " — " + forRooms, true));
 			}
 		}
@@ -273,7 +273,7 @@ public final class RaidLoadoutBuilder
 			{
 				String best = GearDatabase.loadout(primary).get(slot).get(0).getName();
 				lines.add(new SetupBuilder.Line(slot.getDisplayName(),
-					"none owned (best: " + best + ")", null, true, 0));
+					"nothing you own — BiS to chase: " + best, null, true, 0));
 			}
 		}
 		return lines;

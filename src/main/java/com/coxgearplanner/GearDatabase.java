@@ -78,6 +78,7 @@ public final class GearDatabase
 		melee.put(GearSlot.BOOTS, Arrays.asList(
 			ItemOption.of("Avernic treads", 31097, 31091, 31094, 31095), // melee-capable variants
 			ItemOption.of("Primordial boots", 13239),
+			ItemOption.of("Avernic treads (base)", 31088),
 			ItemOption.of("Dragon boots", 11840)));
 		melee.put(GearSlot.RING, Arrays.asList(
 			ItemOption.of("Ultor ring", 28307),
@@ -138,6 +139,7 @@ public final class GearDatabase
 		ranged.put(GearSlot.BOOTS, Arrays.asList(
 			ItemOption.of("Avernic treads", 31097, 31092, 31094, 31096), // ranged-capable variants
 			ItemOption.of("Pegasian boots", 13237),
+			ItemOption.of("Avernic treads (base)", 31088),
 			ItemOption.of("Ranger boots", 2577),
 			ItemOption.of("Snakeskin boots", 6328)));
 		ranged.put(GearSlot.RING, Arrays.asList(
@@ -190,6 +192,7 @@ public final class GearDatabase
 		magic.put(GearSlot.BOOTS, Arrays.asList(
 			ItemOption.of("Avernic treads", 31097, 31093, 31095, 31096), // magic-capable variants
 			ItemOption.of("Eternal boots", 13235),
+			ItemOption.of("Avernic treads (base)", 31088),
 			ItemOption.of("Infinity boots", 6920)));
 		magic.put(GearSlot.RING, Arrays.asList(
 			ItemOption.of("Magus ring", 28313),

@@ -246,7 +246,7 @@ public final class SetupBuilder
 				{
 					List<ItemOption> options = GearDatabase.loadout(style).get(slot);
 					String best = options.isEmpty() ? "?" : options.get(0).getName();
-					section.getLines().add(new Line(slot.getDisplayName(), "none owned (best: " + best + ")", null, true, 0));
+					section.getLines().add(new Line(slot.getDisplayName(), "nothing you own — BiS to chase: " + best, null, true, 0));
 				}
 			}
 			sections.add(section);
@@ -270,7 +270,7 @@ public final class SetupBuilder
 				{
 					List<ItemOption> options = GearDatabase.utility(need);
 					String best = options.isEmpty() ? "?" : options.get(0).getName();
-					utilities.getLines().add(new Line(need.getDisplayName(), "none owned (best: " + best + ")", null, true, 0));
+					utilities.getLines().add(new Line(need.getDisplayName(), "nothing you own — BiS to chase: " + best, null, true, 0));
 				}
 			}
 			sections.add(utilities);
