@@ -14,7 +14,8 @@ the rooms in your raid layout.
    press **Import layout from clipboard** — copy any scout text that names the
    rooms (scouting Discord posts, etc.) and it ticks the matching boxes.
 3. **Suggest gear setup.** The planner works out which combat styles and utility
-   items the layout demands, then picks the best item you own for every slot:
+   items the layout demands, then picks the best item you own for every slot,
+   and estimates expected kill time per room using real DPS math:
    - Melee for Tekton / Guardians / Vanguards, ranged for Vespula / Shamans /
      Muttadiles / Vasa / Mystics / Olm, magic for Ice Demon / Vanguards / Olm.
    - Utilities: pickaxe (Guardians), axe + fire-spell staff (Ice Demon), lockpick
@@ -22,6 +23,31 @@ the rooms in your raid layout.
    - Two-handed picks (scythe, bows, Shadow) suppress the shield slot.
    Each line is colour-coded by where the item is: **on you**, **bank**,
    **group storage** (blue), or **missing** (red, with the best item to chase).
+
+## Room time estimates (v1.1)
+
+Below the loadout, the panel shows **estimated room times**: for every selected
+combat room, each weapon you own is evaluated with the standard OSRS DPS
+formulas (accuracy roll vs the monster's per-style defence, max hit from your
+strength/ranged/magic bonuses, attack speed) and the fastest weapon per room is
+reported with an expected kill time, plus a total.
+
+- **Your live stats are used.** Boosted levels are read from the client when
+  you're logged in; otherwise maxed stats are assumed. An overload (+) boost
+  and Piety/Rigour/Augury are assumed by default (both toggleable in config).
+- **Item stats come from the client's own database** (`ItemManager.getItemStats`),
+  so armour/weapon bonuses are always current — no hardcoded stat tables.
+- **Special weapon behaviour is modelled**: twisted bow scaling from the
+  target's magic level (with the CoX 350 cap — it correctly dominates at Olm
+  and Vasa), dragon hunter crossbow's dragonbane bonus vs Olm, scythe's
+  triple hit on large monsters, fang's double accuracy roll, powered-staff
+  built-in spells (Shadow's bonus tripling, sang/tridents, harmonised).
+- **Party scaling**: monster HP scales with the configured party size.
+- Monster stats per room live in `RoomMonsters.java` as editable data — some
+  values are approximate; expect times to be indicative, not exact. Expected
+  TTK ignores movement, mechanics, phases and spec weapons (DWH/BGS specs are
+  listed as utility items but not simulated), so treat it as a ranking tool:
+  which of *your* weapons is fastest where, and roughly how long rooms take.
 
 Item preference order per slot lives in `GearDatabase.java` as a plain
 best-first list of `(name, item ids)` — edit it to taste. A few niche item ids

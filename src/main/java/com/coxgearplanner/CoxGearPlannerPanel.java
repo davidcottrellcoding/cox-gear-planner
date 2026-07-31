@@ -217,10 +217,13 @@ public class CoxGearPlannerPanel extends PluginPanel
 			return;
 		}
 
-		List<SetupBuilder.Section> sections = SetupBuilder.build(
-			rooms,
-			plugin.getItemsSnapshot(),
-			plugin.getConfig().includeGroupStorage());
+		// Player levels are read on the client thread; results come back on the EDT
+		plugin.computePlan(rooms, this::renderResults);
+	}
+
+	private void renderResults(List<SetupBuilder.Section> sections, List<RoomTimeEstimator.RoomTime> times)
+	{
+		resultsPanel.removeAll();
 
 		for (SetupBuilder.Section section : sections)
 		{
@@ -235,6 +238,48 @@ public class CoxGearPlannerPanel extends PluginPanel
 			{
 				resultsPanel.add(lineLabel(line));
 			}
+		}
+
+		if (!times.isEmpty())
+		{
+			JLabel header = new JLabel("Estimated room times (party of "
+				+ plugin.getConfig().partySize() + ")");
+			header.setFont(FontManager.getRunescapeBoldFont());
+			header.setForeground(ColorScheme.BRAND_ORANGE);
+			header.setAlignmentX(Component.LEFT_ALIGNMENT);
+			header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+			resultsPanel.add(header);
+
+			double total = 0;
+			boolean anyInfeasible = false;
+			for (RoomTimeEstimator.RoomTime time : times)
+			{
+				JLabel label;
+				if (time.isFeasible())
+				{
+					total += time.getSeconds();
+					label = new JLabel("<html><b>" + time.getRoom().getDisplayName() + ":</b> ~"
+						+ formatSeconds(time.getSeconds()) + " — " + time.getDetail() + "</html>");
+					label.setForeground(COLOR_BANK);
+				}
+				else
+				{
+					anyInfeasible = true;
+					label = new JLabel("<html><b>" + time.getRoom().getDisplayName() + ":</b> "
+						+ time.getDetail() + "</html>");
+					label.setForeground(COLOR_MISSING);
+				}
+				label.setFont(FontManager.getRunescapeSmallFont());
+				label.setAlignmentX(Component.LEFT_ALIGNMENT);
+				resultsPanel.add(label);
+			}
+
+			JLabel totalLabel = new JLabel("<html><b>Total combat time:</b> ~"
+				+ formatSeconds(total) + (anyInfeasible ? " (excl. red rooms)" : "") + "</html>");
+			totalLabel.setFont(FontManager.getRunescapeSmallFont());
+			totalLabel.setForeground(COLOR_ON_HAND);
+			totalLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(totalLabel);
 		}
 
 		JLabel legend = new JLabel("<html><br>"
@@ -291,6 +336,12 @@ public class CoxGearPlannerPanel extends PluginPanel
 		label.setForeground(color);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
+	}
+
+	private static String formatSeconds(double seconds)
+	{
+		int total = (int) Math.round(seconds);
+		return total / 60 + ":" + String.format("%02d", total % 60);
 	}
 
 	private static String colored(String text, Color color)

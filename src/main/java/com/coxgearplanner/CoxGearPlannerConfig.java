@@ -3,6 +3,7 @@ package com.coxgearplanner;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Range;
 
 @ConfigGroup(CoxGearPlannerConfig.GROUP)
 public interface CoxGearPlannerConfig extends Config
@@ -27,6 +28,40 @@ public interface CoxGearPlannerConfig extends Config
 		position = 2
 	)
 	default boolean rememberBank()
+	{
+		return true;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "partySize",
+		name = "Party size",
+		description = "Raid party size, used to scale monster HP for room time estimates",
+		position = 3
+	)
+	default int partySize()
+	{
+		return 3;
+	}
+
+	@ConfigItem(
+		keyName = "assumeOverload",
+		name = "Assume overload",
+		description = "Assume an overload (+) boost when estimating room times (ignored if you're logged in with boosts active)",
+		position = 4
+	)
+	default boolean assumeOverload()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "assumeElitePrayers",
+		name = "Assume Piety/Rigour/Augury",
+		description = "Assume elite offensive prayers are active when estimating room times",
+		position = 5
+	)
+	default boolean assumeElitePrayers()
 	{
 		return true;
 	}

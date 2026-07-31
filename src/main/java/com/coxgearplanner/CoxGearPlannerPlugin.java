@@ -12,13 +12,19 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.Skill;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -53,6 +59,9 @@ public class CoxGearPlannerPlugin extends Plugin
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private ClientToolbar clientToolbar;
@@ -190,6 +199,62 @@ public class CoxGearPlannerPlugin extends Plugin
 	public CoxGearPlannerConfig getConfig()
 	{
 		return config;
+	}
+
+	/**
+	 * Builds the gear suggestion and room time estimates. Player levels must
+	 * be read on the client thread; the callback is invoked on the Swing EDT.
+	 */
+	public void computePlan(Set<CoxRoom> rooms,
+		BiConsumer<List<SetupBuilder.Section>, List<RoomTimeEstimator.RoomTime>> callback)
+	{
+		clientThread.invokeLater(() ->
+		{
+			PlayerSnapshot player = snapshotPlayer();
+			Map<ItemSource, Map<Integer, Integer>> snapshot = getItemsSnapshot();
+			boolean includeGroup = config.includeGroupStorage();
+
+			List<SetupBuilder.Section> sections = SetupBuilder.build(rooms, snapshot, includeGroup);
+			List<RoomTimeEstimator.RoomTime> times = new RoomTimeEstimator(itemManager)
+				.estimate(rooms, snapshot, includeGroup, player,
+					config.partySize(), config.assumeElitePrayers());
+
+			SwingUtilities.invokeLater(() -> callback.accept(sections, times));
+		});
+	}
+
+	private PlayerSnapshot snapshotPlayer()
+	{
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			return new PlayerSnapshot(
+				assumedLevel(Skill.ATTACK),
+				assumedLevel(Skill.STRENGTH),
+				assumedLevel(Skill.RANGED),
+				assumedLevel(Skill.MAGIC));
+		}
+		// Logged out: assume maxed stats, plus overload if configured
+		int level = config.assumeOverload() ? overloaded(99) : 99;
+		return new PlayerSnapshot(level, level, level, level);
+	}
+
+	/**
+	 * The live boosted level — or, if the player isn't currently boosted and
+	 * overloads are assumed (you drink one at the start of every raid), the
+	 * overloaded base level.
+	 */
+	private int assumedLevel(Skill skill)
+	{
+		int real = client.getRealSkillLevel(skill);
+		int boosted = client.getBoostedSkillLevel(skill);
+		int assumed = config.assumeOverload() ? overloaded(real) : real;
+		return Math.max(boosted, assumed);
+	}
+
+	/** Overload (+): +6 plus 16% of the base level. */
+	private static int overloaded(int level)
+	{
+		return level + 6 + (int) (level * 0.16);
 	}
 
 	private void persist(String key, Map<Integer, Integer> map)

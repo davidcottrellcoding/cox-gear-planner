@@ -3,6 +3,7 @@ package com.coxgearplanner;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +18,43 @@ public final class SetupBuilder
 {
 	private SetupBuilder()
 	{
+	}
+
+	/** A resolved item: which option, which concrete item id, and where it is. */
+	public static class Pick
+	{
+		private final ItemOption option;
+		private final ItemSource source;
+		private final int itemId;
+		private final int quantity;
+
+		Pick(ItemOption option, ItemSource source, int itemId, int quantity)
+		{
+			this.option = option;
+			this.source = source;
+			this.itemId = itemId;
+			this.quantity = quantity;
+		}
+
+		public ItemOption getOption()
+		{
+			return option;
+		}
+
+		public ItemSource getSource()
+		{
+			return source;
+		}
+
+		public int getItemId()
+		{
+			return itemId;
+		}
+
+		public int getQuantity()
+		{
+			return quantity;
+		}
 	}
 
 	/** One rendered line of the suggestion: "Weapon: Twisted bow [Bank]". */
@@ -85,6 +123,80 @@ public final class SetupBuilder
 		}
 	}
 
+	/**
+	 * Best owned pick for a single option, searching sources in preference
+	 * order. Returns null if not owned anywhere.
+	 */
+	public static Pick findOwned(
+		ItemOption option,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		for (ItemSource source : ItemSource.values())
+		{
+			if (source == ItemSource.GROUP_STORAGE && !includeGroupStorage)
+			{
+				continue;
+			}
+
+			Map<Integer, Integer> pool = items.get(source);
+			if (pool == null)
+			{
+				continue;
+			}
+
+			for (int id : option.getItemIds())
+			{
+				Integer qty = pool.get(id);
+				if (qty != null && qty > 0)
+				{
+					return new Pick(option, source, id, qty);
+				}
+			}
+		}
+		return null;
+	}
+
+	/** First owned option from a best-first list, or null. */
+	public static Pick pickBest(
+		List<ItemOption> options,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		if (options == null)
+		{
+			return null;
+		}
+
+		for (ItemOption option : options)
+		{
+			Pick pick = findOwned(option, items, includeGroupStorage);
+			if (pick != null)
+			{
+				return pick;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Best owned item per slot for a style. Slots with nothing owned map to
+	 * null. No two-handed/shield suppression here — callers decide that per
+	 * candidate weapon.
+	 */
+	public static Map<GearSlot, Pick> resolveLoadout(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		Map<GearSlot, Pick> picks = new LinkedHashMap<>();
+		for (Map.Entry<GearSlot, List<ItemOption>> entry : GearDatabase.loadout(style).entrySet())
+		{
+			picks.put(entry.getKey(), pickBest(entry.getValue(), items, includeGroupStorage));
+		}
+		return picks;
+	}
+
 	public static List<Section> build(
 		Set<CoxRoom> rooms,
 		Map<ItemSource, Map<Integer, Integer>> items,
@@ -111,8 +223,11 @@ public final class SetupBuilder
 				.collect(Collectors.joining(", "));
 			Section section = new Section(style.getDisplayName() + "  (" + forRooms + ")");
 
-			boolean twoHandedChosen = false;
-			for (Map.Entry<GearSlot, List<ItemOption>> entry : GearDatabase.loadout(style).entrySet())
+			Map<GearSlot, Pick> picks = resolveLoadout(style, items, includeGroupStorage);
+			Pick weapon = picks.get(GearSlot.WEAPON);
+			boolean twoHandedChosen = weapon != null && weapon.getOption().isTwoHanded();
+
+			for (Map.Entry<GearSlot, Pick> entry : picks.entrySet())
 			{
 				GearSlot slot = entry.getKey();
 				if (slot == GearSlot.SHIELD && twoHandedChosen)
@@ -121,18 +236,15 @@ public final class SetupBuilder
 					continue;
 				}
 
-				Pick pick = pickBest(entry.getValue(), items, includeGroupStorage);
+				Pick pick = entry.getValue();
 				if (pick != null)
 				{
-					if (slot == GearSlot.WEAPON && pick.option.isTwoHanded())
-					{
-						twoHandedChosen = true;
-					}
-					section.getLines().add(new Line(slot.getDisplayName(), pick.option.getName(), pick.source, false, pick.quantity));
+					section.getLines().add(new Line(slot.getDisplayName(), pick.getOption().getName(),
+						pick.getSource(), false, pick.getQuantity()));
 				}
 				else
 				{
-					List<ItemOption> options = entry.getValue();
+					List<ItemOption> options = GearDatabase.loadout(style).get(slot);
 					String best = options.isEmpty() ? "?" : options.get(0).getName();
 					section.getLines().add(new Line(slot.getDisplayName(), "none owned (best: " + best + ")", null, true, 0));
 				}
@@ -151,7 +263,8 @@ public final class SetupBuilder
 				Pick pick = pickBest(GearDatabase.utility(need), items, includeGroupStorage);
 				if (pick != null)
 				{
-					utilities.getLines().add(new Line(need.getDisplayName(), pick.option.getName(), pick.source, false, pick.quantity));
+					utilities.getLines().add(new Line(need.getDisplayName(), pick.getOption().getName(),
+						pick.getSource(), false, pick.getQuantity()));
 				}
 				else
 				{
@@ -164,57 +277,5 @@ public final class SetupBuilder
 		}
 
 		return sections;
-	}
-
-	private static class Pick
-	{
-		final ItemOption option;
-		final ItemSource source;
-		final int quantity;
-
-		Pick(ItemOption option, ItemSource source, int quantity)
-		{
-			this.option = option;
-			this.source = source;
-			this.quantity = quantity;
-		}
-	}
-
-	private static Pick pickBest(
-		List<ItemOption> options,
-		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage)
-	{
-		if (options == null)
-		{
-			return null;
-		}
-
-		for (ItemOption option : options)
-		{
-			for (ItemSource source : ItemSource.values())
-			{
-				if (source == ItemSource.GROUP_STORAGE && !includeGroupStorage)
-				{
-					continue;
-				}
-
-				Map<Integer, Integer> pool = items.get(source);
-				if (pool == null)
-				{
-					continue;
-				}
-
-				for (int id : option.getItemIds())
-				{
-					Integer qty = pool.get(id);
-					if (qty != null && qty > 0)
-					{
-						return new Pick(option, source, qty);
-					}
-				}
-			}
-		}
-		return null;
 	}
 }
