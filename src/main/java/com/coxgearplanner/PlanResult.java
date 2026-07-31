@@ -10,18 +10,27 @@ public class PlanResult
 	private final List<SwitchAdvisor.Advice> switchAdvice;
 	private final GearNeed primaryStyle;
 	private final RaidLoadoutBuilder.RaidLoadout loadout;
+	private final PlanExplanation explanation;
 
 	PlanResult(List<SetupBuilder.Section> sections,
 		List<RoomTimeEstimator.RoomTime> times,
 		List<SwitchAdvisor.Advice> switchAdvice,
 		GearNeed primaryStyle,
-		RaidLoadoutBuilder.RaidLoadout loadout)
+		RaidLoadoutBuilder.RaidLoadout loadout,
+		PlanExplanation explanation)
 	{
 		this.sections = sections;
 		this.times = times;
 		this.switchAdvice = switchAdvice;
 		this.primaryStyle = primaryStyle;
 		this.loadout = loadout;
+		this.explanation = explanation;
+	}
+
+	/** Debug reasoning; null unless the debug panel is enabled. */
+	public PlanExplanation getExplanation()
+	{
+		return explanation;
 	}
 
 	/** Single-inventory raid layout; null when no room has a feasible kill. */

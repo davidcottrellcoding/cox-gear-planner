@@ -16,6 +16,9 @@ import java.util.Set;
  */
 public final class RaidLoadoutBuilder
 {
+	/** An OSRS inventory is 28 slots; the worn set is the 11 GearSlot values. */
+	public static final int INVENTORY_SIZE = 28;
+
 	/** One inventory slot. */
 	public static class Entry
 	{
@@ -81,14 +84,22 @@ public final class RaidLoadoutBuilder
 			return inventory;
 		}
 
+		/** Inventory slots the gear occupies (missing items take none). */
 		public int getUsedSlots()
 		{
 			return (int) inventory.stream().filter(e -> !e.isMissing()).count();
 		}
 
+		/** Slots left for brews, restores and food. */
 		public int getFreeSlots()
 		{
-			return 28 - getUsedSlots();
+			return INVENTORY_SIZE - getUsedSlots();
+		}
+
+		/** True when the gear alone cannot fit in one inventory. */
+		public boolean isOverCapacity()
+		{
+			return getUsedSlots() > INVENTORY_SIZE;
 		}
 	}
 
@@ -252,6 +263,10 @@ public final class RaidLoadoutBuilder
 					lines.add(new SetupBuilder.Line(slot.getDisplayName(),
 						weapon.getOption().getName(), weapon.getSource(), false, weapon.getQuantity()));
 				}
+				else
+				{
+					lines.add(new SetupBuilder.Line(slot.getDisplayName(), "(empty)", null, false, 0));
+				}
 				continue;
 			}
 			if (slot == GearSlot.SHIELD && twoHanded)
@@ -262,15 +277,17 @@ public final class RaidLoadoutBuilder
 			}
 			if (slot == GearSlot.AMMO)
 			{
-				if (weapon != null && primary == GearNeed.RANGED)
+				SetupBuilder.Pick ammo = weapon != null && primary == GearNeed.RANGED
+					? RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage)
+					: null;
+				if (ammo != null)
 				{
-					SetupBuilder.Pick ammo =
-						RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage);
-					if (ammo != null)
-					{
-						lines.add(new SetupBuilder.Line(slot.getDisplayName(),
-							ammo.getOption().getName(), ammo.getSource(), false, ammo.getQuantity()));
-					}
+					lines.add(new SetupBuilder.Line(slot.getDisplayName(),
+						ammo.getOption().getName(), ammo.getSource(), false, ammo.getQuantity()));
+				}
+				else
+				{
+					lines.add(new SetupBuilder.Line(slot.getDisplayName(), "(empty)", null, false, 0));
 				}
 				continue;
 			}

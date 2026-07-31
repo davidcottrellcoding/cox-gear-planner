@@ -134,6 +134,18 @@ public class RoomTimeEstimator
 		int partySize,
 		boolean elitePrayers)
 	{
+		return estimate(rooms, items, includeGroupStorage, player, partySize, elitePrayers, null);
+	}
+
+	public List<RoomTime> estimate(
+		Set<CoxRoom> rooms,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		PlanExplanation explanation)
+	{
 		double hpMult = hpMultiplier(partySize);
 
 		List<RoomTime> results = new ArrayList<>();
@@ -153,6 +165,8 @@ public class RoomTimeEstimator
 			double bestDps = 0;
 			GearNeed bestStyle = null;
 			SetupBuilder.Pick bestWeapon = null;
+			double runnerUpDps = 0;
+			String runnerUpName = null;
 
 			for (GearNeed style : monster.getUsableStyles())
 			{
@@ -164,9 +178,16 @@ public class RoomTimeEstimator
 						items, includeGroupStorage, player, monster, elitePrayers);
 					if (dps > bestDps)
 					{
+						runnerUpDps = bestDps;
+						runnerUpName = bestWeapon != null ? bestWeapon.getOption().getName() : null;
 						bestDps = dps;
 						bestStyle = style;
 						bestWeapon = weapon;
+					}
+					else if (dps > runnerUpDps)
+					{
+						runnerUpDps = dps;
+						runnerUpName = weapon.getOption().getName();
 					}
 				}
 			}
@@ -181,6 +202,17 @@ public class RoomTimeEstimator
 				String label = bestWeapon.getOption().getName()
 					+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
 				results.add(new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon));
+
+				if (explanation != null)
+				{
+					explanation.addWeaponChoice(String.format(
+						"%s (%s, %.0f hp): %s at %.2f dps%s",
+						room.getDisplayName(), monster.getName(), totalHp,
+						bestWeapon.getOption().getName(), bestDps,
+						runnerUpName != null
+							? String.format(" — next best %s at %.2f dps", runnerUpName, runnerUpDps)
+							: ""));
+				}
 			}
 		}
 		return results;

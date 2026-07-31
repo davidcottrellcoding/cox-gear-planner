@@ -302,6 +302,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 		}
 
 		renderSwitchAdvice(result);
+		renderDebug(result);
 
 		JLabel legend = new JLabel("<html><br>"
 			+ colored("■", COLOR_ON_HAND) + " on you &nbsp;"
@@ -366,7 +367,16 @@ public class CoxGearPlannerPanel extends PluginPanel
 			return;
 		}
 
-		JLabel header = new JLabel("Raid loadout — wear "
+		int wornCount = 0;
+		for (SetupBuilder.Line line : loadout.getEquipped())
+		{
+			if (!line.isMissing() && line.getSource() != null)
+			{
+				wornCount++;
+			}
+		}
+
+		JLabel header = new JLabel("EQUIPPED (" + wornCount + "/11 slots) — wear "
 			+ loadout.getPrimaryStyle().getDisplayName().toLowerCase());
 		header.setFont(FontManager.getRunescapeBoldFont());
 		header.setForeground(ColorScheme.BRAND_ORANGE);
@@ -383,14 +393,15 @@ public class CoxGearPlannerPanel extends PluginPanel
 			resultsPanel.add(lineLabel(line));
 		}
 
-		JLabel invHeader = new JLabel("Inventory ("
-			+ loadout.getUsedSlots() + " slots + supplies)");
+		JLabel invHeader = new JLabel("INVENTORY (" + loadout.getUsedSlots()
+			+ "/" + RaidLoadoutBuilder.INVENTORY_SIZE + " used by gear)");
 		invHeader.setFont(FontManager.getRunescapeBoldFont());
 		invHeader.setForeground(ColorScheme.BRAND_ORANGE);
 		invHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
 		invHeader.setBorder(BorderFactory.createEmptyBorder(6, 0, 2, 0));
 		resultsPanel.add(invHeader);
 
+		int slot = 0;
 		for (RaidLoadoutBuilder.Entry entry : loadout.getInventory())
 		{
 			if (entry.isMissing() && plugin.getConfig().hideMissing())
@@ -401,7 +412,8 @@ public class CoxGearPlannerPanel extends PluginPanel
 				: entry.getSource() == ItemSource.BANK ? COLOR_BANK
 				: entry.getSource() == ItemSource.GROUP_STORAGE ? COLOR_GROUP
 				: COLOR_ON_HAND;
-			JLabel label = new JLabel("<html>" + entry.getName()
+			String prefix = entry.isMissing() ? "&nbsp;— " : (++slot) + ". ";
+			JLabel label = new JLabel("<html>" + prefix + entry.getName()
 				+ " <font color='#a0a0a0'>— " + entry.getNote() + "</font></html>");
 			label.setFont(FontManager.getRunescapeSmallFont());
 			label.setForeground(color);
@@ -409,12 +421,55 @@ public class CoxGearPlannerPanel extends PluginPanel
 			resultsPanel.add(label);
 		}
 
-		JLabel free = new JLabel(loadout.getFreeSlots()
-			+ " slots free for brews, restores and food");
+		JLabel free = new JLabel(loadout.isOverCapacity()
+			? "Gear alone exceeds 28 slots — drop some switches"
+			: loadout.getFreeSlots() + " slots free for brews, restores and food");
 		free.setFont(FontManager.getRunescapeSmallFont());
-		free.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		free.setForeground(loadout.isOverCapacity() ? COLOR_MISSING : ColorScheme.LIGHT_GRAY_COLOR);
 		free.setAlignmentX(Component.LEFT_ALIGNMENT);
 		resultsPanel.add(free);
+	}
+
+	private void renderDebug(PlanResult result)
+	{
+		PlanExplanation explanation = result.getExplanation();
+		if (explanation == null || explanation.isEmpty())
+		{
+			return;
+		}
+
+		addDebugBlock("Debug — weapon choice per room", explanation.getWeaponChoices());
+		addDebugBlock("Debug — switch decisions", explanation.getSwitchChoices());
+		addDebugBlock("Debug — best owned item per slot", explanation.getGearChoices());
+	}
+
+	private void addDebugBlock(String title, List<String> lines)
+	{
+		if (lines.isEmpty())
+		{
+			return;
+		}
+
+		JLabel header = new JLabel(title);
+		header.setFont(FontManager.getRunescapeBoldFont());
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setAlignmentX(Component.LEFT_ALIGNMENT);
+		header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+		resultsPanel.add(header);
+
+		for (String line : lines)
+		{
+			JLabel label = new JLabel("<html>" + escape(line) + "</html>");
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
+		}
+	}
+
+	private static String escape(String text)
+	{
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 
 	private void renderSwitchAdvice(PlanResult result)

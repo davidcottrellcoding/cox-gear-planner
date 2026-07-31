@@ -140,6 +140,61 @@ public class GearResolver
 		return picks;
 	}
 
+	/**
+	 * Records, for each armour slot, which item was chosen and what it beat.
+	 * Scores are the internal ranking numbers, not DPS.
+	 */
+	public void describeChoices(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlanExplanation explanation)
+	{
+		if (itemManager == null || explanation == null)
+		{
+			return;
+		}
+
+		Map<GearSlot, SetupBuilder.Pick> chosen = resolve(style, items, includeGroupStorage);
+		Map<GearSlot, List<SetupBuilder.Pick>> owned = scan(items, includeGroupStorage);
+		boolean crystalBow = ownsCrystalBow(items, includeGroupStorage);
+
+		for (GearSlot slot : GearSlot.values())
+		{
+			SetupBuilder.Pick pick = chosen.get(slot);
+			if (pick == null)
+			{
+				explanation.addGearChoice(style.getDisplayName() + " " + slot.getDisplayName()
+					+ ": nothing owned");
+				continue;
+			}
+
+			// Best owned alternative that isn't the chosen item
+			SetupBuilder.Pick runnerUp = null;
+			double runnerUpScore = Double.NEGATIVE_INFINITY;
+			for (SetupBuilder.Pick candidate : owned.getOrDefault(slot, java.util.Collections.emptyList()))
+			{
+				if (candidate.getItemId() == pick.getItemId())
+				{
+					continue;
+				}
+				double s = score(candidate.getItemId(), style, crystalBow);
+				if (s > runnerUpScore)
+				{
+					runnerUpScore = s;
+					runnerUp = candidate;
+				}
+			}
+
+			String detail = runnerUp == null
+				? "only option you own"
+				: String.format("beat %s (%.0f vs %.0f)", runnerUp.getOption().getName(),
+					score(pick.getItemId(), style, crystalBow), runnerUpScore);
+			explanation.addGearChoice(style.getDisplayName() + " " + slot.getDisplayName()
+				+ ": " + pick.getOption().getName() + " — " + detail);
+		}
+	}
+
 	/** Every owned equipable item, grouped by the slot it actually occupies. */
 	public Map<GearSlot, List<SetupBuilder.Pick>> scan(
 		Map<ItemSource, Map<Integer, Integer>> items,

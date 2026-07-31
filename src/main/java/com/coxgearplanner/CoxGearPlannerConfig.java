@@ -88,4 +88,15 @@ public interface CoxGearPlannerConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "showDebug",
+		name = "Show debug panel",
+		description = "Adds a section explaining why each item, weapon and switch was chosen over the alternatives you own",
+		position = 8
+	)
+	default boolean showDebug()
+	{
+		return false;
+	}
 }

@@ -82,6 +82,53 @@ public class RaidLoadoutBuilderTest
 	}
 
 	@Test
+	public void equippedListAlwaysCoversAllElevenSlots()
+	{
+		Map<ItemSource, Map<Integer, Integer>> items = bankWith(TBOW, DRAGON_ARROW);
+		SetupBuilder.Pick tbow = pick(items, ItemOption.twoHanded("Twisted bow", TBOW));
+
+		List<RoomTimeEstimator.RoomTime> times = new ArrayList<>(Arrays.asList(
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "tbow", 200, true, GearNeed.RANGED, tbow)));
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			EnumSet.of(CoxRoom.OLM), times, new ArrayList<>(), GearNeed.RANGED, items, true, null);
+
+		assertEquals("one line per equipment slot",
+			GearSlot.values().length, loadout.getEquipped().size());
+		assertEquals(11, GearSlot.values().length);
+
+		// Every slot named exactly once, empty ones included
+		Map<String, String> equipped = loadout.getEquipped().stream()
+			.collect(Collectors.toMap(SetupBuilder.Line::getLabel, SetupBuilder.Line::getItemName));
+		for (GearSlot slot : GearSlot.values())
+		{
+			assertTrue("missing slot " + slot, equipped.containsKey(slot.getDisplayName()));
+		}
+	}
+
+	@Test
+	public void inventoryCapacityIsTwentyEight()
+	{
+		assertEquals(28, RaidLoadoutBuilder.INVENTORY_SIZE);
+
+		Map<ItemSource, Map<Integer, Integer>> items = bankWith(TBOW, SCYTHE, DWH);
+		SetupBuilder.Pick tbow = pick(items, ItemOption.twoHanded("Twisted bow", TBOW));
+		SetupBuilder.Pick scythe = pick(items, ItemOption.twoHanded("Scythe of vitur", SCYTHE));
+
+		List<RoomTimeEstimator.RoomTime> times = new ArrayList<>(Arrays.asList(
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "tbow", 200, true, GearNeed.RANGED, tbow),
+			new RoomTimeEstimator.RoomTime(CoxRoom.TEKTON, "scythe", 100, true, GearNeed.MELEE, scythe)));
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			EnumSet.of(CoxRoom.OLM, CoxRoom.TEKTON), times, new ArrayList<>(),
+			GearNeed.RANGED, items, true, null);
+
+		assertEquals(RaidLoadoutBuilder.INVENTORY_SIZE,
+			loadout.getUsedSlots() + loadout.getFreeSlots());
+		assertFalse(loadout.isOverCapacity());
+	}
+
+	@Test
 	public void missingUtilityIsListedButTakesNoSlot()
 	{
 		Map<ItemSource, Map<Integer, Integer>> items = bankWith(SCYTHE);

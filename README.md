@@ -85,6 +85,32 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Explicit 11 + 28 layout and debug panel (v1.6)
+
+The plan is now stated as a real loadout you can actually pack:
+
+- **EQUIPPED (n/11 slots)** lists all eleven worn slots every time, including
+  `(empty)` ones and the shield slot suppressed by a two-hander.
+- **INVENTORY (n/28 used by gear)** numbers each item that occupies a slot,
+  and warns in red if the gear alone can't fit in 28.
+
+**Switch selection was rewritten.** It used to price each armour piece
+independently against a *fully* switched loadout, which measured every piece
+at the point of smallest marginal value — so a whole melee set could look
+marginal and get dropped piece by piece, leaving an incoherent partial switch
+(a weapon, gloves and tassets but no helm or body). It now uses greedy forward
+selection: starting from "wear the base outfit and just swap the weapon", it
+repeatedly adds whichever remaining piece saves the most time, stopping when
+the best remaining piece is worth less than the **Minimum switch value**. The
+result is a coherent set — the high-value pieces are carried and only the
+genuinely marginal tail is skipped.
+
+Enable **Show debug panel** in config to see the reasoning:
+
+- *weapon choice per room* — winner and its DPS, plus the runner-up
+- *switch decisions* — what each piece saved when it was added, versus the threshold
+- *best owned item per slot* — the chosen item, what it beat, and both scores
+
 ## Every item you own is considered (v1.5)
 
 Armour is no longer chosen by matching a hand-written list of item ids. The

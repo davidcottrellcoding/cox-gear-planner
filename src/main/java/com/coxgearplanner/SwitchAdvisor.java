@@ -3,7 +3,7 @@ package com.coxgearplanner;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -102,7 +102,8 @@ public class SwitchAdvisor
 		PlayerSnapshot player,
 		int partySize,
 		boolean elitePrayers,
-		double thresholdSeconds)
+		double thresholdSeconds,
+		PlanExplanation explanation)
 	{
 		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle = new EnumMap<>(GearNeed.class);
 		for (RoomTimeEstimator.RoomTime time : times)
@@ -131,78 +132,168 @@ public class SwitchAdvisor
 
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
 			estimator.getResolver().resolve(primary, items, includeGroupStorage);
-		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
 
 		List<Advice> advices = new ArrayList<>();
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
-			GearNeed style = entry.getKey();
-			if (style == primary)
+			if (entry.getKey() == primary)
 			{
 				continue;
 			}
-
-			Map<GearSlot, SetupBuilder.Pick> picks =
-				estimator.getResolver().resolve(style, items, includeGroupStorage);
-
-			for (GearSlot slot : SWITCHABLE)
-			{
-				SetupBuilder.Pick pick = picks.get(slot);
-				if (pick == null)
-				{
-					continue; // nothing owned to carry anyway
-				}
-
-				SetupBuilder.Pick primaryPick = primaryPicks.get(slot);
-				if (primaryPick != null && primaryPick.getItemId() == pick.getItemId())
-				{
-					advices.add(new Advice(style, slot, pick.getOption().getName(),
-						null, 0, false, true));
-					continue;
-				}
-
-				double saved = 0;
-				boolean applies = false;
-				for (RoomTimeEstimator.RoomTime rt : entry.getValue())
-				{
-					SetupBuilder.Pick weapon = rt.getWeapon();
-					if (slot == GearSlot.SHIELD && weapon.getOption().isTwoHanded())
-					{
-						continue; // no shield in use with this weapon
-					}
-					applies = true;
-
-					RoomMonsters.Encounter encounter = RoomMonsters.get(rt.getRoom());
-					MonsterProfile monster = encounter.getProfile();
-					double totalHp = monster.getHp() * hpMult * encounter.getCount();
-
-					double dpsFull = estimator.loadoutDps(style, weapon, picks,
-						Collections.emptyMap(), items, includeGroupStorage, player, monster, elitePrayers);
-
-					Map<GearSlot, SetupBuilder.Pick> override = new HashMap<>();
-					override.put(slot, primaryPick); // may be null → bare slot
-					double dpsWithout = estimator.loadoutDps(style, weapon, picks,
-						override, items, includeGroupStorage, player, monster, elitePrayers);
-
-					if (dpsFull > 0 && dpsWithout > 0)
-					{
-						saved += totalHp / dpsWithout - totalHp / dpsFull;
-					}
-				}
-
-				if (!applies)
-				{
-					continue;
-				}
-
-				String instead = primaryPick != null ? primaryPick.getOption().getName() : null;
-				advices.add(new Advice(style, slot, pick.getOption().getName(),
-					instead, saved, saved >= thresholdSeconds, false));
-			}
+			advices.addAll(adviseStyle(entry.getKey(), entry.getValue(), primaryPicks,
+				items, includeGroupStorage, player, partySize, elitePrayers,
+				thresholdSeconds, explanation));
 		}
 
 		// Most valuable switches first; shared/zero-value entries last
 		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
 		return advices;
+	}
+
+	/**
+	 * Chooses one style's switches by greedy forward selection: starting from
+	 * "wear the base outfit and just swap the weapon", repeatedly add whichever
+	 * remaining piece saves the most time, until the best remaining piece is
+	 * worth less than the threshold.
+	 *
+	 * Pricing each piece independently (the old approach) produced incoherent
+	 * sets — several pieces each looked marginal against a *fully* switched
+	 * loadout, so all were dropped even though wearing none of them is far
+	 * worse than the individual numbers suggest.
+	 */
+	private List<Advice> adviseStyle(
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		double thresholdSeconds,
+		PlanExplanation explanation)
+	{
+		Map<GearSlot, SetupBuilder.Pick> picks =
+			estimator.getResolver().resolve(style, items, includeGroupStorage);
+		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
+
+		List<Advice> advices = new ArrayList<>();
+		// Slots still wearing the base outfit's item; removing an entry from
+		// this map means "carry the switch and wear it".
+		Map<GearSlot, SetupBuilder.Pick> notCarried = new LinkedHashMap<>();
+
+		for (GearSlot slot : SWITCHABLE)
+		{
+			SetupBuilder.Pick pick = picks.get(slot);
+			if (pick == null)
+			{
+				continue; // nothing owned to carry anyway
+			}
+			SetupBuilder.Pick primaryPick = primaryPicks.get(slot);
+			if (primaryPick != null && primaryPick.getItemId() == pick.getItemId())
+			{
+				advices.add(new Advice(style, slot, pick.getOption().getName(), null, 0, false, true));
+				continue;
+			}
+			notCarried.put(slot, primaryPick); // may be null → slot left bare
+		}
+
+		double currentSeconds = totalSeconds(style, styleTimes, picks, notCarried,
+			items, includeGroupStorage, player, hpMult, elitePrayers);
+
+		while (!notCarried.isEmpty())
+		{
+			GearSlot bestSlot = null;
+			double bestGain = 0;
+
+			for (GearSlot slot : notCarried.keySet())
+			{
+				Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(notCarried);
+				trial.remove(slot); // wear this style's item in that slot
+				double seconds = totalSeconds(style, styleTimes, picks, trial,
+					items, includeGroupStorage, player, hpMult, elitePrayers);
+				double gain = currentSeconds - seconds;
+				if (gain > bestGain)
+				{
+					bestGain = gain;
+					bestSlot = slot;
+				}
+			}
+
+			if (bestSlot == null || bestGain < thresholdSeconds)
+			{
+				break; // nothing left is worth an inventory slot
+			}
+
+			SetupBuilder.Pick instead = notCarried.remove(bestSlot);
+			currentSeconds -= bestGain;
+			advices.add(new Advice(style, bestSlot, picks.get(bestSlot).getOption().getName(),
+				instead != null ? instead.getOption().getName() : null, bestGain, true, false));
+
+			if (explanation != null)
+			{
+				explanation.addSwitchChoice(String.format(
+					"CARRY %s %s: %s saves %.1fs when added (threshold %.0fs)",
+					style.getDisplayName().toLowerCase(), bestSlot.getDisplayName().toLowerCase(),
+					picks.get(bestSlot).getOption().getName(), bestGain, thresholdSeconds));
+			}
+		}
+
+		// Whatever is left didn't clear the threshold
+		for (Map.Entry<GearSlot, SetupBuilder.Pick> left : notCarried.entrySet())
+		{
+			GearSlot slot = left.getKey();
+			Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(notCarried);
+			trial.remove(slot);
+			double gain = currentSeconds - totalSeconds(style, styleTimes, picks, trial,
+				items, includeGroupStorage, player, hpMult, elitePrayers);
+
+			SetupBuilder.Pick instead = left.getValue();
+			advices.add(new Advice(style, slot, picks.get(slot).getOption().getName(),
+				instead != null ? instead.getOption().getName() : null, gain, false, false));
+
+			if (explanation != null)
+			{
+				explanation.addSwitchChoice(String.format(
+					"SKIP %s %s: %s would only save %.1fs (threshold %.0fs) — keep %s on",
+					style.getDisplayName().toLowerCase(), slot.getDisplayName().toLowerCase(),
+					picks.get(slot).getOption().getName(), gain, thresholdSeconds,
+					instead != null ? instead.getOption().getName() : "nothing"));
+			}
+		}
+		return advices;
+	}
+
+	/** Total expected kill time across a style's rooms with the given slots not switched. */
+	private double totalSeconds(
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<GearSlot, SetupBuilder.Pick> notCarried,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		double hpMult,
+		boolean elitePrayers)
+	{
+		double total = 0;
+		for (RoomTimeEstimator.RoomTime rt : styleTimes)
+		{
+			RoomMonsters.Encounter encounter = RoomMonsters.get(rt.getRoom());
+			if (encounter == null)
+			{
+				continue;
+			}
+			MonsterProfile monster = encounter.getProfile();
+			double totalHp = monster.getHp() * hpMult * encounter.getCount();
+
+			double dps = estimator.loadoutDps(style, rt.getWeapon(), picks, notCarried,
+				items, includeGroupStorage, player, monster, elitePrayers);
+			if (dps > 0)
+			{
+				total += totalHp / dps;
+			}
+		}
+		return total;
 	}
 }

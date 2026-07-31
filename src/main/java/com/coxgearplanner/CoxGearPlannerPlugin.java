@@ -42,7 +42,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.5.0";
+	static final String VERSION = "1.6.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -216,20 +216,35 @@ public class CoxGearPlannerPlugin extends Plugin
 			Map<ItemSource, Map<Integer, Integer>> snapshot = getItemsSnapshot();
 			boolean includeGroup = config.includeGroupStorage();
 
+			PlanExplanation explanation = config.showDebug() ? new PlanExplanation() : null;
+
 			RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
 			List<SetupBuilder.Section> sections = SetupBuilder.build(
 				rooms, snapshot, includeGroup, estimator.getResolver());
 			List<RoomTimeEstimator.RoomTime> times = estimator.estimate(
 				rooms, snapshot, includeGroup, player,
-				config.partySize(), config.assumeElitePrayers());
+				config.partySize(), config.assumeElitePrayers(), explanation);
 			List<SwitchAdvisor.Advice> advice = new SwitchAdvisor(estimator).advise(
 				times, snapshot, includeGroup, player,
-				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds());
+				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds(),
+				explanation);
 
 			GearNeed primary = primaryStyle(times);
 			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
 				rooms, times, advice, primary, snapshot, includeGroup, estimator.getResolver());
-			PlanResult result = new PlanResult(sections, times, advice, primary, loadout);
+
+			if (explanation != null)
+			{
+				for (GearNeed style : GearNeed.values())
+				{
+					if (style.isCombatStyle())
+					{
+						estimator.getResolver().describeChoices(style, snapshot, includeGroup, explanation);
+					}
+				}
+			}
+
+			PlanResult result = new PlanResult(sections, times, advice, primary, loadout, explanation);
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});
 	}
