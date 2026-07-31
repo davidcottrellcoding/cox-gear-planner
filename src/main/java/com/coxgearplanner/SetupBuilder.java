@@ -202,6 +202,19 @@ public final class SetupBuilder
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage)
 	{
+		return build(rooms, items, includeGroupStorage, null);
+	}
+
+	/**
+	 * @param resolver when non-null, slots are filled by scanning every owned
+	 * item's real stats instead of only the curated tier lists.
+	 */
+	public static List<Section> build(
+		Set<CoxRoom> rooms,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		GearResolver resolver)
+	{
 		EnumSet<GearNeed> needs = EnumSet.noneOf(GearNeed.class);
 		for (CoxRoom room : rooms)
 		{
@@ -223,7 +236,9 @@ public final class SetupBuilder
 				.collect(Collectors.joining(", "));
 			Section section = new Section(style.getDisplayName() + "  (" + forRooms + ")");
 
-			Map<GearSlot, Pick> picks = resolveLoadout(style, items, includeGroupStorage);
+			Map<GearSlot, Pick> picks = resolver != null
+				? resolver.resolve(style, items, includeGroupStorage)
+				: resolveLoadout(style, items, includeGroupStorage);
 			Pick weapon = picks.get(GearSlot.WEAPON);
 			boolean twoHandedChosen = weapon != null && weapon.getOption().isTwoHanded();
 

@@ -59,7 +59,7 @@ public class RaidLoadoutBuilderTest
 			new SwitchAdvisor.Advice(GearNeed.MELEE, GearSlot.BOOTS, "Primordial boots", null, 0.5, false, false));
 
 		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
-			EnumSet.of(CoxRoom.OLM, CoxRoom.TEKTON), times, advice, GearNeed.RANGED, items, true);
+			EnumSet.of(CoxRoom.OLM, CoxRoom.TEKTON), times, advice, GearNeed.RANGED, items, true, null);
 
 		assertEquals(GearNeed.RANGED, loadout.getPrimaryStyle());
 
@@ -91,7 +91,7 @@ public class RaidLoadoutBuilderTest
 			new RoomTimeEstimator.RoomTime(CoxRoom.GUARDIANS, "scythe", 90, true, GearNeed.MELEE, scythe)));
 
 		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
-			EnumSet.of(CoxRoom.GUARDIANS), times, new ArrayList<>(), GearNeed.MELEE, items, true);
+			EnumSet.of(CoxRoom.GUARDIANS), times, new ArrayList<>(), GearNeed.MELEE, items, true, null);
 
 		boolean missingPickaxe = loadout.getInventory().stream()
 			.anyMatch(e -> e.isMissing() && e.getNote().contains("ickaxe"));
@@ -104,6 +104,6 @@ public class RaidLoadoutBuilderTest
 	{
 		assertNull(RaidLoadoutBuilder.build(
 			EnumSet.of(CoxRoom.OLM), new ArrayList<>(), new ArrayList<>(),
-			null, bankWith(), true));
+			null, bankWith(), true, null));
 	}
 }

@@ -130,7 +130,7 @@ public class SwitchAdvisor
 		}
 
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
-			SetupBuilder.resolveLoadout(primary, items, includeGroupStorage);
+			estimator.getResolver().resolve(primary, items, includeGroupStorage);
 		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
 
 		List<Advice> advices = new ArrayList<>();
@@ -143,7 +143,7 @@ public class SwitchAdvisor
 			}
 
 			Map<GearSlot, SetupBuilder.Pick> picks =
-				SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
+				estimator.getResolver().resolve(style, items, includeGroupStorage);
 
 			for (GearSlot slot : SWITCHABLE)
 			{

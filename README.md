@@ -85,6 +85,29 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Every item you own is considered (v1.5)
+
+Armour is no longer chosen by matching a hand-written list of item ids. The
+planner scans **every item in your bank, inventory, equipment and group
+storage**, asks the client what slot it occupies and what its real stats are
+(`ItemStats.isEquipable` / `ItemEquipmentStats.getSlot`), and picks the
+best-scoring item per slot for each style. New, obscure or recently-released
+gear works with no code change — if it's equipable and has offensive stats,
+it competes.
+
+Two things still use the curated `GearDatabase` list:
+
+- **Weapons and ammo**, because weapon choice needs special-case knowledge
+  (twisted bow scaling, DHCB dragonbane, scythe triple hits, fang's double
+  roll, powered staves). Any owned weapon *not* in the list is still added as
+  a candidate and evaluated with the generic formulas, so nothing is excluded.
+- **"BiS to chase"** text for slots where you own nothing at all.
+
+Item ranking uses a strength-weighted score of the real stats; the reported
+room times always come from the full DPS formulas. Set effects other than
+crystal armour + bow of faerdhinen (e.g. void, obsidian, inquisitor's crush
+bonus) aren't credited in that ranking.
+
 ## Comprehensive gear database (v1.4)
 
 Every slot in every style now has mid → high tier options, so the planner can

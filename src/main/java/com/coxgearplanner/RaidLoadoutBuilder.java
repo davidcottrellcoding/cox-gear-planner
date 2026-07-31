@@ -106,7 +106,8 @@ public final class RaidLoadoutBuilder
 		List<SwitchAdvisor.Advice> advice,
 		GearNeed primary,
 		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage)
+		boolean includeGroupStorage,
+		GearResolver resolver)
 	{
 		if (primary == null)
 		{
@@ -124,7 +125,7 @@ public final class RaidLoadoutBuilder
 		}
 
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
-			SetupBuilder.resolveLoadout(primary, items, includeGroupStorage);
+			picksFor(resolver, primary, items, includeGroupStorage);
 		SetupBuilder.Pick primaryWeapon = mainWeapon(byStyle.get(primary));
 
 		List<SetupBuilder.Line> equipped =
@@ -151,9 +152,8 @@ public final class RaidLoadoutBuilder
 			{
 				continue;
 			}
-			SetupBuilder.Pick pick = SetupBuilder
-				.resolveLoadout(a.getStyle(), items, includeGroupStorage)
-				.get(a.getSlot());
+			SetupBuilder.Pick pick =
+				picksFor(resolver, a.getStyle(), items, includeGroupStorage).get(a.getSlot());
 			if (pick == null || worn.contains(pick.getItemId()))
 			{
 				continue;
@@ -200,6 +200,18 @@ public final class RaidLoadoutBuilder
 		}
 
 		return new RaidLoadout(primary, equipped, new ArrayList<>(inventory.values()));
+	}
+
+	/** Stats-scanned picks when a resolver is available, curated list otherwise. */
+	private static Map<GearSlot, SetupBuilder.Pick> picksFor(
+		GearResolver resolver,
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		return resolver != null
+			? resolver.resolve(style, items, includeGroupStorage)
+			: SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
 	}
 
 	/** The style's weapon in the room where it spends the most time. */

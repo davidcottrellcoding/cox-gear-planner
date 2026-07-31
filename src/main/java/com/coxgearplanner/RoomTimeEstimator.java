@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
 
@@ -106,10 +107,17 @@ public class RoomTimeEstimator
 	}
 
 	private final ItemManager itemManager;
+	private final GearResolver resolver;
 
 	public RoomTimeEstimator(ItemManager itemManager)
 	{
 		this.itemManager = itemManager;
+		this.resolver = new GearResolver(itemManager);
+	}
+
+	public GearResolver getResolver()
+	{
+		return resolver;
 	}
 
 	/** Approximate CoX HP scaling with party size. */
@@ -148,16 +156,10 @@ public class RoomTimeEstimator
 
 			for (GearNeed style : monster.getUsableStyles())
 			{
-				Map<GearSlot, SetupBuilder.Pick> picks = SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
+				Map<GearSlot, SetupBuilder.Pick> picks = resolver.resolve(style, items, includeGroupStorage);
 
-				for (ItemOption weaponOption : GearDatabase.loadout(style).get(GearSlot.WEAPON))
+				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage))
 				{
-					SetupBuilder.Pick weapon = SetupBuilder.findOwned(weaponOption, items, includeGroupStorage);
-					if (weapon == null)
-					{
-						continue;
-					}
-
 					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
 						items, includeGroupStorage, player, monster, elitePrayers);
 					if (dps > bestDps)
@@ -250,6 +252,64 @@ public class RoomTimeEstimator
 		{
 			totals.add(itemManager.getItemStats(ammo.getItemId()));
 		}
+	}
+
+	/**
+	 * Weapons to try for a style: the curated tier list (which carries the
+	 * special-case knowledge) plus any other owned weapon with a relevant
+	 * offensive bonus, so a weapon missing from the list still competes.
+	 */
+	private List<SetupBuilder.Pick> weaponCandidates(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		List<SetupBuilder.Pick> candidates = new ArrayList<>();
+		Set<Integer> seen = new HashSet<>();
+
+		for (ItemOption option : GearDatabase.loadout(style).get(GearSlot.WEAPON))
+		{
+			SetupBuilder.Pick pick = SetupBuilder.findOwned(option, items, includeGroupStorage);
+			if (pick != null && seen.add(pick.getItemId()))
+			{
+				candidates.add(pick);
+			}
+		}
+
+		for (SetupBuilder.Pick pick : resolver.scan(items, includeGroupStorage)
+			.getOrDefault(GearSlot.WEAPON, Collections.emptyList()))
+		{
+			if (!seen.add(pick.getItemId()))
+			{
+				continue;
+			}
+			ItemStats stats = itemManager.getItemStats(pick.getItemId());
+			if (stats == null || stats.getEquipment() == null)
+			{
+				continue;
+			}
+			ItemEquipmentStats eq = stats.getEquipment();
+			boolean usable;
+			switch (style)
+			{
+				case MELEE:
+					usable = Math.max(eq.getAstab(), Math.max(eq.getAslash(), eq.getAcrush())) > 0;
+					break;
+				case RANGED:
+					usable = eq.getArange() > 0;
+					break;
+				case MAGIC:
+					usable = eq.getAmagic() > 0;
+					break;
+				default:
+					usable = false;
+			}
+			if (usable)
+			{
+				candidates.add(pick);
+			}
+		}
+		return candidates;
 	}
 
 	/** Crystal armour boosts the crystal bow / bofa: helm 5%/2.5%, body 15%/7.5%, legs 10%/5%. */
