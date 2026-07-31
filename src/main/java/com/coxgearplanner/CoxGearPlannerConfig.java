@@ -65,4 +65,16 @@ public interface CoxGearPlannerConfig extends Config
 	{
 		return true;
 	}
+
+	@Range(min = 0, max = 60)
+	@ConfigItem(
+		keyName = "minSwitchSeconds",
+		name = "Minimum switch value (seconds)",
+		description = "Gear switches that save less than this many seconds across the selected rooms are flagged as not worth the inventory slot. 0 shows every switch as worth carrying.",
+		position = 6
+	)
+	default int minSwitchSeconds()
+	{
+		return 3;
+	}
 }

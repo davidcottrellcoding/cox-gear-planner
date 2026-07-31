@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
@@ -205,8 +205,7 @@ public class CoxGearPlannerPlugin extends Plugin
 	 * Builds the gear suggestion and room time estimates. Player levels must
 	 * be read on the client thread; the callback is invoked on the Swing EDT.
 	 */
-	public void computePlan(Set<CoxRoom> rooms,
-		BiConsumer<List<SetupBuilder.Section>, List<RoomTimeEstimator.RoomTime>> callback)
+	public void computePlan(Set<CoxRoom> rooms, Consumer<PlanResult> callback)
 	{
 		clientThread.invokeLater(() ->
 		{
@@ -215,12 +214,35 @@ public class CoxGearPlannerPlugin extends Plugin
 			boolean includeGroup = config.includeGroupStorage();
 
 			List<SetupBuilder.Section> sections = SetupBuilder.build(rooms, snapshot, includeGroup);
-			List<RoomTimeEstimator.RoomTime> times = new RoomTimeEstimator(itemManager)
-				.estimate(rooms, snapshot, includeGroup, player,
-					config.partySize(), config.assumeElitePrayers());
+			RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
+			List<RoomTimeEstimator.RoomTime> times = estimator.estimate(
+				rooms, snapshot, includeGroup, player,
+				config.partySize(), config.assumeElitePrayers());
+			List<SwitchAdvisor.Advice> advice = new SwitchAdvisor(estimator).advise(
+				times, snapshot, includeGroup, player,
+				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds());
 
-			SwingUtilities.invokeLater(() -> callback.accept(sections, times));
+			GearNeed primary = primaryStyle(times);
+			PlanResult result = new PlanResult(sections, times, advice, primary);
+			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});
+	}
+
+	/** Style with the most estimated combat time — the base outfit you wear. */
+	private static GearNeed primaryStyle(List<RoomTimeEstimator.RoomTime> times)
+	{
+		Map<GearNeed, Double> totals = new EnumMap<>(GearNeed.class);
+		for (RoomTimeEstimator.RoomTime time : times)
+		{
+			if (time.isFeasible() && time.getStyle() != null)
+			{
+				totals.merge(time.getStyle(), time.getSeconds(), Double::sum);
+			}
+		}
+		return totals.entrySet().stream()
+			.max(Map.Entry.comparingByValue())
+			.map(Map.Entry::getKey)
+			.orElse(null);
 	}
 
 	private PlayerSnapshot snapshotPlayer()

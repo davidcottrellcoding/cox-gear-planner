@@ -221,9 +221,11 @@ public class CoxGearPlannerPanel extends PluginPanel
 		plugin.computePlan(rooms, this::renderResults);
 	}
 
-	private void renderResults(List<SetupBuilder.Section> sections, List<RoomTimeEstimator.RoomTime> times)
+	private void renderResults(PlanResult result)
 	{
 		resultsPanel.removeAll();
+		List<SetupBuilder.Section> sections = result.getSections();
+		List<RoomTimeEstimator.RoomTime> times = result.getTimes();
 
 		for (SetupBuilder.Section section : sections)
 		{
@@ -282,6 +284,8 @@ public class CoxGearPlannerPanel extends PluginPanel
 			resultsPanel.add(totalLabel);
 		}
 
+		renderSwitchAdvice(result);
+
 		JLabel legend = new JLabel("<html><br>"
 			+ colored("■", COLOR_ON_HAND) + " on you &nbsp;"
 			+ colored("■", COLOR_BANK) + " bank &nbsp;"
@@ -336,6 +340,75 @@ public class CoxGearPlannerPanel extends PluginPanel
 		label.setForeground(color);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
+	}
+
+	private void renderSwitchAdvice(PlanResult result)
+	{
+		List<SwitchAdvisor.Advice> advices = result.getSwitchAdvice();
+		if (advices.isEmpty() || result.getPrimaryStyle() == null)
+		{
+			return;
+		}
+
+		JLabel header = new JLabel("Switch advice (base outfit: "
+			+ result.getPrimaryStyle().getDisplayName() + ")");
+		header.setFont(FontManager.getRunescapeBoldFont());
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setAlignmentX(Component.LEFT_ALIGNMENT);
+		header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+		resultsPanel.add(header);
+
+		int skippable = 0;
+		double skippedCost = 0;
+		for (SwitchAdvisor.Advice advice : advices)
+		{
+			String styleName = advice.getStyle().getDisplayName().toLowerCase();
+			JLabel label;
+			if (advice.isAlreadyShared())
+			{
+				label = new JLabel("<html>" + advice.getSlot().getDisplayName() + ": "
+					+ advice.getItemName() + " — already worn</html>");
+				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
+			else if (advice.isWorthIt())
+			{
+				label = new JLabel("<html><b>Carry</b> " + advice.getItemName()
+					+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
+					+ "): saves ~" + formatSaved(advice.getSecondsSaved()) + "</html>");
+				label.setForeground(COLOR_ON_HAND);
+			}
+			else
+			{
+				skippable++;
+				skippedCost += advice.getSecondsSaved();
+				String instead = advice.getWearInstead() != null
+					? " — keep " + advice.getWearInstead() + " on"
+					: "";
+				label = new JLabel("<html><b>Skip</b> " + advice.getItemName()
+					+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
+					+ "): only ~" + formatSaved(advice.getSecondsSaved()) + instead + "</html>");
+				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
+		}
+
+		if (skippable > 0)
+		{
+			JLabel summary = new JLabel("<html><b>" + skippable + " switch(es) not worth it</b> — frees "
+				+ skippable + " inventory slot(s) for ~" + formatSaved(skippedCost) + " slower</html>");
+			summary.setFont(FontManager.getRunescapeSmallFont());
+			summary.setForeground(COLOR_GROUP);
+			summary.setAlignmentX(Component.LEFT_ALIGNMENT);
+			summary.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+			resultsPanel.add(summary);
+		}
+	}
+
+	private static String formatSaved(double seconds)
+	{
+		return seconds < 10 ? String.format("%.1fs", seconds) : Math.round(seconds) + "s";
 	}
 
 	private static String formatSeconds(double seconds)

@@ -2,6 +2,7 @@ package com.coxgearplanner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +48,18 @@ public class RoomTimeEstimator
 		private final String detail;
 		private final double seconds;
 		private final boolean feasible;
+		private final GearNeed style;
+		private final SetupBuilder.Pick weapon;
 
-		RoomTime(CoxRoom room, String detail, double seconds, boolean feasible)
+		RoomTime(CoxRoom room, String detail, double seconds, boolean feasible,
+			GearNeed style, SetupBuilder.Pick weapon)
 		{
 			this.room = room;
 			this.detail = detail;
 			this.seconds = seconds;
 			this.feasible = feasible;
+			this.style = style;
+			this.weapon = weapon;
 		}
 
 		public CoxRoom getRoom()
@@ -75,6 +81,18 @@ public class RoomTimeEstimator
 		{
 			return feasible;
 		}
+
+		/** Combat style of the winning weapon; null when infeasible. */
+		public GearNeed getStyle()
+		{
+			return style;
+		}
+
+		/** The winning weapon pick; null when infeasible. */
+		public SetupBuilder.Pick getWeapon()
+		{
+			return weapon;
+		}
 	}
 
 	private final ItemManager itemManager;
@@ -82,6 +100,12 @@ public class RoomTimeEstimator
 	public RoomTimeEstimator(ItemManager itemManager)
 	{
 		this.itemManager = itemManager;
+	}
+
+	/** Approximate CoX HP scaling with party size. */
+	public static double hpMultiplier(int partySize)
+	{
+		return 1.0 + 0.5 * (Math.max(1, partySize) - 1);
 	}
 
 	public List<RoomTime> estimate(
@@ -92,8 +116,7 @@ public class RoomTimeEstimator
 		int partySize,
 		boolean elitePrayers)
 	{
-		// Approximate CoX HP scaling with party size
-		double hpMult = 1.0 + 0.5 * (Math.max(1, partySize) - 1);
+		double hpMult = hpMultiplier(partySize);
 
 		List<RoomTime> results = new ArrayList<>();
 		for (CoxRoom room : CoxRoom.values())
@@ -110,13 +133,12 @@ public class RoomTimeEstimator
 
 			MonsterProfile monster = encounter.getProfile();
 			double bestDps = 0;
-			String bestLabel = null;
+			GearNeed bestStyle = null;
+			SetupBuilder.Pick bestWeapon = null;
 
 			for (GearNeed style : monster.getUsableStyles())
 			{
 				Map<GearSlot, SetupBuilder.Pick> picks = SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
-				EquipmentTotals armour = armourTotals(picks);
-				SetupBuilder.Pick shield = picks.get(GearSlot.SHIELD);
 
 				for (ItemOption weaponOption : GearDatabase.loadout(style).get(GearSlot.WEAPON))
 				{
@@ -126,61 +148,81 @@ public class RoomTimeEstimator
 						continue;
 					}
 
-					EquipmentTotals totals = armour.copy();
-					ItemStats weaponStats = itemManager.getItemStats(weapon.getItemId());
-					totals.add(weaponStats);
-					if (weaponStats != null && weaponStats.getEquipment() != null)
-					{
-						totals.speedTicks = Math.max(1, weaponStats.getEquipment().getAspeed());
-					}
-					if (!weaponOption.isTwoHanded() && shield != null)
-					{
-						totals.add(itemManager.getItemStats(shield.getItemId()));
-					}
-					if (style == GearNeed.RANGED)
-					{
-						addAmmo(totals, weapon.getItemId(), items, includeGroupStorage);
-					}
-
-					double dps = dpsFor(style, weapon.getItemId(), totals, player, monster, elitePrayers);
+					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
+						items, includeGroupStorage, player, monster, elitePrayers);
 					if (dps > bestDps)
 					{
 						bestDps = dps;
-						bestLabel = weaponOption.getName() + " (" + style.getDisplayName().toLowerCase() + ")";
+						bestStyle = style;
+						bestWeapon = weapon;
 					}
 				}
 			}
 
 			if (bestDps <= 0)
 			{
-				results.add(new RoomTime(room, "no usable weapon owned", 0, false));
+				results.add(new RoomTime(room, "no usable weapon owned", 0, false, null, null));
 			}
 			else
 			{
 				double totalHp = monster.getHp() * hpMult * encounter.getCount();
-				results.add(new RoomTime(room, bestLabel, totalHp / bestDps, true));
+				String label = bestWeapon.getOption().getName()
+					+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
+				results.add(new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon));
 			}
 		}
 		return results;
 	}
 
-	private EquipmentTotals armourTotals(Map<GearSlot, SetupBuilder.Pick> picks)
+	/**
+	 * DPS of a specific weapon plus a style's armour picks against a monster.
+	 * Slots present in {@code overrides} replace the style's pick for that
+	 * slot (a null value means the slot is left empty) — this is how the
+	 * switch advisor prices "wear the other style's item instead".
+	 */
+	public double loadoutDps(
+		GearNeed style,
+		SetupBuilder.Pick weapon,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<GearSlot, SetupBuilder.Pick> overrides,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		MonsterProfile monster,
+		boolean elitePrayers)
 	{
+		boolean twoHanded = weapon.getOption().isTwoHanded();
 		EquipmentTotals totals = new EquipmentTotals();
-		for (Map.Entry<GearSlot, SetupBuilder.Pick> entry : picks.entrySet())
+
+		for (GearSlot slot : GearSlot.values())
 		{
-			GearSlot slot = entry.getKey();
-			if (slot == GearSlot.WEAPON || slot == GearSlot.SHIELD || slot == GearSlot.AMMO)
+			if (slot == GearSlot.WEAPON || slot == GearSlot.AMMO)
 			{
 				continue;
 			}
-			SetupBuilder.Pick pick = entry.getValue();
+			if (slot == GearSlot.SHIELD && twoHanded)
+			{
+				continue;
+			}
+			SetupBuilder.Pick pick = overrides.containsKey(slot) ? overrides.get(slot) : picks.get(slot);
 			if (pick != null)
 			{
 				totals.add(itemManager.getItemStats(pick.getItemId()));
 			}
 		}
-		return totals;
+
+		ItemStats weaponStats = itemManager.getItemStats(weapon.getItemId());
+		totals.add(weaponStats);
+		if (weaponStats != null && weaponStats.getEquipment() != null)
+		{
+			totals.speedTicks = Math.max(1, weaponStats.getEquipment().getAspeed());
+		}
+		if (style == GearNeed.RANGED)
+		{
+			addAmmo(totals, weapon.getItemId(), items, includeGroupStorage);
+		}
+
+		return dpsFor(style, weapon.getItemId(), totals, player, monster, elitePrayers);
 	}
 
 	private void addAmmo(EquipmentTotals totals, int weaponId,

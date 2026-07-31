@@ -54,6 +54,19 @@ best-first list of `(name, item ids)` — edit it to taste. A few niche item ids
 (ornament variants, newer rings) are worth spot-checking against the wiki if a
 suggestion looks off; each is a one-line fix in that file.
 
+## Switch advice (v1.2)
+
+When a layout needs more than one combat style, the panel prices every armour
+switch: the style with the most estimated combat time becomes your **base
+outfit**, and for each other style's armour piece the planner computes how many
+seconds carrying it actually saves across the rooms where that style is used —
+versus just leaving the base outfit's piece on. Switches saving less than the
+**Minimum switch value** config setting (default 3 seconds, 0 to show
+everything as worth carrying) are flagged **Skip**, with what to wear instead
+and a summary of how many inventory slots you free for how little time lost.
+Items shared between styles (e.g. barrows gloves in two loadouts) are shown as
+"already worn". Weapons are never flagged — the weapon is the style switch.
+
 ## Building
 
 Requires JDK 11+ (any recent JDK works).
