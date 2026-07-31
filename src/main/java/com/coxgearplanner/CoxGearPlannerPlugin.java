@@ -223,7 +223,9 @@ public class CoxGearPlannerPlugin extends Plugin
 				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds());
 
 			GearNeed primary = primaryStyle(times);
-			PlanResult result = new PlanResult(sections, times, advice, primary);
+			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+				rooms, times, advice, primary, snapshot, includeGroup);
+			PlanResult result = new PlanResult(sections, times, advice, primary, loadout);
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});
 	}

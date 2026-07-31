@@ -227,6 +227,18 @@ public class CoxGearPlannerPanel extends PluginPanel
 		List<SetupBuilder.Section> sections = result.getSections();
 		List<RoomTimeEstimator.RoomTime> times = result.getTimes();
 
+		renderLoadout(result.getLoadout());
+
+		if (result.getLoadout() != null && !sections.isEmpty())
+		{
+			JLabel caption = new JLabel("<html><br>Per-style loadouts below are reference"
+				+ " (what each style would ideally wear), not extra items to bring.</html>");
+			caption.setFont(FontManager.getRunescapeSmallFont());
+			caption.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			caption.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(caption);
+		}
+
 		for (SetupBuilder.Section section : sections)
 		{
 			JLabel header = new JLabel("<html>" + section.getTitle() + "</html>");
@@ -340,6 +352,56 @@ public class CoxGearPlannerPanel extends PluginPanel
 		label.setForeground(color);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
+	}
+
+	private void renderLoadout(RaidLoadoutBuilder.RaidLoadout loadout)
+	{
+		if (loadout == null)
+		{
+			return;
+		}
+
+		JLabel header = new JLabel("Raid loadout — wear "
+			+ loadout.getPrimaryStyle().getDisplayName().toLowerCase());
+		header.setFont(FontManager.getRunescapeBoldFont());
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setAlignmentX(Component.LEFT_ALIGNMENT);
+		header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+		resultsPanel.add(header);
+
+		for (SetupBuilder.Line line : loadout.getEquipped())
+		{
+			resultsPanel.add(lineLabel(line));
+		}
+
+		JLabel invHeader = new JLabel("Inventory ("
+			+ loadout.getUsedSlots() + " slots + supplies)");
+		invHeader.setFont(FontManager.getRunescapeBoldFont());
+		invHeader.setForeground(ColorScheme.BRAND_ORANGE);
+		invHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+		invHeader.setBorder(BorderFactory.createEmptyBorder(6, 0, 2, 0));
+		resultsPanel.add(invHeader);
+
+		for (RaidLoadoutBuilder.Entry entry : loadout.getInventory())
+		{
+			Color color = entry.isMissing() ? COLOR_MISSING
+				: entry.getSource() == ItemSource.BANK ? COLOR_BANK
+				: entry.getSource() == ItemSource.GROUP_STORAGE ? COLOR_GROUP
+				: COLOR_ON_HAND;
+			JLabel label = new JLabel("<html>" + entry.getName()
+				+ " <font color='#a0a0a0'>— " + entry.getNote() + "</font></html>");
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setForeground(color);
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
+		}
+
+		JLabel free = new JLabel(loadout.getFreeSlots()
+			+ " slots free for brews, restores and food");
+		free.setFont(FontManager.getRunescapeSmallFont());
+		free.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		free.setAlignmentX(Component.LEFT_ALIGNMENT);
+		resultsPanel.add(free);
 	}
 
 	private void renderSwitchAdvice(PlanResult result)

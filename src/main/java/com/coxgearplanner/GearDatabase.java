@@ -30,6 +30,8 @@ public final class GearDatabase
 		melee.put(GearSlot.WEAPON, Arrays.asList(
 			ItemOption.twoHanded("Scythe of vitur", 22325, 25736, 25739), // + holy/sanguine
 			ItemOption.of("Osmumten's fang", 26219),
+			ItemOption.twoHanded("Soulreaper axe", 28338, 33335), // + ornament
+			ItemOption.twoHanded("Noxious halberd", 29796),
 			ItemOption.of("Ghrazi rapier", 22324),
 			ItemOption.of("Blade of saeldor (c)", 24553),
 			ItemOption.of("Inquisitor's mace", 24417),
@@ -43,6 +45,7 @@ public final class GearDatabase
 			ItemOption.of("Dragonfire shield", 11284),
 			ItemOption.of("Rune defender", 8850)));
 		melee.put(GearSlot.HEAD, Arrays.asList(
+			ItemOption.of("Oathplate helm", 30750, 30777), // + radiant
 			ItemOption.of("Torva full helm", 26382),
 			ItemOption.of("Neitiznot faceguard", 24271),
 			ItemOption.of("Serpentine helm", 12931, 12929),
@@ -52,14 +55,18 @@ public final class GearDatabase
 			ItemOption.of("Fire cape", 6570),
 			ItemOption.of("Obsidian cape", 6568)));
 		melee.put(GearSlot.NECK, Arrays.asList(
+			ItemOption.of("Amulet of rancour", 29801, 29804), // + (s)
 			ItemOption.of("Amulet of torture", 19553),
+			ItemOption.of("Amulet of blood fury", 24780),
 			ItemOption.of("Amulet of fury", 6585),
 			ItemOption.of("Amulet of glory", 1704)));
 		melee.put(GearSlot.BODY, Arrays.asList(
+			ItemOption.of("Oathplate chest", 30753, 30779), // + radiant
 			ItemOption.of("Torva platebody", 26384),
 			ItemOption.of("Bandos chestplate", 11832),
 			ItemOption.of("Fighter torso", 10551)));
 		melee.put(GearSlot.LEGS, Arrays.asList(
+			ItemOption.of("Oathplate legs", 30756, 30781), // + radiant
 			ItemOption.of("Torva platelegs", 26386),
 			ItemOption.of("Bandos tassets", 11834),
 			ItemOption.of("Obsidian platelegs", 21301),
@@ -69,6 +76,7 @@ public final class GearDatabase
 			ItemOption.of("Barrows gloves", 7462),
 			ItemOption.of("Dragon gloves", 7461)));
 		melee.put(GearSlot.BOOTS, Arrays.asList(
+			ItemOption.of("Avernic treads", 31097, 31091, 31094, 31095), // melee-capable variants
 			ItemOption.of("Primordial boots", 13239),
 			ItemOption.of("Dragon boots", 11840)));
 		melee.put(GearSlot.RING, Arrays.asList(
@@ -100,6 +108,7 @@ public final class GearDatabase
 			ItemOption.of("Armadyl helmet", 11826),
 			ItemOption.of("Karil's coif", 4732)));
 		ranged.put(GearSlot.CAPE, Arrays.asList(
+			ItemOption.of("Dizana's quiver", 28951, 28953, 28955, 28957), // charged/trouver/infinite
 			ItemOption.of("Ava's assembler", 22109),
 			ItemOption.of("Ava's accumulator", 10499)));
 		ranged.put(GearSlot.NECK, Arrays.asList(
@@ -127,6 +136,7 @@ public final class GearDatabase
 			ItemOption.of("Barrows gloves", 7462),
 			ItemOption.of("Black d'hide vambraces", 2491)));
 		ranged.put(GearSlot.BOOTS, Arrays.asList(
+			ItemOption.of("Avernic treads", 31097, 31092, 31094, 31096), // ranged-capable variants
 			ItemOption.of("Pegasian boots", 13237),
 			ItemOption.of("Ranger boots", 2577),
 			ItemOption.of("Snakeskin boots", 6328)));
@@ -174,9 +184,11 @@ public final class GearDatabase
 			ItemOption.of("Ahrim's robeskirt", 4714),
 			ItemOption.of("Mystic robe bottom", 4093)));
 		magic.put(GearSlot.GLOVES, Arrays.asList(
+			ItemOption.of("Confliction gauntlets", 31106),
 			ItemOption.of("Tormented bracelet", 19544),
 			ItemOption.of("Barrows gloves", 7462)));
 		magic.put(GearSlot.BOOTS, Arrays.asList(
+			ItemOption.of("Avernic treads", 31097, 31093, 31095, 31096), // magic-capable variants
 			ItemOption.of("Eternal boots", 13235),
 			ItemOption.of("Infinity boots", 6920)));
 		magic.put(GearSlot.RING, Arrays.asList(

@@ -67,6 +67,24 @@ and a summary of how many inventory slots you free for how little time lost.
 Items shared between styles (e.g. barrows gloves in two loadouts) are shown as
 "already worn". Weapons are never flagged — the weapon is the style switch.
 
+## Full raid loadout (v1.3)
+
+The top of the results is now a single concrete layout for the whole run:
+
+- **Wear** — the full kit for your primary style (the one with the most
+  estimated combat time), including weapon and ammo.
+- **Inventory** — only what actually earns its slot: the other styles'
+  weapons (plus their ammo), armour switches that pass the minimum-switch-value
+  threshold, and the utility items your rooms demand — deduped, colour-coded
+  by where each item currently is, with a count of how many of the 28 slots
+  remain free for brews/restores/food.
+
+The per-style sections below it are reference (what each style would ideally
+wear), not a packing list. v1.3 also refreshes the item database with
+2023–2025 gear: Amulet of rancour, Oathplate helm/chest/legs (incl. radiant),
+Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
+Noxious halberd and Amulet of blood fury.
+
 ## Running the plugin
 
 Requires only a JDK (11+). From the project folder:

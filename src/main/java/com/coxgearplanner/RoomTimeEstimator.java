@@ -234,12 +234,32 @@ public class RoomTimeEstimator
 			return;
 		}
 
+		SetupBuilder.Pick ammo = findAmmo(weaponId, items, includeGroupStorage);
+		if (ammo != null)
+		{
+			totals.add(itemManager.getItemStats(ammo.getItemId()));
+		}
+	}
+
+	/** Whether the weapon consumes arrow/bolt ammo from the quiver slot. */
+	public static boolean needsAmmo(int weaponId)
+	{
+		return ARROW_WEAPONS.contains(weaponId) || BOLT_WEAPONS.contains(weaponId);
+	}
+
+	/**
+	 * Best owned ammo for the weapon's ammo class, or null if the weapon
+	 * takes no ammo (bofa, crystal weapons, blowpipe) or none is owned.
+	 */
+	public static SetupBuilder.Pick findAmmo(int weaponId,
+		Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
+	{
 		Set<Integer> compatible = ARROW_WEAPONS.contains(weaponId) ? ARROW_IDS
 			: BOLT_WEAPONS.contains(weaponId) ? BOLT_IDS
 			: null;
 		if (compatible == null)
 		{
-			return; // bofa, crystal weapons — no ammo
+			return null;
 		}
 
 		for (ItemOption ammoOption : GearDatabase.loadout(GearNeed.RANGED).get(GearSlot.AMMO))
@@ -251,10 +271,10 @@ public class RoomTimeEstimator
 			SetupBuilder.Pick ammo = SetupBuilder.findOwned(ammoOption, items, includeGroupStorage);
 			if (ammo != null)
 			{
-				totals.add(itemManager.getItemStats(ammo.getItemId()));
-				return;
+				return ammo;
 			}
 		}
+		return null;
 	}
 
 	private static double dpsFor(GearNeed style, int weaponId, EquipmentTotals eq,
