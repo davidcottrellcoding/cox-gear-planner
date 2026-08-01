@@ -118,6 +118,22 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
+## What the swap budget counts
+
+**Total swap items** counts the gear switches competing for inventory space:
+weapons and armour pieces. It deliberately does **not** count:
+
+- **Offhands.** A dragon defender rides along with the weapon it pairs with,
+  because putting both on is one swap, not two.
+- **Utilities.** A lockpick or a dragon warhammer is brought because a room
+  requires it, not because it won a comparison, so it is never dropped to make
+  room for armour.
+
+Both are still real inventory slots, so the gear total shown above the
+inventory list will read higher than the budget you set — a budget of 10 with a
+warhammer and a defender means 12 slots used. The settings line in an exported
+plan spells this out.
+
 ## The imbued heart does nothing while overloaded
 
 OSRS boosts do not stack — each sets an absolute level and the highest wins. A
@@ -356,6 +372,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.32 | The base style can now switch back into its own gear, after a slot was traded away from it |
 | 1.31.1 | The traded base outfit was computed but never displayed — the item list showed the untraded one, so a swapped-in ring vanished from the plan |
 | 1.31 | Base outfit priced against the switches it forces, instead of only its own style's damage |
 | 1.30 | Armour ranked by real DPS instead of a heuristic score; debug panel reports what each slot is worth in seconds |

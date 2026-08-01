@@ -245,6 +245,12 @@ public class SwitchAdvisor
 		List<Advice> worthTrying = new ArrayList<>();
 		for (Advice advice : best.getAdvice())
 		{
+			// Trading a slot to remove the primary's own switch is circular:
+			// that switch exists only because the slot was traded.
+			if (advice.getStyle() == primary)
+			{
+				continue;
+			}
 			if (!advice.isAlreadyShared() && advice.getSecondsSaved() > 0)
 			{
 				worthTrying.add(advice);
@@ -314,16 +320,12 @@ public class SwitchAdvisor
 				includeGroupStorage, player, partySize, elitePrayers, totalSwapItems, explanation);
 		}
 
-		double total = primarySeconds(primary, byStyle, primaryPicks, items,
+		double total = baselineCorrection(primary, byStyle, items,
 			includeGroupStorage, player, elitePrayers);
 
 		List<Advice> advices = new ArrayList<>();
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
-			if (entry.getKey() == primary)
-			{
-				continue;
-			}
 			StyleResult styleResult = adviseStyle(entry.getKey(), entry.getValue(), primaryPicks,
 				items, includeGroupStorage, player, partySize, elitePrayers,
 				thresholdSeconds, maxSwitchItems, explanation);
@@ -352,10 +354,9 @@ public class SwitchAdvisor
 	 * leaves those effects in the baseline where they belong, and cancels
 	 * them out of the comparison.
 	 */
-	private double primarySeconds(
+	private double baselineCorrection(
 		GearNeed primary,
 		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
-		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage,
 		PlayerSnapshot player,
@@ -367,20 +368,10 @@ public class SwitchAdvisor
 			return 0;
 		}
 
-		double baseline = sumSeconds(times);
 		Map<GearSlot, SetupBuilder.Pick> optimal =
 			estimator.getResolver().resolve(primary, items, includeGroupStorage);
-		if (sameLoadout(optimal, primaryPicks))
-		{
-			return baseline;
-		}
-
-		Map<GearSlot, SetupBuilder.Pick> none = java.util.Collections.emptyMap();
-		double asOptimal = totalSeconds(primary, times, optimal, none,
-			items, includeGroupStorage, player, elitePrayers);
-		double asWorn = totalSeconds(primary, times, primaryPicks, none,
-			items, includeGroupStorage, player, elitePrayers);
-		return baseline + (asWorn - asOptimal);
+		return sumSeconds(times) - totalSeconds(primary, times, optimal,
+			java.util.Collections.emptyMap(), items, includeGroupStorage, player, elitePrayers);
 	}
 
 	static boolean sameLoadout(
@@ -459,10 +450,6 @@ public class SwitchAdvisor
 
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
-			if (entry.getKey() == primary)
-			{
-				continue;
-			}
 			GearNeed style = entry.getKey();
 			Map<GearSlot, SetupBuilder.Pick> picks =
 				estimator.getResolver().resolve(style, items, includeGroupStorage);
@@ -554,7 +541,7 @@ public class SwitchAdvisor
 		}
 
 		List<Advice> advices = new ArrayList<>();
-		double total = primarySeconds(primary, byStyle, primaryPicks, items,
+		double total = baselineCorrection(primary, byStyle, items,
 			includeGroupStorage, player, elitePrayers);
 		for (StyleState state : states)
 		{

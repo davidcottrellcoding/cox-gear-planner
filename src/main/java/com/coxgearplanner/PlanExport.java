@@ -50,6 +50,7 @@ public final class PlanExport
 			.append(", min switch ").append(config.minSwitchSeconds()).append("s")
 			.append(config.totalSwapItems() > 0
 				? ", total swap items " + config.totalSwapItems()
+					+ " (offhands and utilities not counted)"
 				: ", max items/switch "
 					+ (config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems()))
 			.append(config.olmFourTick() ? ", Olm forced 4-tick" : "")
