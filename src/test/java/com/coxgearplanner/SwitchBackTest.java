@@ -65,19 +65,24 @@ public class SwitchBackTest
 	}
 
 	/**
-	 * A switch that was worth carrying but lost to the cap still means the
-	 * trade failed: the base style wants its item back and merely could not
-	 * afford it, so the slot is now simply worse.
+	 * A switch-back that lost to the budget did NOT consume a slot, so the
+	 * trade freed one after all — that is the trade working.
+	 *
+	 * Treating this as failure vetoed every useful trade: with a low minimum
+	 * switch value each switch-back looks worth having, so the guard fired
+	 * every time and the base outfit could never give up a slot. That is how a
+	 * Mage's book and a seers ring worth 0.7s apiece stayed equipped while a
+	 * 5.1s necklace of anguish went uncarried.
 	 */
 	@Test
-	public void aCappedSwitchBackStillCountsAsFailure()
+	public void aCappedSwitchBackIsNotAFailure()
 	{
 		SwitchAdvisor.Advice capped =
 			new SwitchAdvisor.Advice(GearNeed.MELEE, GearSlot.HEAD, "Oathplate helm",
 				null, 10.7, false, false);
 		capped.overLimit = true;
 
-		assertTrue(SwitchAdvisor.switchesBack(resultWith(capped), GearNeed.MELEE, GearSlot.HEAD));
+		assertFalse(SwitchAdvisor.switchesBack(resultWith(capped), GearNeed.MELEE, GearSlot.HEAD));
 	}
 
 	@Test

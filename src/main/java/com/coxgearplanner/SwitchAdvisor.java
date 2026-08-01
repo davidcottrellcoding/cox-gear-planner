@@ -355,8 +355,15 @@ public class SwitchAdvisor
 	{
 		for (Advice advice : result.getAdvice())
 		{
+			// Only a switch-back that is actually CARRIED means nothing was
+			// freed. If it lost to the budget, the slot really did become
+			// available for something better - which is the trade working, not
+			// failing. Counting that as failure vetoed every trade whenever the
+			// minimum switch value was low enough to make each switch-back look
+			// worth having, which is how a Mage's book and a seers ring worth
+			// 0.7s each stayed on while a 5.1s anguish went uncarried.
 			if (advice.getStyle() == primary && advice.getSlot() == slot
-				&& (advice.isWorthIt() || advice.isOverLimit()))
+				&& advice.isWorthIt())
 			{
 				return true;
 			}

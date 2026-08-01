@@ -410,6 +410,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.35.1 | The switch-back guard vetoed every useful base-outfit trade, keeping 0.7s items equipped while 5s switches went uncarried |
 | 1.35 | Already-worn slots now show what they are worth, so every line in the switch advice carries a number |
 | 1.34 | Prayer bonus decides slots the clock cannot separate, so an empty-value slot no longer goes to whatever the bank scan reached first |
 | 1.33 | Swept every consumer of the base outfit after the v1.31 trade broke the assumption that it is the base style's own gear |
