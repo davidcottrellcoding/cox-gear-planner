@@ -226,6 +226,7 @@ public class SwitchAdvisor
 	{
 		Map<GearSlot, SetupBuilder.Pick> base =
 			new LinkedHashMap<>(estimator.getResolver().resolve(primary, items, includeGroupStorage));
+		emptyUnwearableSlots(base);
 
 		Result best = resultFor(primary, base, byStyle, items, includeGroupStorage, player,
 			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems, null);
@@ -369,6 +370,38 @@ public class SwitchAdvisor
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Clears slots the base outfit cannot actually fill.
+	 *
+	 * A style's resolved picks name an item for every slot, including ones its
+	 * own weapon rules out - a shield behind a two-handed weapon, ammunition
+	 * for a bow that fires none. The damage calculation already ignores those,
+	 * so the numbers were right, but everything that reports what is worn read
+	 * them as equipped: the advice called a mage's book "already worn" and
+	 * every section claimed dragon arrows were on, while the equipped list
+	 * correctly showed an empty shield and ammo slot.
+	 *
+	 * Emptying them here fixes all of it at once, and lets the pieces compete
+	 * honestly - a shield the base outfit cannot wear is a switch like any
+	 * other, to be carried or dropped on its merits.
+	 */
+	static void emptyUnwearableSlots(Map<GearSlot, SetupBuilder.Pick> base)
+	{
+		SetupBuilder.Pick weapon = base.get(GearSlot.WEAPON);
+		if (weapon == null)
+		{
+			return;
+		}
+		if (weapon.getOption().isTwoHanded())
+		{
+			base.put(GearSlot.SHIELD, null);
+		}
+		if (!RoomTimeEstimator.needsAmmo(weapon.getItemId()))
+		{
+			base.put(GearSlot.AMMO, null);
+		}
 	}
 
 	/** Total raid time for one specific base outfit. */
