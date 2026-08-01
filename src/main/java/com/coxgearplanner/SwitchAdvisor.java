@@ -30,7 +30,7 @@ public class SwitchAdvisor
 		private final GearSlot slot;
 		private final String itemName;
 		private final String wearInstead; // primary item kept on, or null for bare slot
-		private final double secondsSaved;
+		private double secondsSaved;
 		private final boolean worthIt;
 		private final boolean alreadyShared;
 		/** Dropped because of the max-items-per-switch cap, not its value. */
@@ -309,6 +309,47 @@ public class SwitchAdvisor
 		return settled;
 	}
 
+	/**
+	 * What an already-worn slot is contributing, in seconds.
+	 *
+	 * A shared slot never appears as a decision, because there is nothing to
+	 * carry - the base outfit already has the right item. That makes it the
+	 * one part of the advice with no number against it, which is unhelpful
+	 * when a plan looks wrong: a slot doing nothing and a slot doing a great
+	 * deal read identically. Priced against wearing nothing there, since the
+	 * question being answered is what the slot is worth at all, not which of
+	 * two items won it.
+	 */
+	private void priceShared(
+		List<Advice> advices,
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<GearSlot, SetupBuilder.Pick> notCarried,
+		double baseline,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		boolean elitePrayers)
+	{
+		if (!(baseline > 0))
+		{
+			return;
+		}
+		for (Advice advice : advices)
+		{
+			if (!advice.isAlreadyShared())
+			{
+				continue;
+			}
+			Map<GearSlot, SetupBuilder.Pick> bare = new LinkedHashMap<>(notCarried);
+			bare.put(advice.getSlot(), null);
+			double without = totalSeconds(style, styleTimes, picks, bare,
+				items, includeGroupStorage, player, elitePrayers);
+			advice.secondsSaved = Math.max(0, without - baseline);
+		}
+	}
+
 	/** Whether the base style ends up carrying a switch for this slot. */
 	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot)
 	{
@@ -360,7 +401,13 @@ public class SwitchAdvisor
 		}
 
 		// Most valuable switches first; shared/zero-value entries last
-		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
+		// Shared slots last regardless of value. They now carry real numbers,
+		// and a worn slot worth 40s would otherwise sort above a decision to
+		// carry something worth 10s - burying the actual decisions under
+		// entries that are not decisions at all.
+		advices.sort((a, b) -> a.isAlreadyShared() != b.isAlreadyShared()
+			? Boolean.compare(a.isAlreadyShared(), b.isAlreadyShared())
+			: Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
 		return new Result(primary, advices, total);
 	}
 
@@ -500,6 +547,8 @@ public class SwitchAdvisor
 
 			state.seconds = totalSeconds(style, state.times, picks, state.notCarried,
 				items, includeGroupStorage, player, elitePrayers);
+			priceShared(state.advice, style, state.times, picks, state.notCarried,
+				state.seconds, items, includeGroupStorage, player, elitePrayers);
 			states.add(state);
 		}
 
@@ -588,7 +637,13 @@ public class SwitchAdvisor
 			total += state.seconds;
 		}
 
-		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
+		// Shared slots last regardless of value. They now carry real numbers,
+		// and a worn slot worth 40s would otherwise sort above a decision to
+		// carry something worth 10s - burying the actual decisions under
+		// entries that are not decisions at all.
+		advices.sort((a, b) -> a.isAlreadyShared() != b.isAlreadyShared()
+			? Boolean.compare(a.isAlreadyShared(), b.isAlreadyShared())
+			: Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
 		return new Result(primary, advices, total);
 	}
 
@@ -721,6 +776,8 @@ public class SwitchAdvisor
 		}
 
 		double currentSeconds = totalSeconds(style, styleTimes, picks, notCarried,
+			items, includeGroupStorage, player, elitePrayers);
+		priceShared(advices, style, styleTimes, picks, notCarried, currentSeconds,
 			items, includeGroupStorage, player, elitePrayers);
 
 		int carried = 0;

@@ -648,8 +648,12 @@ public class CoxGearPlannerPanel extends PluginPanel
 			JLabel label;
 			if (advice.isAlreadyShared())
 			{
+				// No decision to make, but the slot still contributes, and
+				// without a number a slot doing nothing looks the same as one
+				// doing a great deal.
 				label = new JLabel("<html>" + advice.getSlot().getDisplayName() + ": "
-					+ advice.getItemName() + " — already worn</html>");
+					+ advice.getItemName() + " — already worn, worth "
+					+ formatSaved(advice.getSecondsSaved()) + " vs empty</html>");
 				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			}
 			else if (advice.isWorthIt())

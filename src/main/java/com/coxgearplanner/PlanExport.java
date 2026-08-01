@@ -139,7 +139,14 @@ public final class PlanExport
 					.append(pad(a.getStyle().getDisplayName().toLowerCase()
 						+ " " + a.getSlot().getDisplayName().toLowerCase(), 18))
 					.append(pad(a.getItemName(), 26));
-				if (!a.isAlreadyShared())
+				if (a.isAlreadyShared())
+				{
+					// Already worn, so there is no decision - but the slot is
+					// still worth something, and saying how much is the only
+					// way to tell a slot doing nothing from one doing a lot.
+					sb.append(String.format("%.1fs vs empty", a.getSecondsSaved()));
+				}
+				else
 				{
 					sb.append(String.format("%.1fs", a.getSecondsSaved()));
 					if (a.getWearInstead() != null && !a.isWorthIt())

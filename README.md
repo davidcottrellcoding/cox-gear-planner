@@ -410,6 +410,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.35 | Already-worn slots now show what they are worth, so every line in the switch advice carries a number |
 | 1.34 | Prayer bonus decides slots the clock cannot separate, so an empty-value slot no longer goes to whatever the bank scan reached first |
 | 1.33 | Swept every consumer of the base outfit after the v1.31 trade broke the assumption that it is the base style's own gear |
 | 1.32.2 | Switches the advice said to carry were missing from the inventory; base-outfit trades that only moved a switch instead of removing it are now rejected |
