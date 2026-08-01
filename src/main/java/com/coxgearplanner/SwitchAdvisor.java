@@ -671,6 +671,16 @@ public class SwitchAdvisor
 			explanation.addSwitchChoice(String.format(
 				"shared budget: %d items total, %d taken by weapons/ammo, %d left for armour",
 				totalSwapItems, mandatory, budget));
+			if (mandatory > totalSwapItems)
+			{
+				// Known gap: the weapons are counted but never actually dropped,
+				// so every room is still timed with its ideal weapon even when
+				// the budget cannot possibly carry them all.
+				explanation.addSwitchChoice(String.format(
+					"  WARNING: %d weapon slots needed but only %d items allowed - "
+						+ "rooms are still timed with their best weapon, so these times are optimistic",
+					mandatory, totalSwapItems));
+			}
 		}
 
 		while (budget > 0)
@@ -1006,11 +1016,18 @@ public class SwitchAdvisor
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage,
 		PlayerSnapshot player,
-		boolean elitePrayers)
+		boolean elitePrayers,
+		PlanExplanation explanation)
 	{
 		Map<RoomTimeEstimator.RoomTime, Double> adjusted = new IdentityHashMap<>();
 		if (result == null || result.getBasePicks() == null)
 		{
+			if (explanation != null)
+			{
+				explanation.addSwitchChoice("budgeted times: SKIPPED - "
+					+ (result == null ? "no advice at all" : "no base outfit was settled")
+					+ ", so every room keeps its unlimited-switches time");
+			}
 			return adjusted;
 		}
 		Map<GearSlot, SetupBuilder.Pick> base = result.getBasePicks();
@@ -1029,6 +1046,18 @@ public class SwitchAdvisor
 				.put(advice.getSlot(), base.get(advice.getSlot()));
 		}
 
+		if (explanation != null)
+		{
+			int dropped = 0;
+			for (Map<GearSlot, SetupBuilder.Pick> slots : leftBehind.values())
+			{
+				dropped += slots.size();
+			}
+			explanation.addSwitchChoice(String.format(
+				"budgeted times: %d advice entries, %d pieces left behind across %d styles",
+				result.getAdvice().size(), dropped, leftBehind.size()));
+		}
+
 		for (RoomTimeEstimator.RoomTime rt : times)
 		{
 			if (!rt.isFeasible() || rt.getStyle() == null || rt.getMonster() == null)
@@ -1038,7 +1067,13 @@ public class SwitchAdvisor
 			Map<GearSlot, SetupBuilder.Pick> missing = leftBehind.get(rt.getStyle());
 			if (missing == null || missing.isEmpty())
 			{
-				continue; // every switch this room wants is being carried
+				if (explanation != null)
+				{
+					explanation.addSwitchChoice(String.format(
+						"  %s: unchanged, %s carries every switch it wants",
+						rt.getDisplayName(), rt.getStyle().getDisplayName().toLowerCase()));
+				}
+				continue;
 			}
 
 			Map<GearSlot, SetupBuilder.Pick> picks =
@@ -1050,9 +1085,22 @@ public class SwitchAdvisor
 				missing, items, includeGroupStorage, player, rt.getMonster(), elitePrayers);
 			if (ideal <= 0 || actual <= 0)
 			{
+				if (explanation != null)
+				{
+					explanation.addSwitchChoice(String.format(
+						"  %s: SKIPPED, dps came back %.3f ideal / %.3f actual",
+						rt.getDisplayName(), ideal, actual));
+				}
 				continue;
 			}
-			adjusted.put(rt, rt.getSeconds() * (ideal / actual));
+			double seconds = rt.getSeconds() * (ideal / actual);
+			adjusted.put(rt, seconds);
+			if (explanation != null)
+			{
+				explanation.addSwitchChoice(String.format(
+					"  %s: %.0fs -> %.0fs without %d piece(s)",
+					rt.getDisplayName(), rt.getSeconds(), seconds, missing.size()));
+			}
 		}
 		return adjusted;
 	}

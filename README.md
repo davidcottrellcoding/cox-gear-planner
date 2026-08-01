@@ -118,6 +118,26 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
+## The budget charges you for weapons it never makes you drop
+
+`carriedWeaponCount` counts every distinct weapon the plan uses and subtracts
+it from the swap budget, so a tight budget starves armour. But nothing ever
+drops a weapon: `loadoutDps` takes the weapon from the room's own `RoomTime`
+and skips the weapon slot entirely, so every room is timed swinging its ideal
+weapon no matter what the budget says you can carry.
+
+Weapon choice is the largest single term in the damage calculation — a scythe
+against Tekton versus a bow is not a few seconds — so this is the main reason a
+one-item budget and a twelve-item budget produce similar totals. The armour
+differences are real but small next to a weapon that never changes.
+
+Fixing it properly means letting weapons compete for the budget like everything
+else, and re-timing any room whose weapon was not bought against the weapon
+actually in hand. That also has to reach `RaidLoadoutBuilder`, or the inventory
+will pack weapons the times no longer assume — the disagreement this codebase
+has already had to fix several times. The debug panel warns when the budget
+cannot afford the weapons it is being charged for.
+
 ## Still-unmodelled item effects
 
 Confliction gauntlets are modelled as of v1.38 — a second accuracy roll, worth
@@ -452,6 +472,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.39.1 | Debug panel shows the budgeted-time working: pieces left behind per style, per-room before/after, and a warning when the budget cannot afford the weapons it is being charged for |
 | 1.39 | Room times and the total now reflect the switch budget; before this the headline time assumed every switch was carried and so never moved when the budget changed |
 | 1.38.1 | Already-worn slots name the item they are measured against, instead of just "next best" |
 | 1.38 | Confliction gauntlets' second accuracy roll is modelled; their value was previously only their raw stats |
