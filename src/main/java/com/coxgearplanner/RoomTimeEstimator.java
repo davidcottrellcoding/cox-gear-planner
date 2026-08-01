@@ -298,10 +298,10 @@ public class RoomTimeEstimator
 				return infeasible;
 			}
 
-			// Olm's claws are re-crippled every phase, so their HP pool is
-			// multiplied by the phase count; the head is killed once.
+			// Each claw is fought once per phase except the final head phase —
+			// three times in a standard raid. The head is killed once.
 			double phases = room == CoxRoom.OLM && monster.getName().contains("claw")
-				? RoomMonsters.olmPhases(partySize)
+				? RoomMonsters.olmClawPhases(partySize)
 				: 1;
 			double totalHp = monster.getHp() * hpMult * encounter.getCount() * phases;
 

@@ -93,6 +93,15 @@ public class CoxGearPlannerPanel extends PluginPanel
 		});
 		buttons.add(clearButton);
 
+		JButton forgetButton = new JButton("Forget stored bank/group data");
+		forgetButton.setToolTipText("Clears the remembered bank and group storage contents; reopen each once to resync");
+		forgetButton.addActionListener(e ->
+		{
+			plugin.forgetStoredItems();
+			refreshStatus();
+		});
+		buttons.add(forgetButton);
+
 		JButton suggestButton = new JButton("Suggest gear setup");
 		suggestButton.addActionListener(e -> suggest());
 		buttons.add(suggestButton);
@@ -153,8 +162,18 @@ public class CoxGearPlannerPanel extends PluginPanel
 			sb.append(source.getDisplayName()).append(": ").append(size);
 			any = true;
 		}
-		sb.append("<br>Open your bank and group storage once to sync;"
-			+ " contents are remembered from the last time you opened them.</html>");
+		Map<Integer, Integer> group = items.get(ItemSource.GROUP_STORAGE);
+		if (group == null || group.isEmpty())
+		{
+			sb.append("<br><font color='#eb6464'>Group storage not synced</font>"
+				+ " — open the shared storage chest once.");
+		}
+		if (!plugin.getConfig().includeGroupStorage())
+		{
+			sb.append("<br><font color='#eb6464'>Group storage is disabled in config.</font>");
+		}
+		sb.append("<br>Bank and group contents are remembered from the last time"
+			+ " you opened them.</html>");
 		statusLabel.setText(sb.toString());
 	}
 

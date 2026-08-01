@@ -77,6 +77,17 @@ public class OlmTest
 	}
 
 	@Test
+	public void eachClawIsFoughtThreeTimesInAStandardRaid()
+	{
+		// Every phase except the final head phase
+		assertEquals(3, RoomMonsters.olmClawPhases(1));
+		assertEquals(3, RoomMonsters.olmClawPhases(3));
+		assertEquals(3, RoomMonsters.olmClawPhases(7));
+		assertEquals(4, RoomMonsters.olmClawPhases(8));
+		assertEquals(RoomMonsters.olmPhases(5) - 1, RoomMonsters.olmClawPhases(5));
+	}
+
+	@Test
 	public void olmRoomDemandsAllThreeStyles()
 	{
 		assertTrue(CoxRoom.OLM.getNeeds().contains(GearNeed.MELEE));

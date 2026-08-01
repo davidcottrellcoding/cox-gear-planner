@@ -106,9 +106,10 @@ carries those switches instead of dropping them.
 
 Other Olm specifics modelled:
 
-- **Phases** = 4, plus one per eight players. The claws are re-crippled each
-  phase, so their HP pool is multiplied by the phase count; the head is
-  killed once.
+- **Phases** = 4, plus one per eight players. The last is the head phase, so
+  each claw is fought **three times** in a standard raid (every phase but the
+  final one) and its HP pool is multiplied accordingly; the head is killed
+  once.
 - **Draconic** on all three parts, so the dragon hunter crossbow's bonus
   applies to the claws and head alike.
 - The head's magic level of 250 is what the **twisted bow** scales from —
@@ -118,8 +119,23 @@ Approximations worth knowing: the head also has 66% mitigation against
 non-ranged damage and heals if hit outside the final phase, so in practice
 its HP is taken down during the final phase where the mitigation is off —
 it is therefore not applied (its ranged defence of 50 already makes ranged
-correct by a wide margin). Claw damage per phase is the roughest number
-here; it lives in `RoomMonsters.java` as editable data.
+correct by a wide margin). All Olm numbers live in `RoomMonsters.java` as
+editable data.
+
+## Group storage fix (v1.8.1)
+
+Container **660 is `INV_PLAYER_TEMP`** — your *own* inventory as shown inside
+the shared-storage interface — and was being read as the group's contents,
+so group storage was frequently overwritten with your inventory. The shared
+storage is container **659** (`INV_GROUP_TEMP`); 660 and 661 are now ignored
+outright since container 93 already tracks your inventory.
+
+Two related hardenings: an empty reading from the bank or shared storage no
+longer overwrites known contents (both report empty briefly while their
+interface opens and closes), and a **Forget stored bank/group data** button
+clears the remembered snapshots so a bad one can be reset. The side panel
+now says explicitly when group storage has never synced, or when it is
+disabled in config.
 
 ## Salve amulet at Skeletal Mystics (v1.7)
 

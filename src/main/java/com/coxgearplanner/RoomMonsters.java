@@ -102,12 +102,21 @@ public final class RoomMonsters
 	}
 
 	/**
-	 * Olm has at least four phases, plus one per eight players. The claws are
-	 * re-crippled each phase, so claw damage is multiplied by this.
+	 * Olm has at least four phases, plus one per eight players. The last is the
+	 * head phase, so a standard raid is three claw phases then the head.
 	 */
 	public static int olmPhases(int partySize)
 	{
 		return 4 + Math.max(1, partySize) / 8;
+	}
+
+	/**
+	 * How many times each claw is fought: every phase except the final head
+	 * phase — three in a standard raid.
+	 */
+	public static int olmClawPhases(int partySize)
+	{
+		return olmPhases(partySize) - 1;
 	}
 
 	/** First encounter for a room; see {@link #getAll} for multi-target rooms. */

@@ -42,17 +42,22 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.8.0";
+	static final String VERSION = "1.8.1";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
 	private static final int CONTAINER_INVENTORY = 93;
 	private static final int CONTAINER_EQUIPMENT = 94;
 	private static final int CONTAINER_BANK = 95;
-	// Group ironman shared storage. 660 is the stored container; 659 is the
-	// in-flight container shown while the storage UI is open.
-	private static final int CONTAINER_GROUP_STORAGE = 660;
-	private static final int CONTAINER_GROUP_STORAGE_TEMP = 659;
+	// Group ironman shared storage is INV_GROUP_TEMP (659) — the container the
+	// shared-storage interface works against.
+	//
+	// 660 is INV_PLAYER_TEMP and 661 INV_PLAYER_SNAPSHOT: those are *your own*
+	// inventory as shown inside that interface, not the group's items. Reading
+	// 660 as group storage recorded your inventory as the group's contents.
+	private static final int CONTAINER_GROUP_STORAGE = 659;
+	private static final int CONTAINER_PLAYER_TEMP = 660;
+	private static final int CONTAINER_PLAYER_SNAPSHOT = 661;
 
 	private static final String KEY_BANK = "bankItemsJson";
 	private static final String KEY_GROUP = "groupItemsJson";
@@ -136,14 +141,32 @@ public class CoxGearPlannerPlugin extends Plugin
 				source = ItemSource.BANK;
 				break;
 			case CONTAINER_GROUP_STORAGE:
-			case CONTAINER_GROUP_STORAGE_TEMP:
 				source = ItemSource.GROUP_STORAGE;
 				break;
+			case CONTAINER_PLAYER_TEMP:
+			case CONTAINER_PLAYER_SNAPSHOT:
+				// Your own inventory inside the shared-storage UI — container
+				// 93 already tracks that, so ignore these entirely.
+				return;
 			default:
 				return;
 		}
 
 		Map<Integer, Integer> snapshot = snapshot(event.getItemContainer());
+
+		// The bank and shared-storage containers briefly report empty while
+		// their interface is opening or closing. Those transients would wipe a
+		// good snapshot, so an empty reading never replaces known contents —
+		// use "Forget stored bank/group data" to clear them deliberately.
+		if (snapshot.isEmpty() && isRemembered(source))
+		{
+			Map<Integer, Integer> known = items.get(source);
+			if (known != null && !known.isEmpty())
+			{
+				return;
+			}
+		}
+
 		items.put(source, snapshot);
 
 		if (config.rememberBank())
@@ -202,6 +225,24 @@ public class CoxGearPlannerPlugin extends Plugin
 	public CoxGearPlannerConfig getConfig()
 	{
 		return config;
+	}
+
+	/** Sources whose contents are remembered between sessions. */
+	private static boolean isRemembered(ItemSource source)
+	{
+		return source == ItemSource.BANK || source == ItemSource.GROUP_STORAGE;
+	}
+
+	/**
+	 * Drops the remembered bank and shared-storage contents, in memory and in
+	 * the saved config. Reopen each once to resync.
+	 */
+	public void forgetStoredItems()
+	{
+		items.remove(ItemSource.BANK);
+		items.remove(ItemSource.GROUP_STORAGE);
+		configManager.unsetConfiguration(CoxGearPlannerConfig.GROUP, KEY_BANK);
+		configManager.unsetConfiguration(CoxGearPlannerConfig.GROUP, KEY_GROUP);
 	}
 
 	/**
