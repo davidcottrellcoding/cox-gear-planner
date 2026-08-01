@@ -22,8 +22,12 @@ public enum CoxRoom
 		GearNeed.RANGED, GearNeed.MAGIC),
 	SHAMANS("Lizardman Shamans", true, new String[]{"shaman", "lizardman"},
 		GearNeed.RANGED),
+	// Vasa himself wants ranged (range defence 40 against magic's 400), but
+	// the glowing crystals he siphons from need a STAB weapon: they are immune
+	// to ranged, take 66% less from magic, and resist crush and slash. Failing
+	// to break one in the ~40s window lets him heal back what he siphoned.
 	VASA("Vasa Nistirio", true, new String[]{"vasa"},
-		GearNeed.RANGED, GearNeed.MELEE),
+		GearNeed.RANGED, GearNeed.MELEE, GearNeed.STAB_WEAPON),
 	MYSTICS("Skeletal Mystics", true, new String[]{"mystic", "skeletal"},
 		GearNeed.RANGED, GearNeed.MELEE),
 	VANGUARDS("Vanguards", true, new String[]{"vanguard", "vangs"},

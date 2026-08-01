@@ -155,6 +155,20 @@ GearYouAreActuallyBringing`) that fails the build if a section ever names
 gear that isn't being brought, and that a skipped switch is never described
 as worn.
 
+## Vasa needs a stab weapon (v1.24)
+
+Vasa's room asks for two different things and the planner only saw one. Vasa
+himself is a ranged target — his ranged defence is 40 against magic's 400 —
+but the **glowing crystals** he siphons from are **immune to ranged**, take
+**66% less from magic**, and resist crush and slash. Stab is the only real
+option, and the ranged setup that kills Vasa cannot touch them. Miss the
+~40 second window and he heals back everything he siphoned.
+
+A stab weapon is now a listed requirement for the room, alongside the pickaxe
+for Guardians and the lockpick for Thieving. It is a utility rather than a
+combat style, so if your melee weapon already stabs — fang, rapier, hasta,
+dragon hunter lance — the loadout dedupes it and it costs no extra slot.
+
 ## One shared swap budget (v1.23)
 
 **Total swap items (all styles)** replaces per-style thinking with a single

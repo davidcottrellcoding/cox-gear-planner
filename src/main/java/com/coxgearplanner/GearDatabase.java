@@ -282,6 +282,19 @@ public final class GearDatabase
 			ItemOption.of("Smoke battlestaff", 11998),
 			ItemOption.of("Fire battlestaff", 1387),
 			ItemOption.of("Staff of fire", 1401)));
+		// Vasa's glowing crystals are immune to ranged, take 66% less from
+		// magic and resist crush and slash — stab is the only real option.
+		// If your melee weapon is already a stab weapon (fang, rapier, hasta)
+		// this costs no extra inventory slot, since the loadout dedupes.
+		UTILITIES.put(GearNeed.STAB_WEAPON, Arrays.asList(
+			ItemOption.of("Osmumten's fang", 26219, 27246),
+			ItemOption.of("Ghrazi rapier", 22324),
+			ItemOption.of("Dragon hunter lance", 22978),
+			ItemOption.of("Zamorakian hasta", 11889),
+			ItemOption.of("Abyssal dagger", 13265),
+			ItemOption.of("Dragon shortsword", 21009),
+			ItemOption.of("Dragon dagger", 1215),
+			ItemOption.of("Rune sword", 1289)));
 		UTILITIES.put(GearNeed.DEF_REDUCTION, Arrays.asList(
 			ItemOption.of("Dragon warhammer", 13576),
 			ItemOption.of("Elder maul", 21003),
