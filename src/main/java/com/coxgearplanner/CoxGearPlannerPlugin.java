@@ -360,11 +360,12 @@ public class CoxGearPlannerPlugin extends Plugin
 				assumedLevel(Skill.ATTACK),
 				assumedLevel(Skill.STRENGTH),
 				assumedLevel(Skill.RANGED),
-				assumedLevel(Skill.MAGIC));
+				assumedLevel(Skill.MAGIC),
+				client.getRealSkillLevel(Skill.MINING));
 		}
 		// Logged out: assume maxed stats, plus overload if configured
 		int level = config.assumeOverload() ? overloaded(99) : 99;
-		return new PlayerSnapshot(level, level, level, level);
+		return new PlayerSnapshot(level, level, level, level, 99);
 	}
 
 	/**

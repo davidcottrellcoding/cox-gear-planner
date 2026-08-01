@@ -17,8 +17,9 @@ public enum CoxRoom
 		GearNeed.RANGED, GearNeed.MELEE),
 	GUARDIANS("Guardians", true, new String[]{"guardians", "guards"},
 		GearNeed.MELEE, GearNeed.PICKAXE),
+	// The abyssal portal is the kill target, and it needs 7+ tile reach
 	VESPULA("Vespula", true, new String[]{"vespula", "vesp"},
-		GearNeed.RANGED),
+		GearNeed.RANGED, GearNeed.MAGIC),
 	SHAMANS("Lizardman Shamans", true, new String[]{"shaman", "lizardman"},
 		GearNeed.RANGED),
 	VASA("Vasa Nistirio", true, new String[]{"vasa"},

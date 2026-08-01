@@ -74,10 +74,24 @@ public final class RoomMonsters
 			.requiresWeapon(GearNeed.PICKAXE)
 			.prefers("can only be harmed with a pickaxe", GearNeed.MELEE), 2)));
 
+		// The ABYSSAL PORTAL is what has to die to end the room — Vespula does
+		// not have to be killed at all. The standard "Redemption method" never
+		// brings her down: you flinch the portal from a safespot and let
+		// Redemption absorb the retaliation. So the portal's 250 HP is the
+		// target, not Vespula's 200.
+		//
+		// The portal can only be attacked by weapons with a reach of 7+ tiles
+		// (Tumeken's shadow, eldritch staff and longbows at any setting; other
+		// powered staves and crossbows need long range).
+		//
+		// Neither method is really DPS-limited — the Redemption cycle is
+		// attack, retreat, heal, restore prayer — so this time is a floor,
+		// not a prediction.
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Vespula", 200, 88, 88, 0, 0, 0, 70, 60, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
-			.prefers("flies until downed — ranged while airborne", GearNeed.RANGED), 1)));
+			"Abyssal portal", 250, 88, 88, 0, 0, 0, 70, 60, true, false,
+			GearNeed.RANGED, GearNeed.MAGIC)
+			.prefers("portal needs 7+ tile reach; Redemption method skips Vespula",
+				GearNeed.RANGED, GearNeed.MAGIC), 1)));
 
 		ENCOUNTERS.put(CoxRoom.SHAMANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Lizardman shaman", 190, 210, 130, 102, 160, 150, 160, 0, true, false,

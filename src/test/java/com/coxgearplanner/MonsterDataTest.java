@@ -99,6 +99,32 @@ public class MonsterDataTest
 	}
 
 	@Test
+	public void guardiansUseTheirOwnHpFormulaAndPickaxeDamage()
+	{
+		// H = 151 x (1 + floor(T/2)) + mining x T, per guardian
+		assertEquals(250.0, RoomTimeEstimator.guardianHp(1, 99), 1e-9);
+		assertEquals(151 * 2 + 99.0 * 3, RoomTimeEstimator.guardianHp(3, 99), 1e-9);
+
+		// Damage multiplier D = (50 + mining + pickaxe tier) / 150, tier capped at 61
+		assertEquals(1.40, RoomTimeEstimator.guardianDamageMultiplier(11920, 99), 1e-9);
+		assertEquals("crystal is capped to the dragon tier",
+			RoomTimeEstimator.guardianDamageMultiplier(11920, 99),
+			RoomTimeEstimator.guardianDamageMultiplier(23680, 99), 1e-9);
+		// Anything that is not a pickaxe deals nothing
+		assertEquals(0.0, RoomTimeEstimator.guardianDamageMultiplier(13263, 99), 1e-9); // bludgeon
+	}
+
+	@Test
+	public void vespulaRoomTargetsThePortalNotVespula()
+	{
+		MonsterProfile target = only(CoxRoom.VESPULA);
+		assertEquals("Abyssal portal", target.getName());
+		assertEquals("the portal has 250hp, Vespula's 200 is irrelevant", 250, target.getHp());
+		// Melee cannot reach it — the portal needs 7+ tiles
+		assertFalse(target.getUsableStyles().contains(GearNeed.MELEE));
+	}
+
+	@Test
 	public void hpScalesLinearlyWithPartySize()
 	{
 		// Tekton is 300 solo and 600 in a duo, i.e. the multiplier is the

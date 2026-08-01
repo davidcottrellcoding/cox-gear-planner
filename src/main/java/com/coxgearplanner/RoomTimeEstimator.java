@@ -100,6 +100,48 @@ public class RoomTimeEstimator
 		return bonus == null ? 1.0 : 1.0 + bonus * monster.getDemonbaneEffectiveness();
 	}
 
+	/** Pickaxe item id -> its Mining level requirement, for the Guardians' damage formula. */
+	private static final Map<Integer, Integer> PICKAXE_TIER = new java.util.HashMap<>();
+
+	static
+	{
+		PICKAXE_TIER.put(1265, 1);   // bronze
+		PICKAXE_TIER.put(1267, 1);   // iron
+		PICKAXE_TIER.put(1269, 6);   // steel
+		PICKAXE_TIER.put(12297, 11); // black
+		PICKAXE_TIER.put(1273, 21);  // mithril
+		PICKAXE_TIER.put(1271, 31);  // adamant
+		PICKAXE_TIER.put(1275, 41);  // rune
+		PICKAXE_TIER.put(11920, 61); // dragon
+		PICKAXE_TIER.put(23680, 61); // crystal — the formula caps at the dragon tier
+	}
+
+	/**
+	 * Guardians take damage only from pickaxes, and the rolled damage is then
+	 * scaled by (50 + Mining + pickaxe tier) / 150. The tier caps at 61, which
+	 * is why a crystal pickaxe deals the same damage as a dragon one.
+	 */
+	static double guardianDamageMultiplier(int weaponId, int miningLevel)
+	{
+		Integer tier = PICKAXE_TIER.get(weaponId);
+		if (tier == null)
+		{
+			return 0; // anything that is not a pickaxe deals nothing at all
+		}
+		return (50 + miningLevel + Math.min(61, tier)) / 150.0;
+	}
+
+	/**
+	 * Guardian hitpoints, each: 151 x (1 + floor(T/2)) + floor(mining) x T.
+	 * Their HP already accounts for team size, so the generic party scaling
+	 * must not be applied on top.
+	 */
+	static double guardianHp(int partySize, int miningLevel)
+	{
+		int team = Math.max(1, partySize);
+		return 151 * (1 + team / 2) + (double) miningLevel * team;
+	}
+
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
 	private static final int BLOWPIPE_DART_RSTR = 20;
 
@@ -404,7 +446,17 @@ public class RoomTimeEstimator
 			double phases = room == CoxRoom.OLM && monster.getName().contains("claw")
 				? RoomMonsters.olmClawPhases(partySize)
 				: 1;
-			double totalHp = monster.getHp() * hpMult * encounter.getCount() * phases;
+
+			// The Guardians carry their own team-size term, so the generic
+			// party scaling must not be applied on top of it.
+			double totalHp = monster.getRequiredWeapon() == GearNeed.PICKAXE
+				? guardianHp(partySize, player.getMining()) * encounter.getCount()
+				: monster.getHp() * hpMult * encounter.getCount() * phases;
+
+			// CoX scales monster HP with party size, and the party splits the
+			// damage — so what matters is YOUR share, not the whole pool.
+			// Without this the estimate is roughly party-size times too long.
+			double yourShare = totalHp / Math.max(1, partySize);
 
 			String label = bestWeapon.getOption().getName()
 				+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
@@ -426,16 +478,17 @@ public class RoomTimeEstimator
 				label += " [4-tick]";
 			}
 
-			RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);
+			RoomTime roomTime = new RoomTime(room, label, yourShare / bestDps, true, bestStyle, bestWeapon);
 			roomTime.extraSwitch = bestSalve;
 			roomTime.monster = monster;
-			roomTime.totalHp = totalHp;
+			roomTime.totalHp = yourShare;
 			roomTime.partName = part;
 
 			if (explanation != null)
 			{
-				explanation.addWeaponChoice(String.format("%s (%s, %.0f hp) — %d weapons evaluated:",
-					roomTime.getDisplayName(), monster.getName(), totalHp, ranking.size()));
+				explanation.addWeaponChoice(String.format(
+					"%s (%s, your share %.0f of %.0f hp) — %d weapons evaluated:",
+					roomTime.getDisplayName(), monster.getName(), yourShare, totalHp, ranking.size()));
 
 				// Highest dps first; the split key is the numeric dps prefix
 				ranking.sort((a, b) -> Double.compare(
@@ -926,7 +979,12 @@ public class RoomTimeEstimator
 		// else eats it.
 		double demonbane = demonbaneMultiplier(weaponId, m);
 		double reduction = demonbane > 1.0 ? 1.0 : m.getNonFireDamageMult();
-		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * demonbane * reduction);
+		// The Guardians scale rolled damage by the pickaxe formula, and take
+		// nothing at all from anything that is not a pickaxe.
+		double pickaxe = m.getRequiredWeapon() == GearNeed.PICKAXE
+			? guardianDamageMultiplier(weaponId, p.getMining())
+			: 1.0;
+		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * demonbane * reduction * pickaxe);
 
 		double best = 0;
 		for (int i = 0; i < styles.length; i++)
