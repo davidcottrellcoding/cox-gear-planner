@@ -150,7 +150,7 @@ All figures below were verified against the OSRS wiki.
 
 | Effect | Applies to | Modelled as |
 |---|---|---|
-| Crystal armour | crystal bow / bofa only | helm 5%/2.5%, body 15%/7.5%, legs 10%/5% |
+| Crystal armour | crystal bow / bofa only | helm 5%/2.5%, body 15%/7.5%, legs 10%/5% — **per piece, no full-set requirement**, so a partial set is a partial bonus |
 | Salve amulet | undead (Skeletal Mystics) | 15%/20%, imbued extends to ranged and magic |
 | **Inquisitor's** | **crush style only** | helm 0.5%, hauberk 1%, skirt 1% |
 | **Tome of fire** | standard fire spells, **not** powered staves | **+10% vs NPCs** (the quoted 50% is PvP) |

@@ -47,7 +47,7 @@ public class GearResolver
 		23979, 27701, 27713, 27725, 27737, 27749, 27761, 27773)); // legs
 	private static final Set<Integer> CRYSTAL_BOWS = new HashSet<>(Arrays.asList(
 		25865, 25867, 25884, 25886, 25888, 25890, 25892, 25894, 25896, // bofa
-		4212, 4214)); // crystal bow
+		23983)); // crystal bow (pre-rework ids normalise onto this)
 
 	private final ItemManager itemManager;
 

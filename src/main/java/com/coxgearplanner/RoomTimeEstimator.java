@@ -48,8 +48,14 @@ public class RoomTimeEstimator
 	private static final Set<Integer> BOLT_IDS = new HashSet<>(Arrays.asList(21946, 21944, 9243, 9242));
 
 	// Bow of faerdhinen + crystal armour set effect (per piece: acc%, dmg%)
+	/**
+	 * Bows that crystal armour buffs. The bonus applies to the crystal bow as
+	 * well as the bow of faerdhinen, and each piece contributes independently
+	 * — there is no full-set requirement, so a partial set is a partial bonus.
+	 */
 	private static final Set<Integer> BOFA = new HashSet<>(Arrays.asList(
-		25865, 25867, 25884, 25886, 25888, 25890, 25892, 25894, 25896));
+		25865, 25867, 25884, 25886, 25888, 25890, 25892, 25894, 25896, // bofa + recolours
+		23983)); // crystal bow
 	private static final Set<Integer> CRYSTAL_HELM = new HashSet<>(Arrays.asList(
 		23971, 27705, 27717, 27729, 27741, 27753, 27765, 27777));
 	private static final Set<Integer> CRYSTAL_BODY = new HashSet<>(Arrays.asList(

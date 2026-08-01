@@ -61,6 +61,23 @@ public class GearDatabaseTest
 	}
 
 	@Test
+	public void crystalArmourIsPerPieceNotAllOrNothing()
+	{
+		// Each piece contributes independently: dropping the helm costs only
+		// its own 5%/2.5%, it does not forfeit the body and legs bonuses.
+		EquipmentTotals bodyAndLegs = new EquipmentTotals();
+		RoomTimeEstimator.addCrystalSetBonus(bodyAndLegs, 23975); // body
+		RoomTimeEstimator.addCrystalSetBonus(bodyAndLegs, 23979); // legs
+		assertEquals(0.25, bodyAndLegs.crystalAcc, 1e-9);
+		assertEquals(0.125, bodyAndLegs.crystalDmg, 1e-9);
+
+		EquipmentTotals helmOnly = new EquipmentTotals();
+		RoomTimeEstimator.addCrystalSetBonus(helmOnly, 23971);
+		assertEquals("the helm is the smallest of the three", 0.05, helmOnly.crystalAcc, 1e-9);
+		assertEquals(0.025, helmOnly.crystalDmg, 1e-9);
+	}
+
+	@Test
 	public void fullCrystalSetGivesThirtyPercentAccuracyFifteenDamage()
 	{
 		EquipmentTotals totals = new EquipmentTotals();

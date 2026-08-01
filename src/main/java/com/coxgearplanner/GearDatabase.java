@@ -120,6 +120,7 @@ public final class GearDatabase
 			ItemOption.of("Armadyl crossbow", 11785),
 			ItemOption.of("Dragon crossbow", 21902),
 			ItemOption.of("Rune crossbow", 9185),
+			ItemOption.twoHanded("Crystal bow", 23983),
 			ItemOption.twoHanded("Magic shortbow (i)", 12788)));
 		ranged.put(GearSlot.SHIELD, Arrays.asList(
 			ItemOption.of("Twisted buckler", 21000),
