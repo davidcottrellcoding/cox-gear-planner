@@ -622,6 +622,26 @@ public class CoxGearPlannerPanel extends PluginPanel
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 
+	/**
+	 * Names the limit that is actually in force.
+	 *
+	 * Two settings can cap switches and only one applies: a shared budget
+	 * overrides the per-style cap. Reporting the per-style number regardless
+	 * meant that turning that cap off - the documented way to remove it - made
+	 * every over-limit line read "exceeds your 0-item switch", blaming a limit
+	 * the user had just disabled for a budget they had set to 12.
+	 */
+	private String activeLimitText()
+	{
+		int shared = plugin.getConfig().totalSwapItems();
+		if (shared > 0)
+		{
+			return shared + "-item swap budget";
+		}
+		int cap = plugin.getConfig().maxSwitchItems();
+		return cap > 0 ? cap + "-item switch" : "switch limit";
+	}
+
 	private void renderSwitchAdvice(PlanResult result)
 	{
 		List<SwitchAdvisor.Advice> advices = result.getSwitchAdvice();
@@ -631,9 +651,12 @@ public class CoxGearPlannerPanel extends PluginPanel
 		}
 
 		int cap = plugin.getConfig().maxSwitchItems();
+		int shared = plugin.getConfig().totalSwapItems();
+		String limit = shared > 0 ? ", " + shared + " swap items shared across styles"
+			: cap > 0 ? ", max " + cap + " items per switch"
+			: "";
 		JLabel header = new JLabel("Switch advice (base outfit: "
-			+ result.getPrimaryStyle().getDisplayName()
-			+ (cap > 0 ? ", max " + cap + " items per switch" : "") + ")");
+			+ result.getPrimaryStyle().getDisplayName() + limit + ")");
 		header.setFont(FontManager.getRunescapeBoldFont());
 		header.setForeground(ColorScheme.BRAND_ORANGE);
 		header.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -676,8 +699,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 					label = new JLabel("<html><b>Over limit</b> " + advice.getItemName()
 						+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
 						+ "): worth ~" + formatSaved(advice.getSecondsSaved())
-						+ " but exceeds your " + plugin.getConfig().maxSwitchItems()
-						+ "-item switch" + instead + "</html>");
+						+ " but exceeds your " + activeLimitText() + instead + "</html>");
 					label.setForeground(COLOR_GROUP);
 				}
 				else
