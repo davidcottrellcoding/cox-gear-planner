@@ -108,6 +108,37 @@ attack speed, so the filter and the damage maths share one
 `magicSpeedTicks()` helper and are covered by tests that pin every staff's
 speed — they cannot drift apart.
 
+## Ice Demon corrected (v1.18)
+
+Research overturned three things I had assumed here.
+
+**No fire staff is required.** The room supplies its own **tinderbox and
+bronze axe**; the ice is cleared by chopping saplings for kindling and burning
+it in the four braziers. Fire spells are a damage choice, not a gate — so
+`FIRE_SPELLS` is no longer listed as a room requirement. An axe is still worth
+bringing, since a better one yields more kindling per chop.
+
+**The 150% fire weakness is additive, not a multiplier.** Elemental weakness
+adds 1% magic damage *and* 1% magic accuracy per point, applied to the spell's
+**base** max after other bonuses — so "250% damage" only holds at zero magic
+damage bonus. Note this covers standard-spellbook fire spells only: a
+sanguinesti staff or shadow casts its own built-in spell, which does **not**
+qualify and eats the full 67% reduction.
+
+**Demonbane weapons are competitive, and were missing entirely.** The ice
+demon has **115% demonbane effectiveness**, which scales the weapon's own
+bonus — Emberlight and Arclight's 70% becomes **80.5%** — and demonbane damage
+is exempt from the 67% reduction. The wiki's own advice is that Emberlight
+outclasses fire spells unless you are casting Fire Surge off a Harmonised
+staff. Added: Emberlight, Arclight, Darklight, Silverlight, Scorching bow and
+the Purging staff.
+
+One honest caveat: that demonbane weapons *bypass* the 67% reduction is stated
+on the Ice demon and CoX strategy pages but is not corroborated by the
+`Demon (attribute)` mechanics page. The wiki's own Emberlight recommendation
+only makes sense under that reading, which is the best available evidence,
+but it is inference rather than a directly documented mechanic.
+
 ## Room style constraints (v1.16)
 
 DPS alone can't tell you that a target is across a gap, or that you'd be
@@ -129,7 +160,7 @@ you still get a plan rather than "infeasible":
 | Room | Prefers | Why |
 |---|---|---|
 | Skeletal Mystics | Ranged / magic | Safespotted from behind the pillars |
-| Ice Demon | Magic | Fire spells break the ice and do 150% damage |
+| Ice Demon | Magic / melee | Fire spells and demonbane weapons both bypass its 67% damage cut |
 | Vasa Nistirio | Ranged | Teleports around the room |
 | Vespula | Ranged | Flies until downed |
 | Tekton | Melee | Fought at the anvil, no safespot |

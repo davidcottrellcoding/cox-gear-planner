@@ -72,6 +72,34 @@ public class RoomTimeEstimator
 	/** Best-first: (ei)/(e) give 20%, (i)/plain give 16.67% (magic 15% on the (i)). */
 	static final int[] SALVE_IDS = {SALVE_EI, SALVE_I, SALVE_E, SALVE};
 
+	/**
+	 * Demonbane weapons and their own accuracy/damage bonus vs demons. The
+	 * monster's demonbane effectiveness scales this — the ice demon is 115%,
+	 * so Arclight's 70% lands at 80.5%.
+	 */
+	private static final Map<Integer, Double> DEMONBANE = new java.util.HashMap<>();
+
+	static
+	{
+		DEMONBANE.put(29589, 0.70); // Emberlight
+		DEMONBANE.put(19675, 0.70); // Arclight
+		DEMONBANE.put(6746, 0.60);  // Darklight
+		DEMONBANE.put(2402, 0.60);  // Silverlight
+		DEMONBANE.put(29591, 0.30); // Scorching bow
+		DEMONBANE.put(33243, 0.10); // Infernal tecpatl
+	}
+
+	/** Combined demonbane multiplier for a weapon against a target, or 1.0. */
+	static double demonbaneMultiplier(int weaponId, MonsterProfile monster)
+	{
+		if (!monster.isDemon())
+		{
+			return 1.0;
+		}
+		Double bonus = DEMONBANE.get(weaponId);
+		return bonus == null ? 1.0 : 1.0 + bonus * monster.getDemonbaneEffectiveness();
+	}
+
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
 	private static final int BLOWPIPE_DART_RSTR = 20;
 
@@ -894,7 +922,11 @@ public class RoomTimeEstimator
 		double salve = m.isUndead() ? eq.salveMeleeMult : 1.0;
 		// Dragon hunter lance: 20% accuracy and damage vs draconic targets
 		double bane = weaponId == DRAGON_HUNTER_LANCE && m.isDraconic() ? 1.20 : 1.0;
-		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * m.getNonFireDamageMult());
+		// Demonbane weapons are exempt from a demon's damage reduction; anything
+		// else eats it.
+		double demonbane = demonbaneMultiplier(weaponId, m);
+		double reduction = demonbane > 1.0 ? 1.0 : m.getNonFireDamageMult();
+		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * demonbane * reduction);
 
 		double best = 0;
 		for (int i = 0; i < styles.length; i++)
@@ -906,7 +938,7 @@ public class RoomTimeEstimator
 			int styleMax = (int) Math.floor(maxHit * inq);
 
 			double acc = CombatFormulas.accuracy(
-				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult,
+				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult * demonbane,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
 			if (weaponId == FANG)
 			{
@@ -932,9 +964,11 @@ public class RoomTimeEstimator
 		int effAtk = CombatFormulas.effectiveLevel(p.getRanged(), elite ? 1.20 : 1.0, 0);
 		int maxHit = CombatFormulas.maxHit(effStr, eq.rangedStr);
 
-		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk) * eq.setAccMult;
+		double demonbane = demonbaneMultiplier(weaponId, m);
+		double reduction = demonbane > 1.0 ? 1.0 : m.getNonFireDamageMult();
+		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk) * eq.setAccMult * demonbane;
 		double defRoll = CombatFormulas.defenceRoll(m.getDefenceLevel(), m.getDRange());
-		maxHit = (int) Math.floor(maxHit * eq.setDmgMult * m.getNonFireDamageMult());
+		maxHit = (int) Math.floor(maxHit * eq.setDmgMult * demonbane * reduction);
 		double avgMax = maxHit;
 
 		if (m.isUndead() && eq.salveRangedMagicMult > 1.0)
@@ -1034,10 +1068,20 @@ public class RoomTimeEstimator
 		atkRoll *= salve;
 		maxHit = (int) Math.floor(maxHit * salve);
 
-		// Tekton takes 80% reduced magic damage; the ice demon reduces all
-		// non-fire damage but takes 150% extra from fire spells.
-		maxHit = (int) Math.floor(maxHit * m.getMagicDamageMult()
-			* (castsFireSpell ? m.getFireSpellDamageMult() : m.getNonFireDamageMult()));
+		// Elemental weakness is ADDITIVE on the spell's base max, and grants the
+		// same percentage as magic accuracy. Only standard-spellbook fire spells
+		// qualify — a powered staff's built-in spell does not, so it eats the
+		// demon's damage reduction instead.
+		if (castsFireSpell && m.getElementalWeakness() > 0)
+		{
+			maxHit += (int) Math.floor(baseHit * m.getElementalWeakness());
+			atkRoll *= 1 + m.getElementalWeakness();
+		}
+		else
+		{
+			maxHit = (int) Math.floor(maxHit * m.getNonFireDamageMult());
+		}
+		maxHit = (int) Math.floor(maxHit * m.getMagicDamageMult());
 
 		double acc = CombatFormulas.accuracy(atkRoll,
 			CombatFormulas.defenceRoll(m.getMagicDefenceLevel(), m.getDMagic()));

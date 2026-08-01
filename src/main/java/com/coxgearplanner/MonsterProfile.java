@@ -31,8 +31,18 @@ public class MonsterProfile
 	private double magicDamageMult = 1.0;
 	/** The ice demon reduces all non-fire damage by 67%. */
 	private double nonFireDamageMult = 1.0;
-	/** ...and takes 150% extra from standard-spellbook fire spells. */
-	private double fireSpellDamageMult = 1.0;
+	/**
+	 * Elemental weakness, as a fraction. This is ADDITIVE, not a multiplier:
+	 * every point adds 1% magic damage (on the spell's base max, after other
+	 * damage bonuses) and 1% magic accuracy. The ice demon's 150% therefore
+	 * only equals "250% damage" at zero magic damage bonus.
+	 */
+	private double elementalWeakness;
+	/**
+	 * Demonbane effectiveness — scales a demonbane weapon's own bonus. The ice
+	 * demon is 115%, so Arclight/Emberlight's 70% becomes 80.5%.
+	 */
+	private double demonbaneEffectiveness = 1.0;
 	/** The ice demon rolls magic defence off its Defence level, not Magic. */
 	private boolean magicDefenceFromDefence;
 	/**
@@ -98,9 +108,15 @@ public class MonsterProfile
 		return this;
 	}
 
-	MonsterProfile fireSpellDamage(double multiplier)
+	MonsterProfile elementalWeakness(double fraction)
 	{
-		this.fireSpellDamageMult = multiplier;
+		this.elementalWeakness = fraction;
+		return this;
+	}
+
+	MonsterProfile demonbaneEffectiveness(double multiplier)
+	{
+		this.demonbaneEffectiveness = multiplier;
 		return this;
 	}
 
@@ -157,9 +173,14 @@ public class MonsterProfile
 		return nonFireDamageMult;
 	}
 
-	public double getFireSpellDamageMult()
+	public double getElementalWeakness()
 	{
-		return fireSpellDamageMult;
+		return elementalWeakness;
+	}
+
+	public double getDemonbaneEffectiveness()
+	{
+		return demonbaneEffectiveness;
 	}
 
 	/** The level a magic defence roll is computed from. */

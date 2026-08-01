@@ -121,14 +121,21 @@ public final class RoomMonsters
 				.prefers("on platforms across the gap — melee cannot reach",
 					GearNeed.RANGED, GearNeed.MAGIC), 2)));
 
-		// The ice demon reduces ALL non-fire damage by 67% and takes 150% extra
-		// from fire spells — which is why the room is a fire-spell check rather
-		// than a gear check. Its magic defence rolls off its Defence level.
+		// The ice demon reduces all damage by 67% EXCEPT standard-spellbook fire
+		// spells and demonbane weapons. Its 150% fire weakness is additive (+150%
+		// magic damage and accuracy), and demonbane weapons hit at 115%
+		// effectiveness — Emberlight's 70% becomes 80.5%. Its magic defence rolls
+		// off its Defence level (160), not its Magic level (390).
+		//
+		// The room itself needs NO fire spell: a tinderbox and bronze axe spawn
+		// inside, and the ice is cleared by burning kindling in the braziers.
 		ENCOUNTERS.put(CoxRoom.ICE_DEMON, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Ice demon", 140, 160, 390, 70, 70, 110, 40, 140, false, false,
 			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
-			.demon().nonFireDamage(0.33).fireSpellDamage(2.50).magicDefenceFromDefenceLevel()
-			.prefers("fire spells break the ice and do 150% damage", GearNeed.MAGIC), 1)));
+			.demon().nonFireDamage(0.33).elementalWeakness(1.50)
+			.demonbaneEffectiveness(1.15).magicDefenceFromDefenceLevel()
+			.prefers("fire spells and demonbane bypass its 67% damage cut",
+				GearNeed.MAGIC, GearNeed.MELEE), 1)));
 
 		// The Great Olm is three targets with deliberately opposite defensive
 		// profiles, which is why it demands all three styles:

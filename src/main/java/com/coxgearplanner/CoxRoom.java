@@ -27,8 +27,12 @@ public enum CoxRoom
 		GearNeed.RANGED, GearNeed.MELEE),
 	VANGUARDS("Vanguards", true, new String[]{"vanguard", "vangs"},
 		GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC),
+	// The room supplies its own tinderbox and bronze axe, and the ice is
+	// cleared by burning kindling — no fire spell is required to progress.
+	// A better axe is still worth bringing: it yields more kindling per chop.
+	// Fire spells and demonbane weapons matter for damage, not for entry.
 	ICE_DEMON("Ice Demon", false, new String[]{"ice demon", "ice"},
-		GearNeed.MAGIC, GearNeed.FIRE_SPELLS, GearNeed.AXE),
+		GearNeed.MAGIC, GearNeed.MELEE, GearNeed.AXE),
 	THIEVING("Thieving", false, new String[]{"thieving", "thiev"},
 		GearNeed.LOCKPICK),
 	TIGHTROPE("Tightrope", false, new String[]{"tightrope", "rope"},

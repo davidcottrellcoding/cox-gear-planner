@@ -37,7 +37,11 @@ public final class GearDatabase
 			ItemOption.of("Blade of saeldor (c)", 23995, 24551),
 			ItemOption.of("Dragon hunter lance", 22978), // 20% vs draconic (Olm)
 			ItemOption.of("Inquisitor's mace", 24417),
+			ItemOption.of("Emberlight", 29589), // 70% demonbane — ice demon
+			ItemOption.of("Arclight", 19675), // 70% demonbane — ice demon
 			ItemOption.of("Zombie axe", 28810),
+			ItemOption.of("Darklight", 6746),
+			ItemOption.of("Silverlight", 2402),
 			ItemOption.of("Abyssal tentacle", 12006),
 			ItemOption.of("Abyssal bludgeon", 13263),
 			ItemOption.of("Zamorakian hasta", 11889),
@@ -121,6 +125,7 @@ public final class GearDatabase
 			ItemOption.of("Dragon crossbow", 21902),
 			ItemOption.of("Rune crossbow", 9185),
 			ItemOption.twoHanded("Crystal bow", 23983),
+			ItemOption.twoHanded("Scorching bow", 29591), // 30% demonbane
 			ItemOption.twoHanded("Magic shortbow (i)", 12788)));
 		ranged.put(GearSlot.SHIELD, Arrays.asList(
 			ItemOption.of("Twisted buckler", 21000),
@@ -200,6 +205,7 @@ public final class GearDatabase
 			ItemOption.of("Sanguinesti staff", 22323, 25731), // + holy
 			ItemOption.twoHanded("Harmonised nightmare staff", 24423),
 			ItemOption.of("Tumeken's heka", 25987),
+			ItemOption.of("Purging staff", 29594),
 			ItemOption.of("Kodai wand", 21006),
 			ItemOption.of("Trident of the swamp", 12899),
 			ItemOption.of("Trident of the seas", 11905)));

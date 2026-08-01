@@ -37,7 +37,8 @@ public class MonsterDataTest
 		MonsterProfile demon = only(CoxRoom.ICE_DEMON);
 		assertTrue(demon.isDemon());
 		assertEquals("all non-fire damage cut by 67%", 0.33, demon.getNonFireDamageMult(), 1e-9);
-		assertEquals("fire spells do 150% extra", 2.50, demon.getFireSpellDamageMult(), 1e-9);
+		assertEquals("fire weakness is additive, 150%", 1.50, demon.getElementalWeakness(), 1e-9);
+		assertEquals("demonbane lands at 115% effectiveness", 1.15, demon.getDemonbaneEffectiveness(), 1e-9);
 		// Its magic defence rolls off Defence, not Magic — a big difference
 		// given its Magic level is 390
 		assertEquals(390, demon.getMagicLevel());

@@ -60,11 +60,16 @@ public class RoomStyleConstraintTest
 	}
 
 	@Test
-	public void iceDemonFavoursMagicForTheFireSpells()
+	public void iceDemonFavoursMagicAndDemonbaneMelee()
 	{
+		// Both bypass its 67% damage reduction: fire spells via the elemental
+		// weakness, demonbane weapons via their own carve-out. Ranged is the
+		// one style with no way around the reduction.
 		MonsterProfile demon = profile(CoxRoom.ICE_DEMON, 0);
-		assertEquals(1, demon.getPreferredStyles().size());
 		assertTrue(demon.getPreferredStyles().contains(GearNeed.MAGIC));
+		assertTrue("demonbane melee is competitive here",
+			demon.getPreferredStyles().contains(GearNeed.MELEE));
+		assertFalse(demon.getPreferredStyles().contains(GearNeed.RANGED));
 	}
 
 	@Test
