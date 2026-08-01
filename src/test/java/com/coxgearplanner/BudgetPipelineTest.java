@@ -162,7 +162,7 @@ public class BudgetPipelineTest
 			switches.getBasePicks(), bank, true);
 		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
 			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
-			true, java.util.Collections.emptySet(), totalSwapItems);
+			true, java.util.Collections.emptySet(), 3, totalSwapItems);
 		assertTrue("both rooms must be feasible", settled.getLoadout() != null);
 		List<RoomTimeEstimator.RoomTime> real = settled.getRealTimes();
 
@@ -263,6 +263,46 @@ public class BudgetPipelineTest
 					dearestLeft <= cheapestCarried + 1.0);
 			}
 		}
+	}
+
+	/**
+	 * A shield rides free of the BUDGET (it comes in the same motion as its
+	 * weapon) but not of the swap effort: below the minimum switch value it
+	 * stays home, no matter that packing it costs no budget on paper. The
+	 * visible symptom was a mage's book carried to save 0.1s.
+	 */
+	@Test
+	public void aShieldStillHasToClearTheMinimumSwitchValue()
+	{
+		// Swap the two-handed shadow for a one-handed trident so the magic
+		// shield slot is live at all.
+		int trident = 12899;
+		bank.get(ItemSource.BANK).remove(SHADOW);
+		item(trident, SLOT_WEAPON, false, 4, 0, 25, 0, 0);
+		bank.get(ItemSource.BANK).put(trident, 1);
+
+		// A book worth many seconds is carried even with the budget spent
+		item(MAGES_BOOK, SLOT_SHIELD, false, 0, 0, 60, 0, 0);
+		assertTrue("a strong offhand rides free with its weapon",
+			shieldCarried(runPipeline(1)));
+
+		// The same slot with a token bonus is not worth the motion
+		item(MAGES_BOOK, SLOT_SHIELD, false, 0, 0, 2, 0, 0);
+		assertTrue("a junk offhand stays home even though it is budget-free",
+			!shieldCarried(runPipeline(1)));
+	}
+
+	private static boolean shieldCarried(Run run)
+	{
+		for (SwitchAdvisor.Advice a : run.advice)
+		{
+			if (a.getStyle() == GearNeed.MAGIC && a.getSlot() == GearSlot.SHIELD
+				&& !a.isAlreadyShared())
+			{
+				return a.isWorthIt();
+			}
+		}
+		return false;
 	}
 
 	/** More budget can never cost time — the knob must be monotonic. */

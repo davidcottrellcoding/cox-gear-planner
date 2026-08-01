@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.47";
+	static final String VERSION = "1.48";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -366,7 +366,8 @@ public class CoxGearPlannerPlugin extends Plugin
 			SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
 				advice, primary, snapshot, includeGroup, player,
 				config.partySize(), config.assumeElitePrayers(),
-				getNeedsCharging(), config.totalSwapItems());
+				getNeedsCharging(), config.minSwitchSeconds(),
+				config.totalSwapItems());
 			RaidLoadoutBuilder.RaidLoadout loadout = settled.getLoadout();
 
 			if (explanation != null)

@@ -547,6 +547,7 @@ public class SwitchAdvisor
 		int partySize,
 		boolean elitePrayers,
 		java.util.Set<Integer> needsCharging,
+		double thresholdSeconds,
 		int totalSwapItems)
 	{
 		RaidLoadoutBuilder.RaidLoadout loadout = null;
@@ -571,7 +572,7 @@ public class SwitchAdvisor
 			// Only change flags when another rebuild will follow, so the
 			// returned loadout always matches the advice it was built from.
 			if (pass == MAX_SETTLE_PASSES - 1
-				|| !improveAllocation(advice, totalSwapItems))
+				|| !improveAllocation(advice, totalSwapItems, thresholdSeconds))
 			{
 				break;
 			}
@@ -584,7 +585,8 @@ public class SwitchAdvisor
 	 * is rebalanced: with a per-style cap or no cap at all the initial spend
 	 * has no cross-style scarcity to misjudge.
 	 */
-	private boolean improveAllocation(List<Advice> advice, int totalSwapItems)
+	private boolean improveAllocation(List<Advice> advice, int totalSwapItems,
+		double thresholdSeconds)
 	{
 		if (totalSwapItems <= 0)
 		{
@@ -592,15 +594,26 @@ public class SwitchAdvisor
 		}
 		boolean changed = false;
 
-		// An uncarried shield with real value is a pure win — it rides free
-		// with its weapon, costing neither budget nor a meaningful slot.
+		// Shields ride free of the budget but not of the swap effort: one is
+		// carried exactly when the kit-priced value clears the minimum switch
+		// value, and dropped when the honest number falls below it.
+		double shieldBar = Math.max(thresholdSeconds, REBALANCE_MARGIN);
 		for (Advice a : advice)
 		{
-			if (!a.isAlreadyShared() && !a.isWorthIt() && a.getSlot() == GearSlot.SHIELD
-				&& a.getSecondsSaved() > REBALANCE_MARGIN)
+			if (a.isAlreadyShared() || a.getSlot() != GearSlot.SHIELD)
+			{
+				continue;
+			}
+			if (!a.isWorthIt() && a.getSecondsSaved() >= shieldBar)
 			{
 				a.worthIt = true;
 				a.overLimit = false;
+				changed = true;
+			}
+			else if (a.isWorthIt() && a.getSecondsSaved() < thresholdSeconds)
+			{
+				a.worthIt = false;
+				a.overLimit = false; // not worth the swap, the budget is blameless
 				changed = true;
 			}
 		}
@@ -754,7 +767,8 @@ public class SwitchAdvisor
 		if (totalSwapItems > 0)
 		{
 			return adviseWithSharedBudget(primary, byStyle, primaryPicks, items,
-				includeGroupStorage, player, partySize, elitePrayers, totalSwapItems, explanation);
+				includeGroupStorage, player, partySize, elitePrayers, totalSwapItems,
+				thresholdSeconds, explanation);
 		}
 
 		double total = baselineCorrection(primary, byStyle, items,
@@ -874,7 +888,10 @@ public class SwitchAdvisor
 	 * Weapons and their ammo are not swaps. You cannot use a style without its
 	 * weapon, so it comes regardless of the budget — and charging the budget for
 	 * something that is never dropped only shrank the budget behind your back.
-	 * An offhand rides free with its weapon for the same reason.
+	 * An offhand rides free with its weapon for the same reason — but free of
+	 * the BUDGET only: it is still a swap to perform, so it has to clear the
+	 * minimum switch value like everything else, or a 0.1s book gets packed
+	 * purely because packing it costs nothing on paper.
 	 */
 	private Result adviseWithSharedBudget(
 		GearNeed primary,
@@ -886,6 +903,7 @@ public class SwitchAdvisor
 		int partySize,
 		boolean elitePrayers,
 		int totalSwapItems,
+		double thresholdSeconds,
 		PlanExplanation explanation)
 	{
 		List<StyleState> states = new ArrayList<>();
@@ -956,6 +974,12 @@ public class SwitchAdvisor
 					trial.remove(slot);
 					double gain = state.seconds - totalSeconds(state.style, state.times,
 						state.picks, trial, items, includeGroupStorage, player, elitePrayers);
+					// Free of the budget is not free of the swap: an offhand
+					// still has to be worth the motion.
+					if (slot == GearSlot.SHIELD && gain < thresholdSeconds)
+					{
+						continue;
+					}
 					if (gain > bestGain)
 					{
 						bestGain = gain;
