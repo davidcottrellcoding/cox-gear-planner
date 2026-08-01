@@ -149,6 +149,12 @@ wearing.
 They are now derived from the loadout instead of computed independently, and
 describe **what you will actually be wearing once you've swapped**:
 
+- **One section per weapon, not per style.** A style can win different rooms
+  with different weapons — magic might use a 3-tick eye of ayak on the
+  tightrope but a 4-tick staff at Olm. A single section per style showed only
+  the busiest weapon, leaving the other sitting in the inventory with nothing
+  explaining it. Sections are now titled e.g. "Magic with Eye of ayak —
+  while fighting Tightrope".
 - Slots you swap show the item plus **SWAP IN**
 - Slots you don't show the base outfit's item plus **stays on**
 - Two-handed weapons still blank the shield slot, and empty slots say so

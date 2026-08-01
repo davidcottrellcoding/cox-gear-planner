@@ -191,6 +191,63 @@ public class RaidLoadoutBuilderTest
 	}
 
 	@Test
+	public void aStyleUsingTwoWeaponsGetsASectionForEach()
+	{
+		// Magic can win one room with a 3-tick eye of ayak and another with a
+		// 4-tick staff (e.g. once Olm is forced to 4-tick). Both weapons land
+		// in the inventory, so both need a section explaining where they go.
+		int EYE = 31113;
+		int SANG = 22323;
+		Map<ItemSource, Map<Integer, Integer>> items = bankWith(EYE, SANG, TBOW, DRAGON_ARROW);
+
+		SetupBuilder.Pick eye = pick(items, ItemOption.of("Eye of ayak", EYE));
+		SetupBuilder.Pick sang = pick(items, ItemOption.of("Sanguinesti staff", SANG));
+		SetupBuilder.Pick tbow = pick(items, ItemOption.twoHanded("Twisted bow", TBOW));
+
+		List<RoomTimeEstimator.RoomTime> times = new ArrayList<>(Arrays.asList(
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "tbow", 200, true, GearNeed.RANGED, tbow),
+			new RoomTimeEstimator.RoomTime(CoxRoom.TIGHTROPE, "eye", 40, true, GearNeed.MAGIC, eye),
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "sang", 90, true, GearNeed.MAGIC, sang)));
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			EnumSet.of(CoxRoom.OLM, CoxRoom.TIGHTROPE), times, new ArrayList<>(),
+			GearNeed.RANGED, items, true, null);
+
+		// Both magic weapons are carried...
+		List<String> inventory = loadout.getInventory().stream()
+			.map(RaidLoadoutBuilder.Entry::getName)
+			.collect(Collectors.toList());
+		assertTrue(inventory.contains("Eye of ayak"));
+		assertTrue(inventory.contains("Sanguinesti staff"));
+
+		// ...and each one has a section naming it, so nothing in the inventory
+		// is left unexplained
+		List<String> titles = loadout.getStyleSections().stream()
+			.map(SetupBuilder.Section::getTitle)
+			.collect(Collectors.toList());
+		assertTrue("eye of ayak has its own section",
+			titles.stream().anyMatch(t -> t.contains("Eye of ayak")));
+		assertTrue("sanguinesti has its own section",
+			titles.stream().anyMatch(t -> t.contains("Sanguinesti staff")));
+
+		// Every carried weapon appears as the weapon line of some section
+		java.util.Set<String> sectionWeapons = new java.util.HashSet<>();
+		for (SetupBuilder.Section section : loadout.getStyleSections())
+		{
+			for (SetupBuilder.Line line : section.getLines())
+			{
+				if ("Weapon".equals(line.getLabel()))
+				{
+					sectionWeapons.add(strip(line.getItemName()));
+				}
+			}
+		}
+		assertTrue(sectionWeapons.contains("Eye of ayak"));
+		assertTrue(sectionWeapons.contains("Sanguinesti staff"));
+		assertTrue(sectionWeapons.contains("Twisted bow"));
+	}
+
+	@Test
 	public void missingUtilityIsListedButTakesNoSlot()
 	{
 		Map<ItemSource, Map<Integer, Integer>> items = bankWith(SCYTHE);

@@ -259,8 +259,24 @@ public final class RaidLoadoutBuilder
 		// they never name gear that isn't in the equipped or inventory lists.
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
-			loadout.styleSections.add(wornForStyle(entry.getKey(), entry.getValue(), primary,
-				primaryPicks, primaryWeapon, advice, resolver, items, includeGroupStorage));
+			// A style can win different rooms with different weapons — magic
+			// might use a 3-tick eye of ayak on the tightrope but a 4-tick
+			// staff at Olm. One section per style hid the second weapon, which
+			// then appeared in the inventory with nothing explaining it. Group
+			// by weapon so every weapon you carry has a section naming it.
+			Map<Integer, List<RoomTimeEstimator.RoomTime>> byWeapon = new LinkedHashMap<>();
+			for (RoomTimeEstimator.RoomTime rt : entry.getValue())
+			{
+				if (rt.getWeapon() != null)
+				{
+					byWeapon.computeIfAbsent(rt.getWeapon().getItemId(), k -> new ArrayList<>()).add(rt);
+				}
+			}
+			for (List<RoomTimeEstimator.RoomTime> group : byWeapon.values())
+			{
+				loadout.styleSections.add(wornForStyle(entry.getKey(), group, primary,
+					primaryPicks, primaryWeapon, advice, resolver, items, includeGroupStorage));
+			}
 		}
 		return loadout;
 	}
@@ -290,10 +306,16 @@ public final class RaidLoadoutBuilder
 			rooms.append(rt.getDisplayName());
 		}
 		SetupBuilder.Section section = new SetupBuilder.Section(
-			style.getDisplayName() + " — while fighting " + rooms);
+			style.getDisplayName()
+				+ (weaponName(styleTimes) == null ? "" : " with " + weaponName(styleTimes))
+				+ " — while fighting " + rooms);
 
-		SetupBuilder.Pick weapon = style == primary ? primaryWeapon : mainWeapon(styleTimes);
+		// Each group is already one weapon, so take it from the rooms rather
+		// than assuming the style's busiest weapon covers them all.
+		SetupBuilder.Pick weapon = mainWeapon(styleTimes);
 		boolean twoHanded = weapon != null && weapon.getOption().isTwoHanded();
+		boolean wornWeapon = weapon != null && primaryWeapon != null
+			&& weapon.getItemId() == primaryWeapon.getItemId();
 
 		// Only switches that are actually carried change anything
 		Map<GearSlot, SetupBuilder.Pick> swapped = new LinkedHashMap<>();
@@ -320,7 +342,7 @@ public final class RaidLoadoutBuilder
 			{
 				section.getLines().add(line(slot, weapon,
 					weapon == null ? "(empty)" : null,
-					style == primary ? "worn" : "from inventory"));
+					wornWeapon ? "worn" : "from inventory"));
 				continue;
 			}
 			if (slot == GearSlot.SHIELD && twoHanded)
@@ -346,6 +368,13 @@ public final class RaidLoadoutBuilder
 				: line(slot, worn, "(empty)", "stays on"));
 		}
 		return section;
+	}
+
+	/** Name of the single weapon a section's rooms are fought with. */
+	private static String weaponName(List<RoomTimeEstimator.RoomTime> styleTimes)
+	{
+		SetupBuilder.Pick weapon = mainWeapon(styleTimes);
+		return weapon == null ? null : weapon.getOption().getName();
 	}
 
 	private static SetupBuilder.Line line(GearSlot slot, SetupBuilder.Pick pick,
