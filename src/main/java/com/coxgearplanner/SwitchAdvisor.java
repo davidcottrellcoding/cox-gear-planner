@@ -212,9 +212,86 @@ public class SwitchAdvisor
 		int totalSwapItems,
 		PlanExplanation explanation)
 	{
-		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
-			estimator.getResolver().resolve(primary, items, includeGroupStorage);
+		Map<GearSlot, SetupBuilder.Pick> base =
+			new LinkedHashMap<>(estimator.getResolver().resolve(primary, items, includeGroupStorage));
 
+		Result best = resultFor(primary, base, byStyle, items, includeGroupStorage, player,
+			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems, null);
+
+		// The base outfit used to be whatever maximised the primary style's own
+		// damage, priced as though wearing it were free. It is not: every slot
+		// where the base disagrees with another style creates a switch, and a
+		// switch costs an inventory slot or a place in the swap budget. A ring
+		// worth a fraction of a second to the primary can push out a necklace
+		// worth six seconds to a secondary, which is not a trade anyone would
+		// make deliberately.
+		//
+		// So try wearing the secondary's item instead, for the slots where a
+		// switch is actually worth something. Anything that lowers the total
+		// raid time - the primary's loss included - is kept. Only those slots
+		// are tried, because a switch nobody wanted cannot be worth removing.
+		List<Advice> worthTrying = new ArrayList<>();
+		for (Advice advice : best.getAdvice())
+		{
+			if (!advice.isAlreadyShared() && advice.getSecondsSaved() > 0)
+			{
+				worthTrying.add(advice);
+			}
+		}
+		worthTrying.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
+
+		for (Advice advice : worthTrying)
+		{
+			SetupBuilder.Pick alt = estimator.getResolver()
+				.resolve(advice.getStyle(), items, includeGroupStorage).get(advice.getSlot());
+			SetupBuilder.Pick current = base.get(advice.getSlot());
+			if (alt == null || (current != null && current.getItemId() == alt.getItemId()))
+			{
+				continue;
+			}
+
+			Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(base);
+			trial.put(advice.getSlot(), alt);
+			Result candidate = resultFor(primary, trial, byStyle, items, includeGroupStorage,
+				player, partySize, elitePrayers, thresholdSeconds, maxSwitchItems,
+				totalSwapItems, null);
+
+			if (candidate.getTotalSeconds() < best.getTotalSeconds() - 1e-9)
+			{
+				base = trial;
+				best = candidate;
+				if (explanation != null)
+				{
+					explanation.addSwitchChoice(String.format(
+						"BASE %s: wearing %s saves the %s switch and lowers the raid to %.1fs",
+						advice.getSlot().getDisplayName().toLowerCase(),
+						alt.getOption().getName(),
+						advice.getStyle().getDisplayName().toLowerCase(),
+						candidate.getTotalSeconds()));
+				}
+			}
+		}
+
+		return resultFor(primary, base, byStyle, items, includeGroupStorage, player,
+			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems,
+			explanation);
+	}
+
+	/** Total raid time for one specific base outfit. */
+	private Result resultFor(
+		GearNeed primary,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		double thresholdSeconds,
+		int maxSwitchItems,
+		int totalSwapItems,
+		PlanExplanation explanation)
+	{
 		// One shared budget across all styles beats a per-style cap, because
 		// it can move a slot from a style that barely benefits to one that does
 		if (totalSwapItems > 0)
@@ -223,8 +300,8 @@ public class SwitchAdvisor
 				includeGroupStorage, player, partySize, elitePrayers, totalSwapItems, explanation);
 		}
 
-		// Rooms fought with the base outfit run at full speed already
-		double total = sumSeconds(byStyle.get(primary));
+		double total = primarySeconds(primary, byStyle, primaryPicks, items,
+			includeGroupStorage, player, elitePrayers);
 
 		List<Advice> advices = new ArrayList<>();
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
@@ -243,6 +320,72 @@ public class SwitchAdvisor
 		// Most valuable switches first; shared/zero-value entries last
 		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
 		return new Result(primary, advices, total);
+	}
+
+	/**
+	 * The primary style's own rooms, fought in whatever base outfit it is
+	 * actually wearing. This used to be the precomputed best-case sum, which
+	 * quietly assumed the base outfit was always the primary's own optimum -
+	 * true until the base outfit became something worth trading.
+	 *
+	 * Charged as a delta rather than recomputed outright. The reported room
+	 * times already fold in things this method cannot see - the salve amulet
+	 * swap the estimator found for undead targets, complete-set effects - so
+	 * recomputing from scratch would silently make every primary style look
+	 * slower than the times shown beside it, and could flip which style wins
+	 * the base slot for no better reason than which effects survived the
+	 * round trip. Taking the difference between two override-free numbers
+	 * leaves those effects in the baseline where they belong, and cancels
+	 * them out of the comparison.
+	 */
+	private double primarySeconds(
+		GearNeed primary,
+		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		boolean elitePrayers)
+	{
+		List<RoomTimeEstimator.RoomTime> times = byStyle.get(primary);
+		if (times == null)
+		{
+			return 0;
+		}
+
+		double baseline = sumSeconds(times);
+		Map<GearSlot, SetupBuilder.Pick> optimal =
+			estimator.getResolver().resolve(primary, items, includeGroupStorage);
+		if (sameLoadout(optimal, primaryPicks))
+		{
+			return baseline;
+		}
+
+		Map<GearSlot, SetupBuilder.Pick> none = java.util.Collections.emptyMap();
+		double asOptimal = totalSeconds(primary, times, optimal, none,
+			items, includeGroupStorage, player, elitePrayers);
+		double asWorn = totalSeconds(primary, times, primaryPicks, none,
+			items, includeGroupStorage, player, elitePrayers);
+		return baseline + (asWorn - asOptimal);
+	}
+
+	static boolean sameLoadout(
+		Map<GearSlot, SetupBuilder.Pick> a, Map<GearSlot, SetupBuilder.Pick> b)
+	{
+		for (GearSlot slot : GearSlot.values())
+		{
+			SetupBuilder.Pick left = a.get(slot);
+			SetupBuilder.Pick right = b.get(slot);
+			if ((left == null) != (right == null))
+			{
+				return false;
+			}
+			if (left != null && left.getItemId() != right.getItemId())
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static double sumSeconds(List<RoomTimeEstimator.RoomTime> times)
@@ -397,7 +540,8 @@ public class SwitchAdvisor
 		}
 
 		List<Advice> advices = new ArrayList<>();
-		double total = sumSeconds(byStyle.get(primary));
+		double total = primarySeconds(primary, byStyle, primaryPicks, items,
+			includeGroupStorage, player, elitePrayers);
 		for (StyleState state : states)
 		{
 			for (Map.Entry<GearSlot, SetupBuilder.Pick> left : state.notCarried.entrySet())

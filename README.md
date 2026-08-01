@@ -95,6 +95,29 @@ chosen, because the heuristic seed favours crystal when you own a crystal bow,
 and the search will not break the set up once seeded. That crystal weighting is
 load-bearing, not legacy.
 
+## The base outfit is priced against what it forces you to switch
+
+Worn items are free — they cost no inventory slot and no swap budget — so the
+plan will happily wear something worth a fraction of a second. That part is
+fine. What was not fine is that the base outfit was chosen to maximise the
+primary style's own damage **as though wearing it were free for everyone
+else**, when in fact every slot where the base disagrees with another style
+creates a switch, and a switch costs an inventory slot or a place in your swap
+budget.
+
+That is how a ring worth a fraction of a second could push out a necklace
+worth six, and it is why the plan could look internally inconsistent: a
+near-useless item worn, a clearly valuable one left behind.
+
+The planner now tries wearing the secondary style's item in any slot where the
+switch was worth something, and keeps the change whenever it lowers total raid
+time — charging the primary style properly for what it gives up. The debug
+panel logs these as `BASE <slot>: wearing X saves the <style> switch`.
+
+This only changes the outcome when a swap budget or per-style cap is set. With
+both left at 0 nothing is competing for slots, so every worthwhile switch is
+carried anyway and there is nothing to trade.
+
 ## The imbued heart does nothing while overloaded
 
 OSRS boosts do not stack — each sets an absolute level and the highest wins. A
@@ -333,6 +356,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.31 | Base outfit priced against the switches it forces, instead of only its own style's damage |
 | 1.30 | Armour ranked by real DPS instead of a heuristic score; debug panel reports what each slot is worth in seconds |
 | 1.29 | Imbued heart, as a competing boost — a CoX overload beats it at every level |
 | 1.28 | Scythe hit chain corrected (halved and rounded down, hit count by target size); fang's double roll limited to stab |
