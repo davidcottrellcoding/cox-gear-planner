@@ -13,6 +13,18 @@ public class PlanExplanation
 	private final List<String> gearChoices = new ArrayList<>();
 	private final List<String> weaponChoices = new ArrayList<>();
 	private final List<String> switchChoices = new ArrayList<>();
+	private final List<String> weaponPool = new ArrayList<>();
+
+	void addWeaponPool(String line)
+	{
+		weaponPool.add(line);
+	}
+
+	/** Which weapons were found in your item pools, and which were not. */
+	public List<String> getWeaponPool()
+	{
+		return weaponPool;
+	}
 
 	void addGearChoice(String line)
 	{
@@ -49,6 +61,7 @@ public class PlanExplanation
 
 	public boolean isEmpty()
 	{
-		return gearChoices.isEmpty() && weaponChoices.isEmpty() && switchChoices.isEmpty();
+		return gearChoices.isEmpty() && weaponChoices.isEmpty()
+			&& switchChoices.isEmpty() && weaponPool.isEmpty();
 	}
 }

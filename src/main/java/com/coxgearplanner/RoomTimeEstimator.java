@@ -238,8 +238,11 @@ public class RoomTimeEstimator
 			GearNeed bestStyle = null;
 			SetupBuilder.Pick bestWeapon = null;
 			SetupBuilder.Pick bestSalve = null;
-			double runnerUpDps = 0;
-			String runnerUpName = null;
+			// Every candidate and its dps, so the debug panel can show the full
+			// ranking rather than just the winner — "why wasn't X considered?"
+			// is only answerable if the panel distinguishes "lost" from
+			// "never evaluated".
+			List<String> ranking = new ArrayList<>();
 
 			// The globally-best amulet is anguish/torture/occult, but against
 			// undead a salve amulet usually beats all of them. Its bonus isn't
@@ -295,19 +298,18 @@ public class RoomTimeEstimator
 						}
 					}
 
+					if (explanation != null)
+					{
+						ranking.add(String.format("%.2f|%s (%s)", dps,
+							weapon.getOption().getName(), style.getDisplayName().toLowerCase()));
+					}
+
 					if (dps > bestDps)
 					{
-						runnerUpDps = bestDps;
-						runnerUpName = bestWeapon != null ? bestWeapon.getOption().getName() : null;
 						bestDps = dps;
 						bestStyle = style;
 						bestWeapon = weapon;
 						bestSalve = usedSalve;
-					}
-					else if (dps > runnerUpDps)
-					{
-						runnerUpDps = dps;
-						runnerUpName = weapon.getOption().getName();
 					}
 				}
 			}
@@ -347,13 +349,25 @@ public class RoomTimeEstimator
 
 			if (explanation != null)
 			{
-				explanation.addWeaponChoice(String.format(
-					"%s (%s, %.0f hp): %s at %.2f dps%s",
-					roomTime.getDisplayName(), monster.getName(), totalHp,
-					bestWeapon.getOption().getName(), bestDps,
-					runnerUpName != null
-						? String.format(" — next best %s at %.2f dps", runnerUpName, runnerUpDps)
-						: ""));
+				explanation.addWeaponChoice(String.format("%s (%s, %.0f hp) — %d weapons evaluated:",
+					roomTime.getDisplayName(), monster.getName(), totalHp, ranking.size()));
+
+				// Highest dps first; the split key is the numeric dps prefix
+				ranking.sort((a, b) -> Double.compare(
+					Double.parseDouble(b.substring(0, b.indexOf('|'))),
+					Double.parseDouble(a.substring(0, a.indexOf('|')))));
+				int shown = 0;
+				for (String entry : ranking)
+				{
+					int bar = entry.indexOf('|');
+					explanation.addWeaponChoice(String.format("    %s%s — %s dps",
+						shown == 0 ? "> " : "  ", entry.substring(bar + 1), entry.substring(0, bar)));
+					if (++shown >= 8)
+					{
+						explanation.addWeaponChoice("    … " + (ranking.size() - shown) + " more");
+						break;
+					}
+				}
 			}
 			return roomTime;
 		}
@@ -567,6 +581,50 @@ public class RoomTimeEstimator
 			default:
 				break;
 		}
+	}
+
+	/**
+	 * Reports which of a style's known weapons were found in your item pools
+	 * and which were not — the direct answer to "why wasn't X considered?",
+	 * which the per-room ranking alone cannot distinguish from "X lost".
+	 */
+	public void describeWeaponPool(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlanExplanation explanation)
+	{
+		if (explanation == null)
+		{
+			return;
+		}
+
+		StringBuilder owned = new StringBuilder();
+		StringBuilder missing = new StringBuilder();
+		for (ItemOption option : GearDatabase.loadout(style).get(GearSlot.WEAPON))
+		{
+			SetupBuilder.Pick pick = SetupBuilder.findOwned(option, items, includeGroupStorage);
+			StringBuilder target = pick != null ? owned : missing;
+			if (target.length() > 0)
+			{
+				target.append(", ");
+			}
+			target.append(option.getName());
+			if (pick != null)
+			{
+				target.append(" [").append(pick.getSource().getDisplayName()).append("]");
+			}
+		}
+
+		explanation.addWeaponPool(style.getDisplayName() + " OWNED: "
+			+ (owned.length() == 0 ? "none" : owned));
+		explanation.addWeaponPool(style.getDisplayName() + " not found: "
+			+ (missing.length() == 0 ? "none" : missing));
+
+		int scanned = resolver.scan(items, includeGroupStorage)
+			.getOrDefault(GearSlot.WEAPON, Collections.emptyList()).size();
+		explanation.addWeaponPool(style.getDisplayName()
+			+ " — " + scanned + " total equipable weapons seen across all your storage");
 	}
 
 	/** Each complete set you own, expressed as slot overrides to evaluate. */

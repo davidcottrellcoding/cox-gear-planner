@@ -259,7 +259,13 @@ genuinely marginal tail is skipped.
 
 Enable **Show debug panel** in config to see the reasoning:
 
-- *weapon choice per room* — winner and its DPS, plus the runner-up
+- *weapons found in your storage* — per style, which known weapons were found
+  (and where), which were **not found**, and how many equipable weapons were
+  seen in total. This distinguishes "that weapon lost" from "that weapon was
+  never a candidate because it isn't in any synced storage", which the
+  per-room ranking alone cannot tell you.
+- *weapon choice per room* — the **full ranked list** of every candidate with
+  its DPS (top 8), winner marked with `>`
 - *switch decisions* — what each piece saved when it was added, versus the threshold
 - *best owned item per slot* — the chosen item, what it beat, and both scores
 

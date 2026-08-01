@@ -457,6 +457,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 			return;
 		}
 
+		addDebugBlock("Debug — weapons found in your storage", explanation.getWeaponPool());
 		addDebugBlock("Debug — weapon choice per room", explanation.getWeaponChoices());
 		addDebugBlock("Debug — switch decisions", explanation.getSwitchChoices());
 		addDebugBlock("Debug — best owned item per slot", explanation.getGearChoices());
