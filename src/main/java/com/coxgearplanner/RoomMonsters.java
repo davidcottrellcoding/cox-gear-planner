@@ -67,12 +67,12 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.TEKTON, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Tekton (unenraged)", 150, 205, 205, 155, 165, 105, 0, 0, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(4)
 				.magicDamage(0.20)
 				.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1),
 			new Encounter(new MonsterProfile(
 				"Tekton (enraged)", 150, 205, 205, 280, 290, 180, 0, 0, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(4)
 				.magicDamage(0.20)
 				.prefers("enraged after the anvil — far harder to hit", GearNeed.MELEE), 1)));
 
@@ -88,10 +88,10 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.MUTTADILES, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Muttadile (small)", 250, 138, 1, -5, 72, 50, 60, 0, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
 			new Encounter(new MonsterProfile(
 				"Muttadile (large)", 250, 220, 250, -5, 82, 60, 75, 0, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(5)
 				.prefers("emerges when the small one dies; its stomp punishes melee range",
 					GearNeed.RANGED, GearNeed.MAGIC), 1)));
 
@@ -99,7 +99,7 @@ public final class RoomMonsters
 		// requirement is the pickaxe utility item, not a combat weapon.
 		ENCOUNTERS.put(CoxRoom.GUARDIANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Guardian", 250, 100, 1, 80, 180, -10, 0, 0, true, false,
-			GearNeed.MELEE)
+			GearNeed.MELEE).size(3)
 			.requiresWeapon(GearNeed.PICKAXE)
 			.prefers("can only be harmed with a pickaxe", GearNeed.MELEE), 2)));
 
@@ -118,14 +118,14 @@ public final class RoomMonsters
 		// not a prediction.
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Abyssal portal", 250, 88, 88, 0, 0, 0, 70, 60, true, false,
-			GearNeed.RANGED, GearNeed.MAGIC)
+			GearNeed.RANGED, GearNeed.MAGIC).size(5)
 			.minReach(8)
 			.prefers("8 tiles out; 10-tile bows stay on rapid, shorter ones need longrange",
 				GearNeed.RANGED, GearNeed.MAGIC), 1)));
 
 		ENCOUNTERS.put(CoxRoom.SHAMANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Lizardman shaman", 190, 210, 130, 102, 160, 150, 160, 0, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 3)));
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 3)));
 
 		// Two targets with opposite answers. Vasa himself is a ranged fight
 		// (range defence 40 against magic's 400). The glowing crystal he
@@ -147,11 +147,11 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.VASA, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Vasa", 300, 175, 230, 170, 190, 40, 400, 40, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(5)
 				.prefers("teleports around the room and drains at range", GearNeed.RANGED), 1),
 			new Encounter(new MonsterProfile(
 				"Glowing crystal", 120, 100, 100, -5, 180, 180, 0, 0, true, false,
-				GearNeed.MELEE, GearNeed.MAGIC)
+				GearNeed.MELEE, GearNeed.MAGIC).size(4)
 				.magicDamage(1.0 / 3.0)
 				.prefers("immune to ranged, 1/3 from magic; stab is accurate but a "
 					+ "scythe triple-hits this 4x4 target", GearNeed.MELEE), 1)));
@@ -160,7 +160,7 @@ public final class RoomMonsters
 		// 2x2, so the scythe hits twice rather than three times.
 		ENCOUNTERS.put(CoxRoom.MYSTICS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Skeletal mystic", 160, 187, 140, 155, 155, 75, 140, 115, false, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(2)
 			.undead()
 			.prefers("safespotted from behind the pillars", GearNeed.RANGED, GearNeed.MAGIC), 3)));
 
@@ -169,23 +169,23 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.VANGUARDS, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Vanguard (melee) — weak to magic", 180, 160, 150, 150, 150, 150, 20, 400, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
 			new Encounter(new MonsterProfile(
 				"Vanguard (ranged) — weak to melee", 180, 160, 150, 55, 60, 100, 400, 300, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
 			new Encounter(new MonsterProfile(
 				"Vanguard (magic) — weak to ranged", 180, 160, 150, 315, 340, 400, 110, 50, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1)));
 
 		ENCOUNTERS.put(CoxRoom.TIGHTROPE, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Deathly ranger", 120, 155, 155, 0, 0, 0, 0, 0, false, false,
-				GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.RANGED, GearNeed.MAGIC).size(1)
 				.prefers("on platforms across the gap — melee cannot reach",
 					GearNeed.RANGED, GearNeed.MAGIC), 2),
 			new Encounter(new MonsterProfile(
 				"Deathly mage", 120, 155, 210, 0, 0, 0, 0, 0, false, false,
-				GearNeed.RANGED, GearNeed.MAGIC)
+				GearNeed.RANGED, GearNeed.MAGIC).size(1)
 				.prefers("on platforms across the gap — melee cannot reach",
 					GearNeed.RANGED, GearNeed.MAGIC), 2)));
 
@@ -199,7 +199,7 @@ public final class RoomMonsters
 		// inside, and the ice is cleared by burning kindling in the braziers.
 		ENCOUNTERS.put(CoxRoom.ICE_DEMON, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Ice demon", 140, 160, 390, 70, 70, 110, 40, 140, false, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(2)
 			.demon().nonFireDamage(0.33).elementalWeakness(1.50)
 			.demonbaneEffectiveness(1.15).magicDefenceFromDefenceLevel()
 			.prefers("fire spells and demonbane bypass its 67% damage cut",
@@ -218,13 +218,13 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.OLM, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Olm left claw (melee hand)", 600, 175, 175, 50, 50, 50, 200, 200, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
 			new Encounter(new MonsterProfile(
 				"Olm right claw (mage hand)", 600, 175, 87, 200, 200, 200, 50, 200, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
 			new Encounter(new MonsterProfile(
 				"Olm head", 800, 150, 250, 200, 200, 200, 200, 50, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1)));
 	}
 
 	/**

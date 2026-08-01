@@ -130,11 +130,6 @@ at all.**
 
 ### Known bugs
 
-- **Osmumten's fang's double accuracy roll is applied to every attack style.**
-  Since January 2024 it only applies on stab, so the fang is currently
-  overrated on slash.
-- **The scythe is treated as hitting 3 times on any "large" target.** It hits
-  twice on 2x2 monsters such as Skeletal Mystics, so it is overrated there.
 - **Item naming can be inconsistent** between the curated list and the item
   scanner — "Avernic treads" versus "Avernic treads (base)" can refer to
   different database entries for what looks like the same item.

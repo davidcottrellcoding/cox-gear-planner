@@ -60,6 +60,11 @@ public class MonsterProfile
 	 */
 	private GearNeed requiredWeapon;
 	/**
+	 * Tile size. The scythe hits three times on 3x3 and larger, twice on 2x2
+	 * and once on 1x1, so this decides how many hits it lands.
+	 */
+	private int sizeTiles;
+	/**
 	 * Minimum weapon reach in tiles. The abyssal portal sits 8 tiles from the
 	 * only safe standing tiles, so anything shorter must switch to longrange
 	 * (giving up the rapid speed bonus) or cannot attack it at all.
@@ -151,6 +156,23 @@ public class MonsterProfile
 	{
 		this.minReach = tiles;
 		return this;
+	}
+
+	MonsterProfile size(int tiles)
+	{
+		this.sizeTiles = tiles;
+		return this;
+	}
+
+	/**
+	 * How many times a scythe hits this target: three on 3x3 and larger, two
+	 * on 2x2, one otherwise. Falls back to the large flag when no explicit
+	 * size is set.
+	 */
+	public int scytheHits()
+	{
+		int size = sizeTiles > 0 ? sizeTiles : (large ? 3 : 1);
+		return size >= 3 ? 3 : size == 2 ? 2 : 1;
 	}
 
 	/** Tiles of reach needed to attack this target at all; 0 when irrelevant. */

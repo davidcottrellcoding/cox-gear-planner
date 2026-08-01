@@ -1069,16 +1069,29 @@ public class RoomTimeEstimator
 			double acc = CombatFormulas.accuracy(
 				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult * demonbane,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
-			if (weaponId == FANG)
+			if (weaponId == FANG && i == 0)
 			{
-				// Fang rolls accuracy twice
+				// The fang rolls accuracy twice, but only on stab styles —
+				// that restriction came in on 17 Jan 2024. Applying it to
+				// slash and crush too overrated the fang on those styles.
 				acc = 1 - (1 - acc) * (1 - acc);
 			}
 			double avgMax = styleMax;
-			if (SCYTHES.contains(weaponId) && m.isLarge())
+			if (SCYTHES.contains(weaponId))
 			{
-				// Scythe hits 100% + 50% + 25% on large targets
-				avgMax *= 1.75;
+				// Each scythe hit is half the previous one ROUNDED DOWN, and
+				// the count depends on the target's size: three hits on 3x3
+				// and larger, two on 2x2, one on 1x1. Treating it as a flat
+				// 1.75x overstated it — a 47 max is 47+23+11 = 81, not 82.25.
+				int hits = m.scytheHits();
+				int hit = styleMax;
+				int total = hit;
+				for (int h = 1; h < hits; h++)
+				{
+					hit = hit / 2;
+					total += hit;
+				}
+				avgMax = total;
 			}
 			double dps = CombatFormulas.dps(acc, avgMax, eq.speedTicks);
 			if (dps > best)
