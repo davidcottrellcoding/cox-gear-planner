@@ -41,7 +41,7 @@ utility grey) with a separate tag for where they currently are.
 - **Effects that are not in item stats**: twisted bow scaling, dragonbane,
   demonbane, salve amulet, crystal armour, void, obsidian, Inquisitor's crush
   bonus, tome of fire, powered-staff speeds, the Guardians' pickaxe damage
-  formula, and Vasa's crystal being a stab check.
+  formula, and Vasa's crystal being melee-only.
 - **Which attack style to use** — a fang left on slash hits the Vasa crystal's
   +180 defence instead of its -5.
 
@@ -206,7 +206,7 @@ and those match this plugin's conclusions on every case that can be checked:
 | Olm melee hand | 52 | melee | melee |
 | Olm mage hand | 75 | magic | magic |
 | Olm head | 79 | ranged | ranged |
-| Vasa crystal | 52, its own weapon entry | a separate melee stab weapon | Blade of saeldor, stab style |
+| Vasa crystal | 52, its own weapon entry | a separate melee weapon | decided on dps — see below |
 | Guardians | 61 | pickaxe with the damage multiplier | pickaxe |
 
 That the Ice demon figure reproduces Emberlight's demonbane maths, and that

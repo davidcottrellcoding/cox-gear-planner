@@ -47,6 +47,16 @@ public class VasaCrystalTest
 	}
 
 	@Test
+	public void theCrystalIsLargeSoTheScytheCanTripleHitIt()
+	{
+		// Stab is far more accurate here, but the crystal is 4x4 — a scythe
+		// hits three times, and with oathplate that beats a fang on dps
+		// (~10.7 against ~8.5). Scythe is the Challenge Mode meta for this
+		// reason, so the flag that enables the triple hit must stay set.
+		assertTrue("the scythe's triple hit depends on this", part("crystal").isLarge());
+	}
+
+	@Test
 	public void theCrystalIsImmuneToRangedAndResistsMagic()
 	{
 		MonsterProfile crystal = part("crystal");

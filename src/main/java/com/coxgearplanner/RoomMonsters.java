@@ -129,10 +129,18 @@ public final class RoomMonsters
 
 		// Two targets with opposite answers. Vasa himself is a ranged fight
 		// (range defence 40 against magic's 400). The glowing crystal he
-		// siphons from is immune to ranged entirely, takes a third damage from
-		// magic, and has -5 stab defence against +180 slash and crush — so it
-		// is a stab check, and the ranged setup that kills Vasa cannot touch
-		// it. Break it inside the ~40s window or he heals back what he took.
+		// siphons from is immune to ranged entirely and takes a third damage
+		// from magic, so it needs a melee weapon the ranged setup cannot
+		// provide. Break it inside the ~40s window or he heals back what he
+		// took.
+		//
+		// Stab is far more ACCURATE against it — -5 stab defence against +180
+		// slash — but that does not make stab the only answer. The crystal is
+		// 4x4, so a scythe hits three times, and with oathplate that triple
+		// hit outweighs halved accuracy: roughly 10.7 dps against a fang's
+		// 8.5. Scythe is the Challenge Mode meta here for exactly that reason.
+		// The estimator compares them on dps and picks whichever wins, which
+		// is why the crystal is flagged large.
 		//
 		// Count is 1: four crystals sit in the corners but he siphons from one
 		// at a time and you break the one he goes to.
@@ -145,8 +153,8 @@ public final class RoomMonsters
 				"Glowing crystal", 120, 100, 100, -5, 180, 180, 0, 0, true, false,
 				GearNeed.MELEE, GearNeed.MAGIC)
 				.magicDamage(1.0 / 3.0)
-				.prefers("immune to ranged, 1/3 from magic, -5 stab vs +180 slash/crush",
-					GearNeed.MELEE), 1)));
+				.prefers("immune to ranged, 1/3 from magic; stab is accurate but a "
+					+ "scythe triple-hits this 4x4 target", GearNeed.MELEE), 1)));
 
 		// Skeletal mystics are undead → the salve amulet applies here.
 		// 2x2, so the scythe hits twice rather than three times.
