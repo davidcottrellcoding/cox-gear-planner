@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.46";
+	static final String VERSION = "1.47";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -355,9 +355,19 @@ public class CoxGearPlannerPlugin extends Plugin
 			// wearing gear the plan had already traded away.
 			List<SetupBuilder.Section> sections = SetupBuilder.build(
 				rooms, snapshot, includeGroup, estimator.getResolver());
-			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
-				rooms, times, advice, primary, snapshot, includeGroup,
-				estimator.getResolver(), getNeedsCharging());
+
+			// Build the loadout, re-time the rooms against exactly what it
+			// packs, re-price the advice on those numbers, and rebalance the
+			// budget until the spend agrees with the honest prices. The first
+			// pass gave every room the best gear you own because the advisor
+			// needed those numbers before it could decide what to carry; the
+			// damage in a room comes from the gear you can actually put on in
+			// that room, not from the best you own.
+			SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
+				advice, primary, snapshot, includeGroup, player,
+				config.partySize(), config.assumeElitePrayers(),
+				getNeedsCharging(), config.totalSwapItems());
+			RaidLoadoutBuilder.RaidLoadout loadout = settled.getLoadout();
 
 			if (explanation != null)
 			{
@@ -371,35 +381,7 @@ public class CoxGearPlannerPlugin extends Plugin
 				}
 			}
 
-			// The first pass gave every room the best gear you own, because the
-			// advisor needed those numbers before it could decide what was worth
-			// carrying. Now that the kit is settled, time the raid again against
-			// exactly what it packs — the damage in a room comes from the gear
-			// you can actually put on in that room, not from the best you own.
-			//
-			// Re-running the estimator rather than scaling the old numbers keeps
-			// everything it models and the advisor does not: salve amulets
-			// against the undead, crystal and set bonuses, per-monster weapon
-			// choice, party scaling.
-			List<RoomTimeEstimator.RoomTime> realTimes = times;
-			if (loadout != null)
-			{
-				Map<ItemSource, Map<Integer, Integer>> kit =
-					kitContents(loadout.getCarriedIds(), snapshot);
-				realTimes = estimator.estimate(rooms, kit, includeGroup, player,
-					config.partySize(), config.assumeElitePrayers(), null);
-
-				// The advice numbers were the advisor's internal model — each
-				// style in isolation, rooms pinned to their first-pass weapons.
-				// The totals above come from re-timing the rooms against the
-				// kit, where a room missing its armour falls back to another
-				// carried style, so the advisor's figures can dwarf the real
-				// difference. Re-price every decision on the same model the
-				// totals use, or the advice contradicts the total beside it.
-				advisor.repriceAgainstKit(advice, rooms, loadout.getCarriedIds(),
-					snapshot, includeGroup, player, config.partySize(),
-					config.assumeElitePrayers(), realTimes);
-			}
+			List<RoomTimeEstimator.RoomTime> realTimes = settled.getRealTimes();
 
 			PlanResult result = new PlanResult(sections, realTimes, advice, primary, loadout, explanation);
 			result.setIdealTimes(times);

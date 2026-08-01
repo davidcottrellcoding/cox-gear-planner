@@ -35,7 +35,8 @@ public class SwitchAdvisor
 		// its value is measured against.
 		private String wearInstead;
 		private double secondsSaved;
-		private final boolean worthIt;
+		/** Mutable: the rebalance pass may reassign the budget after re-pricing. */
+		private boolean worthIt;
 		private final boolean alreadyShared;
 		/** Dropped because of the max-items-per-switch cap, not its value. */
 		boolean overLimit;
@@ -493,6 +494,151 @@ public class SwitchAdvisor
 			: Double.compare(y.getSecondsSaved(), x.getSecondsSaved()));
 	}
 
+	/** The packed loadout and the room times measured against exactly it. */
+	public static class SettledPlan
+	{
+		private final RaidLoadoutBuilder.RaidLoadout loadout;
+		private final List<RoomTimeEstimator.RoomTime> realTimes;
+
+		SettledPlan(RaidLoadoutBuilder.RaidLoadout loadout,
+			List<RoomTimeEstimator.RoomTime> realTimes)
+		{
+			this.loadout = loadout;
+			this.realTimes = realTimes;
+		}
+
+		public RaidLoadoutBuilder.RaidLoadout getLoadout()
+		{
+			return loadout;
+		}
+
+		public List<RoomTimeEstimator.RoomTime> getRealTimes()
+		{
+			return realTimes;
+		}
+	}
+
+	/**
+	 * Passes are cheap after the first (the kit barely changes), but each one
+	 * re-runs the estimator per advice entry, so the loop is bounded.
+	 */
+	private static final int MAX_SETTLE_PASSES = 4;
+
+	/** A swap must beat the piece it evicts by this much, or it churns. */
+	private static final double REBALANCE_MARGIN = 0.5;
+
+	/**
+	 * Builds the loadout, re-times the rooms against it, re-prices the advice
+	 * on those numbers — and then REBALANCES: the advisor's internal model
+	 * decides the initial spend, and its purchase-time marginals can disagree
+	 * with the kit-priced values (it once carried a 0.9s body while a 3.8s
+	 * pair of legs sat over the limit). When the honest numbers say the budget
+	 * is misspent, the worst carried piece is swapped for the best uncarried
+	 * one and everything is rebuilt, until the allocation and the prices agree.
+	 */
+	public SettledPlan settle(
+		java.util.Set<CoxRoom> rooms,
+		List<RoomTimeEstimator.RoomTime> times,
+		List<Advice> advice,
+		GearNeed primary,
+		Map<ItemSource, Map<Integer, Integer>> snapshot,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		java.util.Set<Integer> needsCharging,
+		int totalSwapItems)
+	{
+		RaidLoadoutBuilder.RaidLoadout loadout = null;
+		List<RoomTimeEstimator.RoomTime> real = times;
+
+		for (int pass = 0; pass < MAX_SETTLE_PASSES; pass++)
+		{
+			loadout = RaidLoadoutBuilder.build(rooms, times, advice, primary,
+				snapshot, includeGroupStorage, estimator.getResolver(), needsCharging);
+			if (loadout == null)
+			{
+				return new SettledPlan(null, times);
+			}
+
+			Map<ItemSource, Map<Integer, Integer>> kit =
+				CoxGearPlannerPlugin.kitContents(loadout.getCarriedIds(), snapshot);
+			real = estimator.estimate(rooms, kit, includeGroupStorage, player,
+				partySize, elitePrayers, null);
+			repriceAgainstKit(advice, rooms, loadout.getCarriedIds(), snapshot,
+				includeGroupStorage, player, partySize, elitePrayers, real);
+
+			// Only change flags when another rebuild will follow, so the
+			// returned loadout always matches the advice it was built from.
+			if (pass == MAX_SETTLE_PASSES - 1
+				|| !improveAllocation(advice, totalSwapItems))
+			{
+				break;
+			}
+		}
+		return new SettledPlan(loadout, real);
+	}
+
+	/**
+	 * One rebalance step on the kit-priced values. Only the shared-budget mode
+	 * is rebalanced: with a per-style cap or no cap at all the initial spend
+	 * has no cross-style scarcity to misjudge.
+	 */
+	private boolean improveAllocation(List<Advice> advice, int totalSwapItems)
+	{
+		if (totalSwapItems <= 0)
+		{
+			return false;
+		}
+		boolean changed = false;
+
+		// An uncarried shield with real value is a pure win — it rides free
+		// with its weapon, costing neither budget nor a meaningful slot.
+		for (Advice a : advice)
+		{
+			if (!a.isAlreadyShared() && !a.isWorthIt() && a.getSlot() == GearSlot.SHIELD
+				&& a.getSecondsSaved() > REBALANCE_MARGIN)
+			{
+				a.worthIt = true;
+				a.overLimit = false;
+				changed = true;
+			}
+		}
+
+		// Swap the least valuable carried armour for the most valuable
+		// uncarried one when the honest prices say the budget is misspent.
+		Advice bestOut = null;
+		Advice worstIn = null;
+		for (Advice a : advice)
+		{
+			if (a.isAlreadyShared() || a.getSlot() == GearSlot.SHIELD)
+			{
+				continue;
+			}
+			if (a.isWorthIt())
+			{
+				if (worstIn == null || a.getSecondsSaved() < worstIn.getSecondsSaved())
+				{
+					worstIn = a;
+				}
+			}
+			else if (bestOut == null || a.getSecondsSaved() > bestOut.getSecondsSaved())
+			{
+				bestOut = a;
+			}
+		}
+		if (bestOut != null && worstIn != null
+			&& bestOut.getSecondsSaved() > worstIn.getSecondsSaved() + REBALANCE_MARGIN)
+		{
+			bestOut.worthIt = true;
+			bestOut.overLimit = false;
+			worstIn.worthIt = false;
+			worstIn.overLimit = true;
+			changed = true;
+		}
+		return changed;
+	}
+
 	/** Total feasible raid time when exactly {@code carriedIds} is brought. */
 	private double kitSeconds(
 		java.util.Set<CoxRoom> rooms,
@@ -789,7 +935,7 @@ public class SwitchAdvisor
 				carriedWeaponCount(primary, byStyle, primaryPicks, items, includeGroupStorage)));
 		}
 
-		while (budget > 0)
+		while (true)
 		{
 			StyleState bestState = null;
 			GearSlot bestSlot = null;
@@ -799,6 +945,13 @@ public class SwitchAdvisor
 			{
 				for (GearSlot slot : state.notCarried.keySet())
 				{
+					// A shield rides free with its weapon, so it stays buyable
+					// even after the budget is spent — stopping the whole loop
+					// at zero stranded free offhands as "over limit".
+					if (budget <= 0 && slot != GearSlot.SHIELD)
+					{
+						continue;
+					}
 					Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(state.notCarried);
 					trial.remove(slot);
 					double gain = state.seconds - totalSeconds(state.style, state.times,

@@ -160,17 +160,11 @@ public class BudgetPipelineTest
 
 		estimator.getResolver().pinResolved(switches.getPrimary(),
 			switches.getBasePicks(), bank, true);
-		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
-			rooms, times, switches.getAdvice(), switches.getPrimary(),
-			bank, true, estimator.getResolver());
-		assertTrue("both rooms must be feasible", loadout != null);
-
-		Map<ItemSource, Map<Integer, Integer>> kit =
-			CoxGearPlannerPlugin.kitContents(loadout.getCarriedIds(), bank);
-		List<RoomTimeEstimator.RoomTime> real =
-			estimator.estimate(rooms, kit, true, player, 1, true, null);
-		advisor.repriceAgainstKit(switches.getAdvice(), rooms, loadout.getCarriedIds(),
-			bank, true, player, 1, true, real);
+		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
+			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
+			true, java.util.Collections.emptySet(), totalSwapItems);
+		assertTrue("both rooms must be feasible", settled.getLoadout() != null);
+		List<RoomTimeEstimator.RoomTime> real = settled.getRealTimes();
 
 		double idealTotal = 0;
 		for (RoomTimeEstimator.RoomTime rt : times)
@@ -229,6 +223,45 @@ public class BudgetPipelineTest
 				"%s claims %.1fs but the whole budget only costs %.1fs",
 				a.getItemName(), a.getSecondsSaved(), gap),
 				a.getSecondsSaved() <= gap + 1e-6);
+		}
+	}
+
+	/**
+	 * The budget has to land on the most valuable pieces by the kit-priced
+	 * numbers. After settling, no uncarried armour switch may be worth
+	 * meaningfully more than a carried one — the visible symptom was a 0.9s
+	 * body carried while 3.8s legs sat "over limit".
+	 */
+	@Test
+	public void theBudgetIsSpentOnTheMostValuablePieces()
+	{
+		for (int budget : new int[]{1, 2})
+		{
+			Run run = runPipeline(budget);
+			double cheapestCarried = Double.MAX_VALUE;
+			double dearestLeft = 0;
+			for (SwitchAdvisor.Advice a : run.advice)
+			{
+				if (a.isAlreadyShared() || a.getSlot() == GearSlot.SHIELD)
+				{
+					continue;
+				}
+				if (a.isWorthIt())
+				{
+					cheapestCarried = Math.min(cheapestCarried, a.getSecondsSaved());
+				}
+				else
+				{
+					dearestLeft = Math.max(dearestLeft, a.getSecondsSaved());
+				}
+			}
+			if (cheapestCarried < Double.MAX_VALUE)
+			{
+				assertTrue(String.format(
+					"budget %d: carries a %.1fs piece while a %.1fs piece is left behind",
+					budget, cheapestCarried, dearestLeft),
+					dearestLeft <= cheapestCarried + 1.0);
+			}
 		}
 	}
 
