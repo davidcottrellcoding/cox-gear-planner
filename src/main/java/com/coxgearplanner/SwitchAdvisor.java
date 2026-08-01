@@ -625,7 +625,6 @@ public class SwitchAdvisor
 		int totalSwapItems,
 		PlanExplanation explanation)
 	{
-		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
 		List<StyleState> states = new ArrayList<>();
 
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())

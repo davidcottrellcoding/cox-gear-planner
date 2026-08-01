@@ -1211,7 +1211,7 @@ public class RoomTimeEstimator
 		return CombatFormulas.dps(acc, avgMax, speed);
 	}
 
-	private static double magicDps(int weaponId, EquipmentTotals eq,
+	static double magicDps(int weaponId, EquipmentTotals eq,
 		PlayerSnapshot p, MonsterProfile m, boolean elite)
 	{
 		int magic = p.getMagic();
@@ -1260,6 +1260,15 @@ public class RoomTimeEstimator
 			castsFireSpell = true;
 		}
 
+		// Augury: +25% magic accuracy and +4% magic damage. The damage part is
+		// additive with the gear's own percentage, and lands after the shadow's
+		// tripling and cap — those apply to equipment bonuses only. It used to
+		// be added after the max hit had already been computed, which silently
+		// dropped it and underrated every magic loadout by 4%.
+		if (elite)
+		{
+			dmgPercent += 4;
+		}
 		int maxHit = (int) (baseHit * (1 + dmgPercent / 100.0));
 		// The tome of fire boosts standard-spellbook fire spells, not the
 		// built-in spells of powered staves
@@ -1267,12 +1276,7 @@ public class RoomTimeEstimator
 		{
 			maxHit = (int) Math.floor(maxHit * eq.fireSpellMult);
 		}
-		// Augury boosts accuracy only
 		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 8;
-		if (elite)
-		{
-			dmgPercent += 4; // Augury also grants +4% magic damage
-		}
 		double atkRoll = effMagic * (magicAtkBonus + 64) * eq.setAccMult;
 		maxHit = (int) Math.floor(maxHit * eq.setDmgMult);
 
