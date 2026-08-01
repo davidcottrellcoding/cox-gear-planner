@@ -70,7 +70,9 @@ public final class RoomMonsters
 		// requirement is the pickaxe utility item, not a combat weapon.
 		ENCOUNTERS.put(CoxRoom.GUARDIANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Guardian", 250, 100, 1, 80, 180, -10, 0, 0, true, false,
-			GearNeed.MELEE).prefers("can only be harmed with a pickaxe", GearNeed.MELEE), 2)));
+			GearNeed.MELEE)
+			.requiresWeapon(GearNeed.PICKAXE)
+			.prefers("can only be harmed with a pickaxe", GearNeed.MELEE), 2)));
 
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Vespula", 200, 88, 88, 0, 0, 0, 70, 60, true, false,

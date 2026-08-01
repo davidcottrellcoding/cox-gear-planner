@@ -273,7 +273,7 @@ public class RoomTimeEstimator
 				for (GearNeed style : monster.getPreferredStyles())
 				{
 					if (styles.contains(style)
-						&& !weaponCandidates(style, items, includeGroupStorage).isEmpty())
+						&& !weaponCandidates(style, items, includeGroupStorage, monster).isEmpty())
 					{
 						preferred.add(style);
 					}
@@ -304,7 +304,7 @@ public class RoomTimeEstimator
 				List<Map<GearSlot, SetupBuilder.Pick>> setOverrides =
 					setOverrides(style, items, includeGroupStorage);
 
-				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage))
+				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage, monster))
 				{
 					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
 						items, includeGroupStorage, player, monster, elitePrayers);
@@ -497,6 +497,35 @@ public class RoomTimeEstimator
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage)
 	{
+		return weaponCandidates(style, items, includeGroupStorage, null);
+	}
+
+	/**
+	 * @param monster when it restricts damage to one weapon class (the
+	 * Guardians take damage only from pickaxes), the candidate list is that
+	 * class alone — otherwise the planner would happily suggest a bludgeon
+	 * that cannot hurt them.
+	 */
+	private List<SetupBuilder.Pick> weaponCandidates(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		MonsterProfile monster)
+	{
+		if (monster != null && monster.getRequiredWeapon() != null)
+		{
+			List<SetupBuilder.Pick> only = new ArrayList<>();
+			for (ItemOption option : GearDatabase.utility(monster.getRequiredWeapon()))
+			{
+				SetupBuilder.Pick pick = SetupBuilder.findOwned(option, items, includeGroupStorage);
+				if (pick != null)
+				{
+					only.add(pick);
+				}
+			}
+			return only;
+		}
+
 		List<SetupBuilder.Pick> candidates = new ArrayList<>();
 		Set<Integer> seen = new HashSet<>();
 

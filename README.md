@@ -97,7 +97,7 @@ the numbers, and the room line shows the reason in brackets.
 |---|---|
 | Tightrope (Deathly ranger/mage) | Ranged or magic only — they stand on platforms across the gap |
 | Muttadile (large) | Ranged or magic only — it sits in the water, out of melee reach |
-| Guardians | Melee only, and specifically a **pickaxe** — nothing else harms them |
+| Guardians | **Pickaxe only** — the restriction binds the weapon, not just the style, so no other melee weapon is ever suggested |
 
 **Mechanical preferences** — the favoured style wins even when another rates
 higher on raw DPS, but falls back gracefully if you own no weapon for it, so

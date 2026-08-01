@@ -43,6 +43,12 @@ public class MonsterProfile
 	 */
 	private Set<GearNeed> preferredStyles = Collections.emptySet();
 	private String styleNote;
+	/**
+	 * A utility item class that is the ONLY thing able to damage this monster
+	 * — the Guardians take damage from pickaxes and nothing else. Null means
+	 * any weapon of a usable style works.
+	 */
+	private GearNeed requiredWeapon;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -110,6 +116,19 @@ public class MonsterProfile
 		this.styleNote = note;
 		this.preferredStyles = Collections.unmodifiableSet(EnumSet.of(styles[0], styles));
 		return this;
+	}
+
+	/** Restricts damage to one utility item class, e.g. pickaxes. */
+	MonsterProfile requiresWeapon(GearNeed utility)
+	{
+		this.requiredWeapon = utility;
+		return this;
+	}
+
+	/** The only weapon class that can damage this monster, or null. */
+	public GearNeed getRequiredWeapon()
+	{
+		return requiredWeapon;
 	}
 
 	public Set<GearNeed> getPreferredStyles()

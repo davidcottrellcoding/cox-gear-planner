@@ -74,6 +74,40 @@ public class RoomStyleConstraintTest
 		assertEquals(1, guardian.getUsableStyles().size());
 		assertTrue(guardian.getUsableStyles().contains(GearNeed.MELEE));
 		assertTrue(guardian.getStyleNote().contains("pickaxe"));
+
+		// The restriction has to bind the WEAPON, not just the style —
+		// otherwise the planner suggests the best melee weapon you own,
+		// which cannot damage them at all.
+		assertEquals(GearNeed.PICKAXE, guardian.getRequiredWeapon());
+	}
+
+	@Test
+	public void onlyGuardiansRestrictTheWeapon()
+	{
+		for (CoxRoom room : CoxRoom.values())
+		{
+			for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(room))
+			{
+				GearNeed required = encounter.getProfile().getRequiredWeapon();
+				if (room == CoxRoom.GUARDIANS)
+				{
+					assertEquals(GearNeed.PICKAXE, required);
+				}
+				else
+				{
+					assertEquals(room + " should not restrict the weapon", null, required);
+				}
+			}
+		}
+	}
+
+	@Test
+	public void aRestrictedWeaponClassIsAKnownUtility()
+	{
+		GearNeed required = profile(CoxRoom.GUARDIANS, 0).getRequiredWeapon();
+		assertFalse("the restriction must resolve to real items",
+			GearDatabase.utility(required).isEmpty());
+		assertFalse("a pickaxe is not a combat style", required.isCombatStyle());
 	}
 
 	@Test
