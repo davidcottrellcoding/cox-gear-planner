@@ -1,112 +1,55 @@
-# CoX Gear Planner (RuneLite plugin)
+# CoX Gear Planner
 
-Suggests a Chambers of Xeric gear setup from the gear you actually own — personal
-bank, inventory, worn equipment, **and Group Ironman shared storage** — based on
-the rooms in your raid layout.
+A RuneLite plugin that plans a **Chambers of Xeric** loadout from the gear you
+actually own — personal bank, inventory, worn equipment and **Group Ironman
+shared storage** — using real OSRS DPS maths for the rooms in your raid.
 
-## How it works
+![Raid loadout](totalgear.png)
 
-1. **Sync your items.** The plugin passively records what it sees. Open your bank
-   once and (for GIM) your group storage once; inventory and equipment are always
-   tracked. Bank/group contents are remembered between sessions (toggleable).
-2. **Pick your layout.** Open the "CoX Gear Planner" side panel and tick the rooms
-   in your raid (Great Olm is pre-ticked since every raid ends there). You can also
-   press **Import layout from clipboard** — copy any scout text that names the
-   rooms (scouting Discord posts, etc.) and it ticks the matching boxes.
-3. **Suggest gear setup.** The planner works out which combat styles and utility
-   items the layout demands, then picks the best item you own for every slot,
-   and estimates expected kill time per room using real DPS math:
-   - Melee for Tekton / Guardians / Vanguards, ranged for Vespula / Shamans /
-     Muttadiles / Vasa / Mystics / Olm, magic for Ice Demon / Vanguards / Olm.
-   - Utilities: pickaxe (Guardians), axe + fire-spell staff (Ice Demon), lockpick
-     (Thieving), Dragon warhammer / Elder maul / BGS (Tekton and Olm).
-   - Two-handed picks (scythe, bows, Shadow) suppress the shield slot.
-   Each line is colour-coded by where the item is: **on you**, **bank**,
-   **group storage** (blue), or **missing** (red, with the best item to chase).
+## What it does
 
-## Room time estimates (v1.1)
+- **Tick your rooms** (or import scout text from the clipboard) and get one
+  concrete layout: the 11 slots you wear and the items that go in your 28
+  inventory slots, with the free slots left for brews and restores.
+- **Every item you own is considered.** Armour is chosen by scanning your
+  storage and reading each item's real stats from the client, not by matching
+  a hand-written list — so new gear works without a plugin update. Uncharged,
+  inactive and broken items count as owned and are flagged **CHARGE IT FIRST**.
+- **Real per-room DPS**, using your live boosted stats: twisted bow scaling,
+  dragonbane, demonbane, salve, crystal armour, void, Inquisitor's, powered
+  staff speeds and more — see the effects tables below.
+- **Switch advice**: each armour swap is priced in seconds saved across the
+  rooms that use it, with a **minimum switch value** threshold and an optional
+  **max items per switch** cap so you can force clean 4-way swaps.
+- **Room mechanics, not just numbers**: melee can't reach the tightrope
+  platforms, the Guardians take pickaxes only, Skeletal Mystics are
+  safespotted, and the Great Olm is modelled as its three separate targets.
+- **Debug panel** explaining every choice — which weapons were found and
+  where, the full DPS ranking per room, and what each switch was worth.
 
-Below the loadout, the panel shows **estimated room times**: for every selected
-combat room, each weapon you own is evaluated with the standard OSRS DPS
-formulas (accuracy roll vs the monster's per-style defence, max hit from your
-strength/ranged/magic bonuses, attack speed) and the fastest weapon per room is
-reported with an expected kill time, plus a total.
+## Building and running
 
-- **Your live stats are used.** Boosted levels are read from the client when
-  you're logged in; otherwise maxed stats are assumed. An overload (+) boost
-  and Piety/Rigour/Augury are assumed by default (both toggleable in config).
-- **Item stats come from the client's own database** (`ItemManager.getItemStats`),
-  so armour/weapon bonuses are always current — no hardcoded stat tables.
-- **Special weapon behaviour is modelled**: twisted bow scaling from the
-  target's magic level (with the CoX 350 cap — it correctly dominates at Olm
-  and Vasa), dragon hunter crossbow's dragonbane bonus vs Olm, scythe's
-  triple hit on large monsters, fang's double accuracy roll, powered-staff
-  built-in spells (Shadow's bonus tripling, sang/tridents, harmonised).
-- **Party scaling**: monster HP scales with the configured party size.
-- Monster stats per room live in `RoomMonsters.java` as editable data — some
-  values are approximate; expect times to be indicative, not exact. Expected
-  TTK ignores movement, mechanics, phases and spec weapons (DWH/BGS specs are
-  listed as utility items but not simulated), so treat it as a ranking tool:
-  which of *your* weapons is fastest where, and roughly how long rooms take.
+Requires only a JDK (11+):
 
-Item preference order per slot lives in `GearDatabase.java` as a plain
-best-first list of `(name, item ids)` — edit it to taste. A few niche item ids
-(ornament variants, newer rings) are worth spot-checking against the wiki if a
-suggestion looks off; each is a one-line fix in that file.
+```
+./gradlew runClient        # launches a dev client with the plugin loaded
+./gradlew build            # jar in build/libs, runs the test suite
+```
 
-## Switch advice (v1.2)
+## Accuracy
 
-When a layout needs more than one combat style, the panel prices every armour
-switch: the style with the most estimated combat time becomes your **base
-outfit**, and for each other style's armour piece the planner computes how many
-seconds carrying it actually saves across the rooms where that style is used —
-versus just leaving the base outfit's piece on. Switches saving less than the
-**Minimum switch value** config setting (default 3 seconds, 0 to show
-everything as worth carrying) are flagged **Skip**, with what to wear instead
-and a summary of how many inventory slots you free for how little time lost.
-Items shared between styles (e.g. barrows gloves in two loadouts) are shown as
-"already worn". Weapons are never flagged — the weapon is the style switch.
+Monster stats, scaling and item effects are sourced from the OSRS Wiki and
+pinned by tests. Where the wiki is silent or self-contradictory the code says
+so in a comment and the README records the caveat. Gear *ranking* is far more
+trustworthy than absolute room times — errors in monster HP cancel out when
+comparing two of your weapons against the same target.
 
-## Full raid loadout (v1.3)
+---
 
-The top of the results is now a single concrete layout for the whole run:
+# Development history
 
-- **Wear** — the full kit for your primary style (the one with the most
-  estimated combat time), including weapon and ammo.
-- **Inventory** — only what actually earns its slot: the other styles'
-  weapons (plus their ammo), armour switches that pass the minimum-switch-value
-  threshold, and the utility items your rooms demand — deduped, colour-coded
-  by where each item currently is, with a count of how many of the 28 slots
-  remain free for brews/restores/food.
-
-The per-style sections below it are reference (what each style would ideally
-wear), not a packing list. v1.3 also refreshes the item database with
-2023–2025 gear: Amulet of rancour, Oathplate helm/chest/legs (incl. radiant),
-Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
-Noxious halberd and Amulet of blood fury.
-
-## Force 4-tick weapons at Olm (v1.17)
-
-Olm is much easier to learn when melee and magic share one attack rhythm —
-mixing a 5-tick scythe or Tumeken's shadow with a 4-tick swap means counting
-two different cadences while also tracking phases. The **Force 4-tick weapons
-at Olm** setting restricts Olm's melee and magic weapons to 4-tick options.
-
-- Applies to **melee and magic only**. Ranged is on its own rhythm regardless,
-  and the twisted bow is too dominant at the head to trade away.
-- Typically keeps a rapier, blade of saeldor, dragon hunter lance or whip for
-  melee, and a sanguinesti staff or trident for magic — while excluding the
-  scythe and fang (5 ticks), the shadow (5) and eye of ayak (3).
-- **Falls back** to your fastest option if you own no 4-tick weapon for a
-  style, so you always get a usable plan.
-- Affected Olm lines are tagged **[4-tick]**.
-- Off by default; this trades some DPS for consistency, which is the right
-  trade while learning and the wrong one once you aren't.
-
-Powered staves carry their own cast speeds that can't be read from an item's
-attack speed, so the filter and the damage maths share one
-`magicSpeedTicks()` helper and are covered by tests that pin every staff's
-speed — they cannot drift apart.
+The sections below record what changed and why, including the bugs found and
+the wiki research behind each correction.
 
 ## Ice Demon corrected (v1.18)
 
