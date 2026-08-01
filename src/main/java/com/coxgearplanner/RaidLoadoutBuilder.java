@@ -360,7 +360,7 @@ public final class RaidLoadoutBuilder
 		if (style != primary)
 		{
 			Map<GearSlot, SetupBuilder.Pick> stylePicks =
-				picksFor(resolver, style, items, includeGroupStorage);
+				ownPicksFor(resolver, style, items, includeGroupStorage);
 			for (SwitchAdvisor.Advice a : advice)
 			{
 				if (a.getStyle() == style && a.isWorthIt() && !a.isAlreadyShared())

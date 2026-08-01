@@ -118,6 +118,21 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
+## The base outfit is not necessarily the base style's gear
+
+Before v1.31 the worn set was, by definition, whatever the base style would
+choose for itself. v1.31 allowed a slot to be traded to another style's item
+to remove a switch, which broke that assumption in five separate places that
+had quietly relied on it — the item list, the switch advice, the colouring,
+the inventory, and the per-style view. Each showed up as a different symptom.
+
+The rule now is explicit: **`resolve()` returns what is worn, `ownPicks()`
+returns what the style would pick for itself.** Anything describing the
+loadout wants the first; anything describing a switch wants the second. A
+plan-level test asserts the inventory packs exactly what the switch decisions
+say to carry, since every failure of this kind looked the same from the
+outside — advice promising an item the inventory never listed.
+
 ## What the swap budget counts
 
 **Total swap items** counts the gear switches competing for inventory space:
@@ -372,6 +387,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.33 | Swept every consumer of the base outfit after the v1.31 trade broke the assumption that it is the base style's own gear |
 | 1.32.2 | Switches the advice said to carry were missing from the inventory; base-outfit trades that only moved a switch instead of removing it are now rejected |
 | 1.32.1 | Worn items were all coloured as the base style, so a traded-in melee helm showed as magic |
 | 1.32 | The base style can now switch back into its own gear, after a slot was traded away from it |

@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.32.2";
+	static final String VERSION = "1.33.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -308,8 +308,6 @@ public class CoxGearPlannerPlugin extends Plugin
 			// for it cannot disagree.
 			estimator.getResolver().setDpsContext(estimator, player, rooms,
 				config.assumeElitePrayers());
-			List<SetupBuilder.Section> sections = SetupBuilder.build(
-				rooms, snapshot, includeGroup, estimator.getResolver());
 			List<RoomTimeEstimator.RoomTime> times = estimator.estimate(
 				rooms, snapshot, includeGroup, player,
 				config.partySize(), config.assumeElitePrayers(), explanation);
@@ -327,6 +325,11 @@ public class CoxGearPlannerPlugin extends Plugin
 			// were actually computed against.
 			estimator.getResolver().pinResolved(primary, switches.getBasePicks(),
 				snapshot, includeGroup);
+			// Built after the pin: this view resolves each style independently,
+			// so before the base outfit was settled it showed the base style
+			// wearing gear the plan had already traded away.
+			List<SetupBuilder.Section> sections = SetupBuilder.build(
+				rooms, snapshot, includeGroup, estimator.getResolver());
 			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
 				rooms, times, advice, primary, snapshot, includeGroup,
 				estimator.getResolver(), getNeedsCharging());

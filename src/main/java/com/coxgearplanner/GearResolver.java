@@ -476,6 +476,19 @@ public class GearResolver
 				? "only option you own"
 				: String.format("beat %s", runnerUp.getOption().getName());
 
+			SetupBuilder.Pick own = ownPicks(style, items, includeGroupStorage).get(slot);
+			if (own != null && own.getItemId() != pick.getItemId())
+			{
+				// This slot was traded to another style to remove a switch, so
+				// it did not win anything here. Saying it beat the runner-up
+				// would be describing a comparison that never decided it.
+				explanation.addGearChoice(style.getDisplayName() + " " + slot.getDisplayName()
+					+ ": " + pick.getOption().getName()
+					+ " — traded in for another style; " + own.getOption().getName()
+					+ " is what this style would wear on its own");
+				continue;
+			}
+
 			String worth = worthOf(style, slot, pick, chosen, runnerUp, items, includeGroupStorage);
 			if (worth != null)
 			{
