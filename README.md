@@ -424,6 +424,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.38.1 | Already-worn slots name the item they are measured against, instead of just "next best" |
 | 1.38 | Confliction gauntlets' second accuracy roll is modelled; their value was previously only their raw stats |
 | 1.37 | Already-worn slots are priced against the next best item you own, not against an empty slot, which produced runaway figures like 3286s |
 | 1.36.1 | Crash: an empty ammo slot hit a curated list that names no ammunition for melee or magic |

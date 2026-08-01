@@ -29,7 +29,10 @@ public class SwitchAdvisor
 		private final GearNeed style;
 		private final GearSlot slot;
 		private final String itemName;
-		private final String wearInstead; // primary item kept on, or null for bare slot
+		// For a switch: the base item you would keep on instead. For an
+		// already-worn slot: the next best thing you own for it, which is what
+		// its value is measured against.
+		private String wearInstead;
 		private double secondsSaved;
 		private final boolean worthIt;
 		private final boolean alreadyShared;
@@ -343,7 +346,7 @@ public class SwitchAdvisor
 			{
 				continue;
 			}
-			advice.secondsSaved = Math.max(0, worstCaseWithout(advice.getSlot(), style,
+			advice.secondsSaved = Math.max(0, worstCaseWithout(advice, style,
 				styleTimes, picks, notCarried, items, includeGroupStorage, player,
 				elitePrayers) - baseline);
 		}
@@ -366,7 +369,7 @@ public class SwitchAdvisor
 	 * same way.
 	 */
 	private double worstCaseWithout(
-		GearSlot slot,
+		Advice advice,
 		GearNeed style,
 		List<RoomTimeEstimator.RoomTime> styleTimes,
 		Map<GearSlot, SetupBuilder.Pick> picks,
@@ -376,8 +379,10 @@ public class SwitchAdvisor
 		PlayerSnapshot player,
 		boolean elitePrayers)
 	{
+		GearSlot slot = advice.getSlot();
 		SetupBuilder.Pick worn = picks.get(slot);
 		double best = Double.MAX_VALUE;
+		SetupBuilder.Pick runnerUp = null;
 
 		List<SetupBuilder.Pick> owned = estimator.getResolver()
 			.scan(items, includeGroupStorage)
@@ -395,11 +400,13 @@ public class SwitchAdvisor
 			if (seconds > 0 && seconds < best)
 			{
 				best = seconds;
+				runnerUp = candidate;
 			}
 		}
 
 		if (best < Double.MAX_VALUE)
 		{
+			advice.wearInstead = runnerUp.getOption().getName();
 			return best;
 		}
 

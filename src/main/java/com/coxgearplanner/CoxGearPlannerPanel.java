@@ -676,7 +676,9 @@ public class CoxGearPlannerPanel extends PluginPanel
 				// doing a great deal.
 				label = new JLabel("<html>" + advice.getSlot().getDisplayName() + ": "
 					+ advice.getItemName() + " — already worn, worth "
-					+ formatSaved(advice.getSecondsSaved()) + " vs next best</html>");
+					+ formatSaved(advice.getSecondsSaved()) + " vs "
+					+ (advice.getWearInstead() == null
+						? "an empty slot" : escape(advice.getWearInstead())) + "</html>");
 				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			}
 			else if (advice.isWorthIt())
