@@ -35,6 +35,7 @@ public final class GearDatabase
 			ItemOption.twoHanded("Noxious halberd", 29796),
 			ItemOption.of("Ghrazi rapier", 22324),
 			ItemOption.of("Blade of saeldor (c)", 23995, 24551),
+			ItemOption.of("Dragon hunter lance", 22978), // 20% vs draconic (Olm)
 			ItemOption.of("Inquisitor's mace", 24417),
 			ItemOption.of("Zombie axe", 28810),
 			ItemOption.of("Abyssal tentacle", 12006),
@@ -191,12 +192,15 @@ public final class GearDatabase
 		Map<GearSlot, List<ItemOption>> magic = new LinkedHashMap<>();
 		magic.put(GearSlot.WEAPON, Arrays.asList(
 			ItemOption.twoHanded("Tumeken's shadow", 27275),
+			ItemOption.of("Eye of ayak", 31113), // 3-tick, fastest magic weapon
 			ItemOption.of("Sanguinesti staff", 22323, 25731), // + holy
 			ItemOption.twoHanded("Harmonised nightmare staff", 24423),
+			ItemOption.of("Tumeken's heka", 25987),
 			ItemOption.of("Kodai wand", 21006),
 			ItemOption.of("Trident of the swamp", 12899),
 			ItemOption.of("Trident of the seas", 11905)));
 		magic.put(GearSlot.SHIELD, Arrays.asList(
+			ItemOption.of("Tome of fire", 20714), // +10% to standard fire spells
 			ItemOption.of("Elidinis' ward (f)", 27251, 27253), // + ornament
 			ItemOption.of("Arcane spirit shield", 12825),
 			ItemOption.of("Elidinis' ward", 25985),

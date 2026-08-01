@@ -25,6 +25,10 @@ public class EquipmentTotals
 	// non-imbued versions only boost melee, so the two are tracked apart.
 	double salveMeleeMult = 1.0;
 	double salveRangedMagicMult = 1.0;
+	// Inquisitor's armour: crush accuracy and damage only, summed per piece
+	double inquisitorCrush;
+	// Tome of fire: standard-spellbook fire spells only, not powered staves
+	double fireSpellMult = 1.0;
 
 	void add(ItemStats stats)
 	{
@@ -63,6 +67,8 @@ public class EquipmentTotals
 		c.crystalDmg = crystalDmg;
 		c.salveMeleeMult = salveMeleeMult;
 		c.salveRangedMagicMult = salveRangedMagicMult;
+		c.inquisitorCrush = inquisitorCrush;
+		c.fireSpellMult = fireSpellMult;
 		return c;
 	}
 }

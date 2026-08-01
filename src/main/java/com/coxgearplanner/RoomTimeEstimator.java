@@ -31,6 +31,13 @@ public class RoomTimeEstimator
 	private static final int SHADOW = 27275;
 	private static final Set<Integer> SANG = new HashSet<>(Arrays.asList(22323, 25731));
 	private static final int TRIDENT_SWAMP = 12899;
+	static final int EYE_OF_AYAK = 31113;
+	/** 20% accuracy and damage vs draconic targets — including the Great Olm. */
+	static final int DRAGON_HUNTER_LANCE = 22978;
+	static final int INQUISITOR_HELM = 24419;
+	static final int INQUISITOR_HAUBERK = 24420;
+	static final int INQUISITOR_SKIRT = 24421;
+	static final int TOME_OF_FIRE = 20714;
 	private static final int TRIDENT_SEAS = 11905;
 	private static final int HARMONISED = 24423;
 
@@ -372,6 +379,7 @@ public class RoomTimeEstimator
 				totals.add(itemManager.getItemStats(pick.getItemId()));
 				addCrystalSetBonus(totals, pick.getItemId());
 				addSalveBonus(totals, pick.getItemId());
+				addPieceEffects(totals, pick.getItemId());
 			}
 		}
 
@@ -461,6 +469,33 @@ public class RoomTimeEstimator
 			}
 		}
 		return candidates;
+	}
+
+	/**
+	 * Per-piece effects that aren't expressed in an item's equipment stats.
+	 *
+	 * Inquisitor's boosts crush accuracy and damage only: great helm 0.5%,
+	 * hauberk 1%, plateskirt 1% (2.5% for the full set). The tome of fire adds
+	 * 10% damage to standard-spellbook fire spells against NPCs — the 50%
+	 * figure quoted for the tome is player-versus-player only.
+	 */
+	static void addPieceEffects(EquipmentTotals totals, int itemId)
+	{
+		switch (itemId)
+		{
+			case INQUISITOR_HELM:
+				totals.inquisitorCrush += 0.005;
+				break;
+			case INQUISITOR_HAUBERK:
+			case INQUISITOR_SKIRT:
+				totals.inquisitorCrush += 0.01;
+				break;
+			case TOME_OF_FIRE:
+				totals.fireSpellMult = 1.10;
+				break;
+			default:
+				break;
+		}
 	}
 
 	/** Crystal armour boosts the crystal bow / bofa: helm 5%/2.5%, body 15%/7.5%, legs 10%/5%. */
@@ -599,20 +634,28 @@ public class RoomTimeEstimator
 
 		// Salve amulet multiplies both accuracy and damage against undead
 		double salve = m.isUndead() ? eq.salveMeleeMult : 1.0;
-		maxHit = (int) Math.floor(maxHit * salve);
+		// Dragon hunter lance: 20% accuracy and damage vs draconic targets
+		double bane = weaponId == DRAGON_HUNTER_LANCE && m.isDraconic() ? 1.20 : 1.0;
+		maxHit = (int) Math.floor(maxHit * salve * bane);
 
 		double best = 0;
-		for (int[] s : styles)
+		for (int i = 0; i < styles.length; i++)
 		{
+			int[] s = styles[i];
+			// Inquisitor's pieces boost the crush style only
+			boolean crush = i == 2;
+			double inq = crush ? 1 + eq.inquisitorCrush : 1.0;
+			int styleMax = (int) Math.floor(maxHit * inq);
+
 			double acc = CombatFormulas.accuracy(
-				CombatFormulas.attackRoll(effAtk, s[0]) * salve,
+				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
 			if (weaponId == FANG)
 			{
 				// Fang rolls accuracy twice
 				acc = 1 - (1 - acc) * (1 - acc);
 			}
-			double avgMax = maxHit;
+			double avgMax = styleMax;
 			if (SCYTHES.contains(weaponId) && m.isLarge())
 			{
 				// Scythe hits 100% + 50% + 25% on large targets
@@ -669,6 +712,7 @@ public class RoomTimeEstimator
 		int magic = p.getMagic();
 		int baseHit;
 		int speed;
+		boolean castsFireSpell = false;
 		double magicAtkBonus = eq.magicAtk;
 		double dmgPercent = eq.magicDmgPercent;
 
@@ -679,6 +723,14 @@ public class RoomTimeEstimator
 			// Shadow triples the equipment's magic accuracy and damage bonuses
 			magicAtkBonus *= 3;
 			dmgPercent = Math.min(dmgPercent * 3, 100);
+		}
+		else if (weaponId == EYE_OF_AYAK)
+		{
+			// The fastest magic weapon in the game at 3 ticks, which more than
+			// offsets its lower base hit — without this it fell through to the
+			// generic 24-at-speed-5 branch and lost to a plain trident.
+			baseHit = magic / 3 - 6;
+			speed = 3;
 		}
 		else if (SANG.contains(weaponId))
 		{
@@ -699,14 +751,22 @@ public class RoomTimeEstimator
 		{
 			baseHit = 24; // Fire Surge, no cast delay
 			speed = 4;
+			castsFireSpell = true;
 		}
 		else
 		{
 			baseHit = 24; // Fire Surge on an ordinary staff
 			speed = 5;
+			castsFireSpell = true;
 		}
 
 		int maxHit = (int) (baseHit * (1 + dmgPercent / 100.0));
+		// The tome of fire boosts standard-spellbook fire spells, not the
+		// built-in spells of powered staves
+		if (castsFireSpell)
+		{
+			maxHit = (int) Math.floor(maxHit * eq.fireSpellMult);
+		}
 		// Augury boosts accuracy only
 		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 9;
 		double atkRoll = effMagic * (magicAtkBonus + 64);
