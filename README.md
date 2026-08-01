@@ -85,6 +85,36 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Uncharged and broken items count as owned (v1.9)
+
+An uncharged scythe is still a scythe — you just charge it before the raid.
+Previously the stats-based picker scored the uncharged item on its
+(near-worthless) uncharged bonuses and discarded it, so a bank full of
+uncharged gear looked like a bank full of nothing.
+
+Container snapshots now collapse uncharged / inactive / broken / empty /
+degraded forms onto the charged item, right after the noted-and-placeholder
+canonicalisation. The table is **generated** from runelite-api's gameval
+`ItemID` constants — every name ending in `_UNCHARGED`, `_INACTIVE`,
+`_BROKEN`, `_EMPTY` or `_DEGRADED` matched to its base (or `_CHARGED` /
+`_LOADED` / `_FULL`) counterpart — 264 mappings, plus a handful of hand-added
+ones whose names don't follow the pattern (toxic blowpipe empty→loaded, the
+pre-rework crystal bow and halberd, Dizana's quiver broken variants).
+
+Covered among others: **toxic blowpipe, Tumeken's shadow, eye of ayak, bow of
+faerdhinen, blade of saeldor**, sanguinesti staff, scythe of vitur, both
+tridents, venator bow, tonalztics, all crystal armour and tools (inactive),
+every barrows piece (broken), void, infernal cape, Ava's assembler, avernic
+defender and the dragonfire shield/ward.
+
+Items you own *only* in uncharged form are flagged **"CHARGE IT FIRST"** in
+the inventory list, so you find out at the bank rather than inside the raid.
+Chains are resolved transitively with a hop limit.
+
+This also caught three wrong ids in the curated list: Blade of saeldor was
+pointing at a *dummy* item (24553), and the dragonfire shield and ward were
+both pointing at their **uncharged** ids.
+
 ## The Great Olm is three targets, not one (v1.8)
 
 Olm was previously modelled as a single 1020 HP blob with one style — which

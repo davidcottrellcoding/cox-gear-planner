@@ -34,7 +34,7 @@ public final class GearDatabase
 			ItemOption.twoHanded("Soulreaper axe", 28338, 33335), // + ornament
 			ItemOption.twoHanded("Noxious halberd", 29796),
 			ItemOption.of("Ghrazi rapier", 22324),
-			ItemOption.of("Blade of saeldor (c)", 24553),
+			ItemOption.of("Blade of saeldor (c)", 23995, 24551),
 			ItemOption.of("Inquisitor's mace", 24417),
 			ItemOption.of("Zombie axe", 28810),
 			ItemOption.of("Abyssal tentacle", 12006),
@@ -45,7 +45,7 @@ public final class GearDatabase
 		melee.put(GearSlot.SHIELD, Arrays.asList(
 			ItemOption.of("Avernic defender", 22322, 24186), // + trouver
 			ItemOption.of("Dragon defender", 12954, 19722), // + t
-			ItemOption.of("Dragonfire shield", 11284),
+			ItemOption.of("Dragonfire shield", 11283),
 			ItemOption.of("Toktz-ket-xil", 6524),
 			ItemOption.of("Rune defender", 8850)));
 		melee.put(GearSlot.HEAD, Arrays.asList(
@@ -119,7 +119,7 @@ public final class GearDatabase
 			ItemOption.twoHanded("Magic shortbow (i)", 12788)));
 		ranged.put(GearSlot.SHIELD, Arrays.asList(
 			ItemOption.of("Twisted buckler", 21000),
-			ItemOption.of("Dragonfire ward", 22003),
+			ItemOption.of("Dragonfire ward", 22002),
 			ItemOption.of("Odium ward", 11926, 12807),
 			ItemOption.of("Book of law", 12610),
 			ItemOption.of("Unholy book", 3842)));

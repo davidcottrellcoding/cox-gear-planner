@@ -120,6 +120,24 @@ public final class RaidLoadoutBuilder
 		boolean includeGroupStorage,
 		GearResolver resolver)
 	{
+		return build(rooms, times, advice, primary, items, includeGroupStorage,
+			resolver, java.util.Collections.emptySet());
+	}
+
+	/**
+	 * @param needsCharging item ids owned only in uncharged form — flagged so
+	 * you charge them before the raid rather than discovering it inside.
+	 */
+	public static RaidLoadout build(
+		Set<CoxRoom> rooms,
+		List<RoomTimeEstimator.RoomTime> times,
+		List<SwitchAdvisor.Advice> advice,
+		GearNeed primary,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		GearResolver resolver,
+		Set<Integer> needsCharging)
+	{
 		if (primary == null)
 		{
 			return null;
@@ -147,12 +165,12 @@ public final class RaidLoadoutBuilder
 		Set<Integer> worn = wornIds(primaryWeapon, primaryPicks);
 
 		// 1. Extra weapons: other rooms' winners, primary style first
-		addWeapons(inventory, worn, primary, byStyle.get(primary), primaryWeapon, items, includeGroupStorage);
+		addWeapons(inventory, worn, primary, byStyle.get(primary), primaryWeapon, items, includeGroupStorage, needsCharging);
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
 			if (entry.getKey() != primary)
 			{
-				addWeapons(inventory, worn, entry.getKey(), entry.getValue(), null, items, includeGroupStorage);
+				addWeapons(inventory, worn, entry.getKey(), entry.getValue(), null, items, includeGroupStorage, needsCharging);
 			}
 		}
 
@@ -166,7 +184,7 @@ public final class RaidLoadoutBuilder
 			}
 			inventory.putIfAbsent(extra.getItemId(), new Entry(
 				extra.getOption().getName(), extra.getSource(),
-				"for " + time.getDisplayName(), false));
+				charge(needsCharging, extra.getItemId(), "for " + time.getDisplayName()), false));
 		}
 
 		// 3. Only the worth-it armour switches
@@ -184,8 +202,9 @@ public final class RaidLoadoutBuilder
 			}
 			inventory.putIfAbsent(pick.getItemId(), new Entry(
 				pick.getOption().getName(), pick.getSource(),
-				a.getStyle().getDisplayName().toLowerCase() + " "
-					+ a.getSlot().getDisplayName().toLowerCase() + " switch",
+				charge(needsCharging, pick.getItemId(),
+					a.getStyle().getDisplayName().toLowerCase() + " "
+						+ a.getSlot().getDisplayName().toLowerCase() + " switch"),
 				false));
 		}
 
@@ -224,6 +243,12 @@ public final class RaidLoadoutBuilder
 		}
 
 		return new RaidLoadout(primary, equipped, new ArrayList<>(inventory.values()));
+	}
+
+	/** Appends a charge warning to a note when the item is owned uncharged. */
+	private static String charge(Set<Integer> needsCharging, int itemId, String note)
+	{
+		return needsCharging.contains(itemId) ? note + " — CHARGE IT FIRST" : note;
 	}
 
 	/** Stats-scanned picks when a resolver is available, curated list otherwise. */
@@ -345,7 +370,8 @@ public final class RaidLoadoutBuilder
 		List<RoomTimeEstimator.RoomTime> styleTimes,
 		SetupBuilder.Pick alreadyEquipped,
 		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage)
+		boolean includeGroupStorage,
+		Set<Integer> needsCharging)
 	{
 		if (styleTimes == null)
 		{
@@ -361,7 +387,8 @@ public final class RaidLoadoutBuilder
 			}
 			inventory.putIfAbsent(weapon.getItemId(), new Entry(
 				weapon.getOption().getName(), weapon.getSource(),
-				style.getDisplayName().toLowerCase() + " weapon", false));
+				charge(needsCharging, weapon.getItemId(),
+					style.getDisplayName().toLowerCase() + " weapon"), false));
 
 			if (style == GearNeed.RANGED && RoomTimeEstimator.needsAmmo(weapon.getItemId()))
 			{

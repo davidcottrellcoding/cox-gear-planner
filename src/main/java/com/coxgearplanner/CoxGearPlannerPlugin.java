@@ -12,6 +12,7 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.8.1";
+	static final String VERSION = "1.9.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -87,6 +88,8 @@ public class CoxGearPlannerPlugin extends Plugin
 	private Gson gson;
 
 	private final Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
+	/** Charged ids that were only seen in uncharged form, per source. */
+	private final Map<ItemSource, Set<Integer>> needsCharging = new EnumMap<>(ItemSource.class);
 
 	private CoxGearPlannerPanel panel;
 	private NavigationButton navButton;
@@ -152,7 +155,8 @@ public class CoxGearPlannerPlugin extends Plugin
 				return;
 		}
 
-		Map<Integer, Integer> snapshot = snapshot(event.getItemContainer());
+		Set<Integer> uncharged = new HashSet<>();
+		Map<Integer, Integer> snapshot = snapshot(event.getItemContainer(), uncharged);
 
 		// The bank and shared-storage containers briefly report empty while
 		// their interface is opening or closing. Those transients would wipe a
@@ -168,6 +172,7 @@ public class CoxGearPlannerPlugin extends Plugin
 		}
 
 		items.put(source, snapshot);
+		needsCharging.put(source, uncharged);
 
 		if (config.rememberBank())
 		{
@@ -187,7 +192,7 @@ public class CoxGearPlannerPlugin extends Plugin
 		}
 	}
 
-	private Map<Integer, Integer> snapshot(ItemContainer container)
+	private Map<Integer, Integer> snapshot(ItemContainer container, Set<Integer> needsCharging)
 	{
 		Map<Integer, Integer> result = new HashMap<>();
 		if (container == null)
@@ -203,7 +208,14 @@ public class CoxGearPlannerPlugin extends Plugin
 			}
 			// Collapse noted items and placeholders onto the base item id
 			int canonical = itemManager.canonicalize(item.getId());
-			result.merge(canonical, item.getQuantity(), Integer::sum);
+			// ...then collapse uncharged/inactive forms onto the charged item,
+			// so an uncharged scythe counts as owning a scythe.
+			int charged = ChargedVariants.canonical(canonical);
+			if (charged != canonical)
+			{
+				needsCharging.add(charged);
+			}
+			result.merge(charged, item.getQuantity(), Integer::sum);
 		}
 		return result;
 	}
@@ -225,6 +237,36 @@ public class CoxGearPlannerPlugin extends Plugin
 	public CoxGearPlannerConfig getConfig()
 	{
 		return config;
+	}
+
+	/**
+	 * Items you own only in uncharged form — they count as owned for planning,
+	 * but have to be charged before the raid.
+	 */
+	public Set<Integer> getNeedsCharging()
+	{
+		Set<Integer> union = new HashSet<>();
+		for (Map.Entry<ItemSource, Set<Integer>> entry : needsCharging.entrySet())
+		{
+			union.addAll(entry.getValue());
+		}
+		// A charged copy anywhere means there is nothing to charge
+		for (Map.Entry<ItemSource, Set<Integer>> entry : needsCharging.entrySet())
+		{
+			Map<Integer, Integer> pool = items.get(entry.getKey());
+			if (pool == null)
+			{
+				continue;
+			}
+			for (Integer id : pool.keySet())
+			{
+				if (!entry.getValue().contains(id))
+				{
+					union.remove(id);
+				}
+			}
+		}
+		return union;
 	}
 
 	/** Sources whose contents are remembered between sessions. */
@@ -272,7 +314,8 @@ public class CoxGearPlannerPlugin extends Plugin
 
 			GearNeed primary = primaryStyle(times);
 			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
-				rooms, times, advice, primary, snapshot, includeGroup, estimator.getResolver());
+				rooms, times, advice, primary, snapshot, includeGroup,
+				estimator.getResolver(), getNeedsCharging());
 
 			if (explanation != null)
 			{
