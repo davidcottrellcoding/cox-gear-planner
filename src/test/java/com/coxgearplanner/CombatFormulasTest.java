@@ -3,6 +3,7 @@ package com.coxgearplanner;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -56,6 +57,7 @@ public class CombatFormulasTest
 			if (needsCombat)
 			{
 				assertNotNull("missing monster data for " + room, RoomMonsters.get(room));
+				assertFalse("no encounters for " + room, RoomMonsters.getAll(room).isEmpty());
 			}
 		}
 	}

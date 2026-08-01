@@ -175,7 +175,6 @@ public class SwitchAdvisor
 	{
 		Map<GearSlot, SetupBuilder.Pick> picks =
 			estimator.getResolver().resolve(style, items, includeGroupStorage);
-		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
 
 		List<Advice> advices = new ArrayList<>();
 		// Slots still wearing the base outfit's item; removing an entry from
@@ -199,7 +198,7 @@ public class SwitchAdvisor
 		}
 
 		double currentSeconds = totalSeconds(style, styleTimes, picks, notCarried,
-			items, includeGroupStorage, player, hpMult, elitePrayers);
+			items, includeGroupStorage, player, elitePrayers);
 
 		while (!notCarried.isEmpty())
 		{
@@ -211,7 +210,7 @@ public class SwitchAdvisor
 				Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(notCarried);
 				trial.remove(slot); // wear this style's item in that slot
 				double seconds = totalSeconds(style, styleTimes, picks, trial,
-					items, includeGroupStorage, player, hpMult, elitePrayers);
+					items, includeGroupStorage, player, elitePrayers);
 				double gain = currentSeconds - seconds;
 				if (gain > bestGain)
 				{
@@ -246,7 +245,7 @@ public class SwitchAdvisor
 			Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(notCarried);
 			trial.remove(slot);
 			double gain = currentSeconds - totalSeconds(style, styleTimes, picks, trial,
-				items, includeGroupStorage, player, hpMult, elitePrayers);
+				items, includeGroupStorage, player, elitePrayers);
 
 			SetupBuilder.Pick instead = left.getValue();
 			advices.add(new Advice(style, slot, picks.get(slot).getOption().getName(),
@@ -273,25 +272,24 @@ public class SwitchAdvisor
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage,
 		PlayerSnapshot player,
-		double hpMult,
 		boolean elitePrayers)
 	{
 		double total = 0;
 		for (RoomTimeEstimator.RoomTime rt : styleTimes)
 		{
-			RoomMonsters.Encounter encounter = RoomMonsters.get(rt.getRoom());
-			if (encounter == null)
+			// Each entry carries its own target and party-scaled HP — Olm's
+			// three parts are separate entries with different monsters.
+			MonsterProfile monster = rt.getMonster();
+			if (monster == null)
 			{
 				continue;
 			}
-			MonsterProfile monster = encounter.getProfile();
-			double totalHp = monster.getHp() * hpMult * encounter.getCount();
 
 			double dps = estimator.loadoutDps(style, rt.getWeapon(), picks, notCarried,
 				items, includeGroupStorage, player, monster, elitePrayers);
 			if (dps > 0)
 			{
-				total += totalHp / dps;
+				total += rt.getTotalHp() / dps;
 			}
 		}
 		return total;

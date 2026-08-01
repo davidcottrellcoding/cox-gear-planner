@@ -34,8 +34,10 @@ public enum CoxRoom
 	TIGHTROPE("Tightrope", false, new String[]{"tightrope", "rope"},
 		GearNeed.RANGED),
 	CRABS("Crabs", false, new String[]{"crab"}),
+	// Olm's three targets each favour a different style: melee on the left
+	// claw, magic on the right claw, ranged on the head.
 	OLM("Great Olm", true, new String[]{"olm"},
-		GearNeed.RANGED, GearNeed.MAGIC, GearNeed.DEF_REDUCTION);
+		GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC, GearNeed.DEF_REDUCTION);
 
 	private final String displayName;
 	private final boolean boss;

@@ -85,6 +85,42 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## The Great Olm is three targets, not one (v1.8)
+
+Olm was previously modelled as a single 1020 HP blob with one style — which
+is why it never asked you to bring a full melee kit. It is now three separate
+targets with deliberately opposite defensive profiles (wiki values):
+
+| Part | HP | Def | Magic | Stab/Slash/Crush | Magic def | Ranged def | Best style |
+|---|---|---|---|---|---|---|---|
+| Left claw (melee hand) | 600 | 175 | 175 | **50** | 200 | 200 | melee |
+| Right claw (mage hand) | 600 | 175 | **87** | 200 | **50** | 200 | magic |
+| Head | 800 | 150 | 250 | 200 | 200 | **50** | ranged |
+
+That opposition is the whole design of the fight, and it's why Olm alone
+demands all three styles. Each part is now planned, timed and gear-weighted
+independently, and appears as its own line ("Great Olm — Olm head: ~1:12 —
+Twisted bow (ranged)"). Because the switch advisor groups by style, the
+greedy selection now sees the real melee and magic workload at Olm and
+carries those switches instead of dropping them.
+
+Other Olm specifics modelled:
+
+- **Phases** = 4, plus one per eight players. The claws are re-crippled each
+  phase, so their HP pool is multiplied by the phase count; the head is
+  killed once.
+- **Draconic** on all three parts, so the dragon hunter crossbow's bonus
+  applies to the claws and head alike.
+- The head's magic level of 250 is what the **twisted bow** scales from —
+  combined with its ranged defence of 50, the tbow dominates the head.
+
+Approximations worth knowing: the head also has 66% mitigation against
+non-ranged damage and heals if hit outside the final phase, so in practice
+its HP is taken down during the final phase where the mitigation is off —
+it is therefore not applied (its ranged defence of 50 already makes ranged
+correct by a wide margin). Claw damage per phase is the roughest number
+here; it lives in `RoomMonsters.java` as editable data.
+
 ## Salve amulet at Skeletal Mystics (v1.7)
 
 Skeletal mystics are the one undead encounter in the raid, so the salve

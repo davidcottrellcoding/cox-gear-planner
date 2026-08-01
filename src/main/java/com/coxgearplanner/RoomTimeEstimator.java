@@ -72,6 +72,11 @@ public class RoomTimeEstimator
 		private final SetupBuilder.Pick weapon;
 		/** Room-specific item the general loadout doesn't cover (salve amulet). */
 		SetupBuilder.Pick extraSwitch;
+		/** The target this entry is for, and its party-scaled HP pool. */
+		MonsterProfile monster;
+		double totalHp;
+		/** Sub-target name for multi-part rooms (Olm's claws and head). */
+		String partName;
 
 		RoomTime(CoxRoom room, String detail, double seconds, boolean feasible,
 			GearNeed style, SetupBuilder.Pick weapon)
@@ -120,6 +125,32 @@ public class RoomTimeEstimator
 		public SetupBuilder.Pick getExtraSwitch()
 		{
 			return extraSwitch;
+		}
+
+		/** The monster this entry was computed against; null when infeasible. */
+		public MonsterProfile getMonster()
+		{
+			return monster;
+		}
+
+		/** Party-scaled HP this entry has to chew through. */
+		public double getTotalHp()
+		{
+			return totalHp;
+		}
+
+		/** Sub-target name for Olm's parts, or null for ordinary rooms. */
+		public String getPartName()
+		{
+			return partName;
+		}
+
+		/** Room name, plus the Olm part when this is a sub-target. */
+		public String getDisplayName()
+		{
+			return partName == null
+				? room.getDisplayName()
+				: room.getDisplayName() + " — " + partName;
 		}
 	}
 
@@ -172,13 +203,30 @@ public class RoomTimeEstimator
 			{
 				continue;
 			}
-			RoomMonsters.Encounter encounter = RoomMonsters.get(room);
-			if (encounter == null)
+			for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(room))
 			{
-				continue; // non-combat room
+				results.add(estimateTarget(room, encounter, items, includeGroupStorage,
+					player, partySize, hpMult, elitePrayers, explanation));
 			}
+		}
+		return results;
+	}
 
+	/** One target: an ordinary room's monster, or one of Olm's three parts. */
+	private RoomTime estimateTarget(
+		CoxRoom room,
+		RoomMonsters.Encounter encounter,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		double hpMult,
+		boolean elitePrayers,
+		PlanExplanation explanation)
+	{
+		{
 			MonsterProfile monster = encounter.getProfile();
+			boolean multiPart = RoomMonsters.getAll(room).size() > 1;
 			double bestDps = 0;
 			GearNeed bestStyle = null;
 			SetupBuilder.Pick bestWeapon = null;
@@ -241,36 +289,51 @@ public class RoomTimeEstimator
 				}
 			}
 
+			String part = multiPart ? monster.getName() : null;
+
 			if (bestDps <= 0)
 			{
-				results.add(new RoomTime(room, "no usable weapon owned", 0, false, null, null));
+				RoomTime infeasible = new RoomTime(room, "no usable weapon owned", 0, false, null, null);
+				infeasible.partName = part;
+				return infeasible;
 			}
-			else
-			{
-				double totalHp = monster.getHp() * hpMult * encounter.getCount();
-				String label = bestWeapon.getOption().getName()
-					+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
-				if (bestSalve != null)
-				{
-					label += " + " + bestSalve.getOption().getName();
-				}
-				RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);
-				roomTime.extraSwitch = bestSalve;
-				results.add(roomTime);
 
-				if (explanation != null)
-				{
-					explanation.addWeaponChoice(String.format(
-						"%s (%s, %.0f hp): %s at %.2f dps%s",
-						room.getDisplayName(), monster.getName(), totalHp,
-						bestWeapon.getOption().getName(), bestDps,
-						runnerUpName != null
-							? String.format(" — next best %s at %.2f dps", runnerUpName, runnerUpDps)
-							: ""));
-				}
+			// Olm's claws are re-crippled every phase, so their HP pool is
+			// multiplied by the phase count; the head is killed once.
+			double phases = room == CoxRoom.OLM && monster.getName().contains("claw")
+				? RoomMonsters.olmPhases(partySize)
+				: 1;
+			double totalHp = monster.getHp() * hpMult * encounter.getCount() * phases;
+
+			String label = bestWeapon.getOption().getName()
+				+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
+			if (bestSalve != null)
+			{
+				label += " + " + bestSalve.getOption().getName();
 			}
+			if (phases > 1)
+			{
+				label += String.format(" ×%.0f phases", phases);
+			}
+
+			RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);
+			roomTime.extraSwitch = bestSalve;
+			roomTime.monster = monster;
+			roomTime.totalHp = totalHp;
+			roomTime.partName = part;
+
+			if (explanation != null)
+			{
+				explanation.addWeaponChoice(String.format(
+					"%s (%s, %.0f hp): %s at %.2f dps%s",
+					roomTime.getDisplayName(), monster.getName(), totalHp,
+					bestWeapon.getOption().getName(), bestDps,
+					runnerUpName != null
+						? String.format(" — next best %s at %.2f dps", runnerUpName, runnerUpDps)
+						: ""));
+			}
+			return roomTime;
 		}
-		return results;
 	}
 
 	/**

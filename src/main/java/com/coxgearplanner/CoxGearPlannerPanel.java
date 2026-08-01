@@ -277,14 +277,14 @@ public class CoxGearPlannerPanel extends PluginPanel
 				if (time.isFeasible())
 				{
 					total += time.getSeconds();
-					label = new JLabel("<html><b>" + time.getRoom().getDisplayName() + ":</b> ~"
+					label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> ~"
 						+ formatSeconds(time.getSeconds()) + " — " + time.getDetail() + "</html>");
 					label.setForeground(COLOR_BANK);
 				}
 				else
 				{
 					anyInfeasible = true;
-					label = new JLabel("<html><b>" + time.getRoom().getDisplayName() + ":</b> "
+					label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> "
 						+ time.getDetail() + "</html>");
 					label.setForeground(COLOR_MISSING);
 				}

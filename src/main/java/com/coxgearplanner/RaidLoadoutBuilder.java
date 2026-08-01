@@ -166,7 +166,7 @@ public final class RaidLoadoutBuilder
 			}
 			inventory.putIfAbsent(extra.getItemId(), new Entry(
 				extra.getOption().getName(), extra.getSource(),
-				"for " + time.getRoom().getDisplayName(), false));
+				"for " + time.getDisplayName(), false));
 		}
 
 		// 3. Only the worth-it armour switches
