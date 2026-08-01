@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.50";
+	static final String VERSION = "1.51";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -328,6 +328,7 @@ public class CoxGearPlannerPlugin extends Plugin
 			RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
 			estimator.setOlmFourTick(config.olmFourTick());
 			estimator.setForceThrall(config.forceThrall());
+			estimator.setPerRoomSwitchSeconds(config.minSwitchSeconds());
 			// Let the resolver price armour with the same DPS formulas that
 			// produce the room times, so a slot's pick and the number shown
 			// for it cannot disagree.

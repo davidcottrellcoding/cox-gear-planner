@@ -363,6 +363,21 @@ public class GearResolver
 
 	private static final int SHORTLIST = 6;
 
+	/**
+	 * Heuristic top candidates for one slot — the pool the estimator prices
+	 * per room when deciding whether a second item for an already-filled slot
+	 * earns its place for a single room.
+	 */
+	List<SetupBuilder.Pick> shortlistFor(
+		GearSlot slot,
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		return shortlist(scan(items, includeGroupStorage).get(slot), style,
+			ownsCrystalBow(items, includeGroupStorage));
+	}
+
 	private void useSnapshot(Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
 	{
 		if (cachedFor != items || cachedIncludeGroup != includeGroupStorage)

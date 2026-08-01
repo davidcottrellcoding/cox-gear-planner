@@ -80,11 +80,16 @@ public class MysticsSalveTest
 		RoomTimeEstimator.RoomTime mystics = times.get(0);
 
 		assertTrue(mystics.isFeasible());
-		assertNotNull("the salve must beat the anguish against the undead",
-			mystics.getExtraSwitch());
-		assertEquals(SALVE_EI, mystics.getExtraSwitch().getItemId());
+		assertTrue("the salve must beat the anguish against the undead",
+			!mystics.getExtraSwitches().isEmpty());
+		RoomTimeEstimator.RoomTime.ExtraSwitch salve = mystics.getExtraSwitches().get(0);
+		assertEquals(SALVE_EI, salve.getPick().getItemId());
+		assertTrue("its value is measured for the debug panel",
+			salve.getSecondsSaved() > 0);
 		assertTrue("the room line must name it: " + mystics.getDetail(),
 			mystics.getDetail().contains("Salve amulet (ei)"));
+		assertTrue("three kills charge overkill on top of the 480 hp share",
+			mystics.getTotalHp() > 480);
 
 		// And the full settle pipeline packs it, even on a 1-item budget —
 		// a room-specific requirement rides like a weapon, not like a switch

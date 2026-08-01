@@ -228,19 +228,23 @@ public final class RaidLoadoutBuilder
 			}
 		}
 
-		// 2. Room-specific extras the general loadout can't cover (salve amulet)
+		// 2. Room-specific extras the general loadout can't cover — the salve
+		// amulet, and any slot where a different item wins one room outright
 		for (RoomTimeEstimator.RoomTime time : times)
 		{
-			SetupBuilder.Pick extra = time.getExtraSwitch();
-			if (extra == null || worn.contains(extra.getItemId()))
+			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
 			{
-				continue;
+				SetupBuilder.Pick pick = extra.getPick();
+				if (worn.contains(pick.getItemId()))
+				{
+					continue;
+				}
+				Entry extraEntry = new Entry(
+					pick.getOption().getName(), pick.getSource(),
+					charge(needsCharging, pick.getItemId(), "for " + time.getDisplayName()), false);
+				extraEntry.style = time.getStyle();
+				inventory.putIfAbsent(pick.getItemId(), extraEntry);
 			}
-			Entry extraEntry = new Entry(
-				extra.getOption().getName(), extra.getSource(),
-				charge(needsCharging, extra.getItemId(), "for " + time.getDisplayName()), false);
-			extraEntry.style = time.getStyle();
-			inventory.putIfAbsent(extra.getItemId(), extraEntry);
 		}
 
 		// 3. Only the worth-it armour switches

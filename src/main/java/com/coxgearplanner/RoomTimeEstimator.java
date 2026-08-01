@@ -194,14 +194,49 @@ public class RoomTimeEstimator
 
 	public static class RoomTime
 	{
+		/**
+		 * An item worth swapping in for this one room, over what the style
+		 * wears elsewhere. The salve amulet against the undead is the
+		 * archetype, but nothing limits it to necks: a style may bring two
+		 * items for the same slot when different rooms favour different ones.
+		 */
+		public static class ExtraSwitch
+		{
+			private final SetupBuilder.Pick pick;
+			private final GearSlot slot;
+			private final double secondsSaved;
+
+			ExtraSwitch(SetupBuilder.Pick pick, GearSlot slot, double secondsSaved)
+			{
+				this.pick = pick;
+				this.slot = slot;
+				this.secondsSaved = secondsSaved;
+			}
+
+			public SetupBuilder.Pick getPick()
+			{
+				return pick;
+			}
+
+			public GearSlot getSlot()
+			{
+				return slot;
+			}
+
+			public double getSecondsSaved()
+			{
+				return secondsSaved;
+			}
+		}
+
 		private final CoxRoom room;
 		private final String detail;
-		private final double seconds;
+		private double seconds;
 		private final boolean feasible;
 		private final GearNeed style;
 		private final SetupBuilder.Pick weapon;
-		/** Room-specific item the general loadout doesn't cover (salve amulet). */
-		SetupBuilder.Pick extraSwitch;
+		/** Room-specific items the general loadout doesn't cover. */
+		final List<ExtraSwitch> extraSwitches = new ArrayList<>();
 		/** The target this entry is for, and its party-scaled HP pool. */
 		MonsterProfile monster;
 		double totalHp;
@@ -251,10 +286,10 @@ public class RoomTimeEstimator
 			return weapon;
 		}
 
-		/** Room-specific extra item to bring (salve amulet), or null. */
-		public SetupBuilder.Pick getExtraSwitch()
+		/** Room-specific extra items to bring; empty when the style's kit covers it. */
+		public List<ExtraSwitch> getExtraSwitches()
 		{
-			return extraSwitch;
+			return extraSwitches;
 		}
 
 		/** The monster this entry was computed against; null when infeasible. */
@@ -290,6 +325,20 @@ public class RoomTimeEstimator
 	private boolean olmFourTick;
 	/** Stay on the Arceuus spellbook for thralls: powered staves only. */
 	private boolean forceThrall;
+	/** Seconds a per-room alternate must save that room to be brought. */
+	private double perRoomSwitchSeconds = 3;
+
+	/**
+	 * The max hit of the last loadout the dps maths priced, for the per-kill
+	 * overkill overhead — same thread-confined pattern as the melee style.
+	 */
+	private static final ThreadLocal<Double> lastMaxHit = new ThreadLocal<>();
+
+	/** Threshold for bringing a second item in an already-filled slot for one room. */
+	public void setPerRoomSwitchSeconds(double perRoomSwitchSeconds)
+	{
+		this.perRoomSwitchSeconds = perRoomSwitchSeconds;
+	}
 
 	public RoomTimeEstimator(ItemManager itemManager)
 	{
@@ -405,6 +454,12 @@ public class RoomTimeEstimator
 			GearNeed bestStyle = null;
 			SetupBuilder.Pick bestWeapon = null;
 			SetupBuilder.Pick bestSalve = null;
+			// The winner's context, kept for per-room extras and the debug
+			// numbers: its armour picks, its dps without the salve, and what
+			// the salve trial produced even when it lost.
+			Map<GearSlot, SetupBuilder.Pick> bestPicks = null;
+			double bestPlainDps = 0;
+			double bestSalveDps = 0;
 			// Every candidate and its dps, so the debug panel can show the full
 			// ranking rather than just the winner — "why wasn't X considered?"
 			// is only answerable if the panel distinguishes "lost" from
@@ -478,9 +533,11 @@ public class RoomTimeEstimator
 						}
 					}
 
+					double plainDps = dps;
+					double salveDps = 0;
 					if (!salveOverride.isEmpty())
 					{
-						double salveDps = loadoutDps(style, weapon, picks, salveOverride,
+						salveDps = loadoutDps(style, weapon, picks, salveOverride,
 							items, includeGroupStorage, player, monster, elitePrayers);
 						if (salveDps > dps)
 						{
@@ -501,6 +558,9 @@ public class RoomTimeEstimator
 						bestStyle = style;
 						bestWeapon = weapon;
 						bestSalve = usedSalve;
+						bestPicks = picks;
+						bestPlainDps = plainDps;
+						bestSalveDps = salveDps;
 					}
 				}
 			}
@@ -531,6 +591,81 @@ public class RoomTimeEstimator
 			// Without this the estimate is roughly party-size times too long.
 			double yourShare = totalHp / Math.max(1, partySize);
 
+			// The salve trial's verdict at the point the winner was decided,
+			// for the debug panel — before extras move the goalposts.
+			double salveLostSeconds = bestSalve == null && salve != null && bestSalveDps > 0
+				? yourShare / bestSalveDps - yourShare / bestDps
+				: 0;
+
+			// Per-room extras: a style is not limited to one item per slot.
+			// If a different owned piece beats the style's usual pick in THIS
+			// room by at least the minimum switch value, it comes along just
+			// for this room — the salve amulet is simply the first of them.
+			List<RoomTime.ExtraSwitch> extras = new ArrayList<>();
+			Map<GearSlot, SetupBuilder.Pick> accepted = new java.util.LinkedHashMap<>();
+			if (bestSalve != null)
+			{
+				accepted.put(GearSlot.NECK, bestSalve);
+				extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
+					yourShare / bestPlainDps - yourShare / bestDps));
+			}
+			boolean twoHanded = bestWeapon.getOption().isTwoHanded();
+			for (GearSlot slot : GearSlot.values())
+			{
+				if (slot == GearSlot.WEAPON || slot == GearSlot.AMMO
+					|| (slot == GearSlot.SHIELD && twoHanded)
+					|| accepted.containsKey(slot))
+				{
+					continue;
+				}
+				SetupBuilder.Pick current = bestPicks.get(slot);
+				SetupBuilder.Pick bestAlt = null;
+				double bestAltDps = bestDps;
+				for (SetupBuilder.Pick candidate
+					: resolver.shortlistFor(slot, bestStyle, items, includeGroupStorage))
+				{
+					if (current != null && candidate.getItemId() == current.getItemId())
+					{
+						continue;
+					}
+					Map<GearSlot, SetupBuilder.Pick> trial = new java.util.LinkedHashMap<>(accepted);
+					trial.put(slot, candidate);
+					double altDps = loadoutDps(bestStyle, bestWeapon, bestPicks, trial,
+						items, includeGroupStorage, player, monster, elitePrayers);
+					if (altDps > bestAltDps)
+					{
+						bestAltDps = altDps;
+						bestAlt = candidate;
+					}
+				}
+				if (bestAlt != null)
+				{
+					double saved = yourShare / bestDps - yourShare / bestAltDps;
+					if (saved >= Math.max(perRoomSwitchSeconds, 0.1))
+					{
+						accepted.put(slot, bestAlt);
+						extras.add(new RoomTime.ExtraSwitch(bestAlt, slot, saved));
+						bestDps = bestAltDps;
+					}
+				}
+			}
+
+			// Each kill wastes damage past the corpse: the killing hit lands
+			// its full roll on whatever sliver of health remains, which over
+			// hit sizes and remaining health averages close to a third of the
+			// max hit. Checked against GearScape's exact per-kill TTK — 160hp
+			// mystic, max 63, 8.75 dps: 20.64s there, (160+63/3)/8.75 = 20.7
+			// here. Without it a 3-mystic room read 52s when the per-kill sum
+			// is over a minute. Tekton's two defence profiles are one monster,
+			// so he is charged one kill too many — a small, known error.
+			loadoutDps(bestStyle, bestWeapon, bestPicks, accepted,
+				items, includeGroupStorage, player, monster, elitePrayers);
+			Double lastMax = lastMaxHit.get();
+			double kills = encounter.getCount() * phases;
+			double overheadHp = lastMax == null ? 0
+				: kills * (lastMax / 3.0) / Math.max(1, partySize);
+			yourShare += overheadHp;
+
 			String label = bestWeapon.getOption().getName()
 				+ " (" + bestStyle.getDisplayName().toLowerCase();
 			// For melee, name the attack style too — "use a fang" is only half
@@ -543,9 +678,9 @@ public class RoomTimeEstimator
 				label += ", " + meleeStyle + " style";
 			}
 			label += ")";
-			if (bestSalve != null)
+			for (RoomTime.ExtraSwitch extra : extras)
 			{
-				label += " + " + bestSalve.getOption().getName();
+				label += " + " + extra.getPick().getOption().getName();
 			}
 			if (phases > 1)
 			{
@@ -562,7 +697,7 @@ public class RoomTimeEstimator
 			}
 
 			RoomTime roomTime = new RoomTime(room, label, yourShare / bestDps, true, bestStyle, bestWeapon);
-			roomTime.extraSwitch = bestSalve;
+			roomTime.extraSwitches.addAll(extras);
 			roomTime.monster = monster;
 			roomTime.totalHp = yourShare;
 			roomTime.partName = part;
@@ -570,8 +705,9 @@ public class RoomTimeEstimator
 			if (explanation != null)
 			{
 				explanation.addWeaponChoice(String.format(
-					"%s (%s, your share %.0f of %.0f hp) — %d weapons evaluated:",
-					roomTime.getDisplayName(), monster.getName(), yourShare, totalHp, ranking.size()));
+					"%s (%s, your share %.0f of %.0f hp, incl. %.0f kill overhead) — %d weapons evaluated:",
+					roomTime.getDisplayName(), monster.getName(), yourShare, totalHp,
+					overheadHp, ranking.size()));
 
 				// Highest dps first; the split key is the numeric dps prefix
 				ranking.sort((a, b) -> Double.compare(
@@ -588,6 +724,21 @@ public class RoomTimeEstimator
 						explanation.addWeaponChoice("    … " + (ranking.size() - shown) + " more");
 						break;
 					}
+				}
+
+				for (RoomTime.ExtraSwitch extra : extras)
+				{
+					explanation.addWeaponChoice(String.format(
+						"    bring for this room: %s (%s) — saves %.1fs here",
+						extra.getPick().getOption().getName(),
+						extra.getSlot().getDisplayName().toLowerCase(),
+						extra.getSecondsSaved()));
+				}
+				if (salveLostSeconds > 0)
+				{
+					explanation.addWeaponChoice(String.format(
+						"    %s tried: %.1fs SLOWER than the worn neck here — not brought",
+						salve.getOption().getName(), salveLostSeconds));
 				}
 			}
 			return roomTime;
@@ -1130,6 +1281,7 @@ public class RoomTimeEstimator
 
 		double best = 0;
 		int bestStyleIndex = 0;
+		double bestMax = 0;
 		for (int i = 0; i < styles.length; i++)
 		{
 			int[] s = styles[i];
@@ -1171,9 +1323,11 @@ public class RoomTimeEstimator
 			{
 				best = dps;
 				bestStyleIndex = i;
+				bestMax = avgMax;
 			}
 		}
 		lastMeleeStyle.set(MELEE_STYLE_NAMES[bestStyleIndex]);
+		lastMaxHit.set(bestMax);
 		return best;
 	}
 
@@ -1252,6 +1406,7 @@ public class RoomTimeEstimator
 		int speed = needsLongrange(weaponId, m)
 			? eq.speedTicks
 			: Math.max(1, eq.speedTicks - 1);
+		lastMaxHit.set(avgMax);
 		return CombatFormulas.dps(acc, avgMax, speed);
 	}
 
@@ -1345,6 +1500,7 @@ public class RoomTimeEstimator
 
 		double acc = withConfliction(CombatFormulas.accuracy(atkRoll,
 			CombatFormulas.defenceRoll(m.getMagicDefenceLevel(), m.getDMagic())), eq);
+		lastMaxHit.set((double) maxHit);
 		return CombatFormulas.dps(acc, maxHit, speed);
 	}
 }
