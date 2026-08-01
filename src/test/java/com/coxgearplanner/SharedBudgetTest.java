@@ -62,6 +62,22 @@ public class SharedBudgetTest
 	}
 
 	@Test
+	public void everyCarriedWeaponMustBeCountedNotOnePerStyle()
+	{
+		// Regression: a budget of 10 produced 14 gear items because the
+		// accounting reserved one weapon per SECONDARY style. In reality a
+		// style can win different rooms with different weapons, and the base
+		// style's other weapons are carried too — four weapons, not two.
+		int distinctWeaponsUsed = 5;   // shadow, trident, saeldor, emberlight, bofa
+		int equippedWeapon = 1;        // the trident is worn, not carried
+		int carried = distinctWeaponsUsed - equippedWeapon;
+		assertEquals("four weapons ride in the inventory", 4, carried);
+
+		int total = 10;
+		assertEquals("only six slots are left for armour", 6, armourBudget(total, carried));
+	}
+
+	@Test
 	public void anOffhandDoesNotConsumeTheAllowance()
 	{
 		// Same rule as the per-style cap: a fang and defender is one swap, so

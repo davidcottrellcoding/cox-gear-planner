@@ -353,11 +353,20 @@ public final class RaidLoadoutBuilder
 			}
 			if (slot == GearSlot.AMMO)
 			{
-				SetupBuilder.Pick ammo = weapon != null && style == GearNeed.RANGED
-					? RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage)
-					: primaryPicks.get(GearSlot.AMMO);
-				section.getLines().add(line(slot, ammo, "(empty)",
-					style == GearNeed.RANGED ? "with the bow" : "worn"));
+				// A bow that takes no ammo (bofa, crystal bow) doesn't empty the
+				// slot — whatever the base outfit wears there stays on.
+				SetupBuilder.Pick ammo = null;
+				boolean withBow = false;
+				if (weapon != null && style == GearNeed.RANGED)
+				{
+					ammo = RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage);
+					withBow = ammo != null;
+				}
+				if (ammo == null)
+				{
+					ammo = primaryPicks.get(GearSlot.AMMO);
+				}
+				section.getLines().add(line(slot, ammo, "(empty)", withBow ? "with the bow" : "worn"));
 				continue;
 			}
 

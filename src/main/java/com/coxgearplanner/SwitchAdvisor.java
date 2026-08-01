@@ -330,9 +330,14 @@ public class SwitchAdvisor
 
 			state.seconds = totalSeconds(style, state.times, picks, state.notCarried,
 				items, includeGroupStorage, player, elitePrayers);
-			mandatory += mandatoryItems(style, state.times, primaryPicks, items, includeGroupStorage);
 			states.add(state);
 		}
+
+		// Every distinct weapon across every style gets carried, except the one
+		// actually equipped. Counting one per secondary style undercounted
+		// badly: a style can win different rooms with different weapons, and
+		// the base style's other weapons are carried too.
+		mandatory = carriedWeaponCount(primary, byStyle, primaryPicks, items, includeGroupStorage);
 
 		int budget = Math.max(0, totalSwapItems - mandatory);
 		if (explanation != null)
@@ -416,28 +421,50 @@ public class SwitchAdvisor
 		return new Result(primary, advices, total);
 	}
 
-	/** Weapon, plus ammo the base outfit isn't already wearing. */
-	private int mandatoryItems(
-		GearNeed style,
-		List<RoomTimeEstimator.RoomTime> styleTimes,
+	/**
+	 * How many inventory slots the weapons take: every distinct weapon the plan
+	 * uses, minus the one worn, plus any ammo the base outfit isn't already
+	 * wearing. This has to match what RaidLoadoutBuilder actually packs, or the
+	 * budget is spent against a weapon count that never existed.
+	 */
+	private int carriedWeaponCount(
+		GearNeed primary,
+		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage)
 	{
-		int count = 1;
-		SetupBuilder.Pick weapon = busiestWeapon(styleTimes);
-		if (style == GearNeed.RANGED && weapon != null
-			&& RoomTimeEstimator.needsAmmo(weapon.getItemId()))
+		SetupBuilder.Pick equipped = busiestWeapon(byStyle.get(primary));
+		java.util.Set<Integer> weapons = new java.util.HashSet<>();
+		java.util.Set<Integer> ammo = new java.util.HashSet<>();
+
+		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
-			SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(
-				weapon.getItemId(), items, includeGroupStorage);
-			SetupBuilder.Pick wornAmmo = primaryPicks.get(GearSlot.AMMO);
-			if (ammo != null && (wornAmmo == null || wornAmmo.getItemId() != ammo.getItemId()))
+			for (RoomTimeEstimator.RoomTime rt : entry.getValue())
 			{
-				count++;
+				SetupBuilder.Pick weapon = rt.getWeapon();
+				if (weapon == null
+					|| (equipped != null && weapon.getItemId() == equipped.getItemId()))
+				{
+					continue;
+				}
+				weapons.add(weapon.getItemId());
+
+				if (entry.getKey() == GearNeed.RANGED
+					&& RoomTimeEstimator.needsAmmo(weapon.getItemId()))
+				{
+					SetupBuilder.Pick shot = RoomTimeEstimator.findAmmo(
+						weapon.getItemId(), items, includeGroupStorage);
+					SetupBuilder.Pick wornAmmo = primaryPicks.get(GearSlot.AMMO);
+					if (shot != null
+						&& (wornAmmo == null || wornAmmo.getItemId() != shot.getItemId()))
+					{
+						ammo.add(shot.getItemId());
+					}
+				}
 			}
 		}
-		return count;
+		return weapons.size() + ammo.size();
 	}
 
 	/** One style's switch decisions and the time they leave it taking. */
