@@ -61,7 +61,58 @@ cannot judge a loadout without knowing what constrained it.
 | Max items per switch | Per-style cap. Weapon counts, offhand is free |
 | Total swap items | One shared budget across all styles; overrides the per-style cap |
 | Force 4-tick weapons at Olm | Keeps melee and magic on one rhythm while learning |
-| Show debug panel | Explains every weapon, switch and slot decision |
+| Assume overload | Boosts your stats as a CoX overload (+) would |
+| Assume imbued heart | Competing magic boost. Does nothing while overloaded — see below |
+| Show debug panel | Explains every weapon, switch and slot decision, and what each slot is worth in seconds |
+
+## How gear is chosen
+
+Armour used to be ranked by a made-up number — for magic, `magic damage x 15 +
+magic attack`. That exchange rate was invented, and it gets the close calls
+wrong, because the value of an accuracy bonus collapses once you are already
+accurate. A seers ring is the honest example: at the Olm mage hand it is worth
+under 1% more damage, but a score of 6 against a berserker ring's 0 made it
+look like a real decision.
+
+Every armour slot is now priced with the same DPS formulas that produce the
+room times, against the monsters that style will actually be pointed at,
+weighted by their health. The curated heuristic still runs first to narrow each
+slot to six finalists — scoring every bank item against every target is a lot
+of work for the same answer — but the choice between finalists is made on real
+damage.
+
+The debug panel reports what each slot is **worth in seconds**, both over the
+next best thing you own and over leaving it empty. That is how you tell a real
+choice from a slot that only had one plausible filling. If a ring is saving you
+0.3 seconds across a whole raid, the panel now says so instead of implying it
+earned its place.
+
+**Known limitation, pinned by a test.** The search climbs one slot at a time,
+so it cannot *discover* a set whose pieces are each individually worse than
+what they replace — the first swap looks like a loss and is rejected before the
+second can pay for it. Crystal armour is exactly that shape. It is still
+chosen, because the heuristic seed favours crystal when you own a crystal bow,
+and the search will not break the set up once seeded. That crystal weighting is
+load-bearing, not legacy.
+
+## The imbued heart does nothing while overloaded
+
+OSRS boosts do not stack — each sets an absolute level and the highest wins. A
+CoX overload (+) gives `+6 and 16%` against the heart's `+1 and 10%`, which
+beats it at every Magic level:
+
+| Magic | Imbued heart | CoX overload |
+|---|---|---|
+| 75 | 83 | 93 |
+| 90 | 100 | 110 |
+| 99 | 109 | 120 |
+
+So with **Assume overload** on — the default — enabling the heart changes
+nothing. It only moves the numbers with overloads off, which is the realistic
+case for the first rooms before you brew any. The plugin takes one stat
+snapshot for the whole raid, so it cannot model "hearted for two rooms, then
+overloaded"; run it twice to see both. A test asserts the overload wins at
+every level, so this cannot quietly become an additive stack later.
 
 ## Building and running
 
@@ -282,6 +333,11 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.30 | Armour ranked by real DPS instead of a heuristic score; debug panel reports what each slot is worth in seconds |
+| 1.29 | Imbued heart, as a competing boost — a CoX overload beats it at every level |
+| 1.28 | Scythe hit chain corrected (halved and rounded down, hit count by target size); fang's double roll limited to stab |
+| 1.27.1 | Corrected an overstated claim about stab on Vasa's crystal |
+| 1.27 | Tekton's enraged phase modelled separately |
 | 1.26 | Items coloured by combat style, with location as a separate tag |
 | 1.25.2 | Swap budget counted only one weapon per style, so a budget of 10 packed 14 items |
 | 1.25.1 | A weapon used in three rooms was never carried; equipped ammo slot disagreed with the sections; export omitted the active limit |

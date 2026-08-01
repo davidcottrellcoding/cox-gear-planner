@@ -2,6 +2,7 @@ package com.coxgearplanner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,10 +62,240 @@ public class GearResolver
 		new java.util.EnumMap<>(GearNeed.class);
 	private final Map<Integer, Double> cachedScores = new java.util.HashMap<>();
 
+	// Ranking gear by a made-up score ("1% magic damage is worth 15 magic
+	// attack") gets the easy calls right and the close ones wrong, because the
+	// real value of an accuracy bonus collapses once you are already accurate.
+	// When this context is supplied the resolver prices each slot with the
+	// same DPS formulas that produce the room times, so a slot's pick and the
+	// number reported for it come from one source. Without it — as in most
+	// unit tests — it falls back to the heuristic.
+	private RoomTimeEstimator dpsEstimator;
+	private PlayerSnapshot dpsPlayer;
+	private Set<CoxRoom> dpsRooms;
+	private boolean dpsElitePrayers;
+
 	public GearResolver(ItemManager itemManager)
 	{
 		this.itemManager = itemManager;
 	}
+
+	public void setDpsContext(
+		RoomTimeEstimator estimator,
+		PlayerSnapshot player,
+		Set<CoxRoom> rooms,
+		boolean elitePrayers)
+	{
+		this.dpsEstimator = estimator;
+		this.dpsPlayer = player;
+		this.dpsRooms = rooms;
+		this.dpsElitePrayers = elitePrayers;
+		cachedResolve.clear();
+	}
+
+	/** Seconds this style would spend on its targets wearing {@code picks}. */
+	double totalSeconds(
+		GearNeed style,
+		SetupBuilder.Pick weapon,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		List<MonsterProfile> targets,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		double total = 0;
+		for (MonsterProfile monster : targets)
+		{
+			double dps = dpsEstimator.loadoutDps(style, weapon, picks,
+				java.util.Collections.emptyMap(), items, includeGroupStorage,
+				dpsPlayer, monster, dpsElitePrayers);
+			if (dps > 0)
+			{
+				total += monster.getHp() / dps;
+			}
+		}
+		return total;
+	}
+
+	/**
+	 * Monsters this style will actually be pointed at, deduplicated. Weighting
+	 * falls out of their health: a slot that helps only on a 50hp add barely
+	 * moves the total, which is the intended behaviour.
+	 */
+	List<MonsterProfile> dpsTargets(GearNeed style)
+	{
+		List<MonsterProfile> targets = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (CoxRoom room : CoxRoom.values())
+		{
+			if (dpsRooms == null || !dpsRooms.contains(room))
+			{
+				continue;
+			}
+			for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(room))
+			{
+				MonsterProfile monster = encounter.getProfile();
+				if (monster.getUsableStyles().contains(style) && seen.add(monster.getName()))
+				{
+					targets.add(monster);
+				}
+			}
+		}
+		return targets;
+	}
+
+	/**
+	 * Re-picks each armour slot by the DPS it actually produces. The heuristic
+	 * still runs first and narrows each slot to a shortlist — scoring every
+	 * bank item against every target would be far more work for the same
+	 * answer — but the decision between the finalists is made on real damage.
+	 *
+	 * Two passes, because slots interact: crystal and set bonuses mean the
+	 * best helm can depend on the body already chosen.
+	 */
+	private Map<GearSlot, SetupBuilder.Pick> refineByDps(
+		GearNeed style,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		SetupBuilder.Pick weapon = picks.get(GearSlot.WEAPON);
+		if (dpsEstimator == null || dpsPlayer == null || weapon == null || refining)
+		{
+			return picks;
+		}
+		// Pricing a loadout runs the estimator, and the estimator resolves
+		// gear. Nothing on that path calls back in today, but this runs on the
+		// client thread, so a future edit that closed the loop would hang the
+		// game rather than fail a test. Refuse to re-enter instead.
+		refining = true;
+		try
+		{
+			return refineByDps(style, picks, items, includeGroupStorage, weapon);
+		}
+		finally
+		{
+			refining = false;
+		}
+	}
+
+	private boolean refining;
+
+	private Map<GearSlot, SetupBuilder.Pick> refineByDps(
+		GearNeed style,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		SetupBuilder.Pick weapon)
+	{
+		List<MonsterProfile> targets = dpsTargets(style);
+		if (targets.isEmpty())
+		{
+			return picks;
+		}
+
+		boolean twoHanded = weapon.getOption().isTwoHanded();
+		boolean crystalBow = ownsCrystalBow(items, includeGroupStorage);
+		Map<GearSlot, List<SetupBuilder.Pick>> owned = scan(items, includeGroupStorage);
+
+		Map<GearSlot, List<SetupBuilder.Pick>> shortlists = new LinkedHashMap<>();
+		Set<GearSlot> skip = EnumSet.of(GearSlot.WEAPON, GearSlot.AMMO);
+		if (twoHanded)
+		{
+			skip.add(GearSlot.SHIELD);
+		}
+		for (GearSlot slot : GearSlot.values())
+		{
+			if (!skip.contains(slot))
+			{
+				shortlists.put(slot, shortlist(owned.get(slot), style, crystalBow));
+			}
+		}
+
+		return improve(picks, shortlists,
+			probe -> totalSeconds(style, weapon, probe, targets, items, includeGroupStorage));
+	}
+
+	/**
+	 * Greedy slot-by-slot search for the loadout with the lowest total time.
+	 *
+	 * Kept free of item lookups so the search itself can be tested: it takes a
+	 * pricing function and a shortlist per slot, and knows nothing about what
+	 * an item is.
+	 *
+	 * It climbs one slot at a time, which has a consequence worth stating: it
+	 * cannot <em>discover</em> a set whose pieces are each individually worse
+	 * than what they replace, because the first swap looks like a loss and is
+	 * rejected before the second can pay for it. Crystal armour is exactly
+	 * that shape. It is reached anyway because the heuristic seed already
+	 * favours crystal when you own a crystal bow, and the search will not
+	 * break the set up once seeded — every single-piece removal costs the set
+	 * bonus and is rejected. So the crystal weighting in {@link #computeScore}
+	 * is load-bearing, not legacy, and GearSearchTest pins both halves.
+	 *
+	 * The second pass exists for the cheaper interaction: once a slot changes,
+	 * an earlier slot may have a better answer than it did.
+	 */
+	static Map<GearSlot, SetupBuilder.Pick> improve(
+		Map<GearSlot, SetupBuilder.Pick> start,
+		Map<GearSlot, List<SetupBuilder.Pick>> shortlists,
+		java.util.function.ToDoubleFunction<Map<GearSlot, SetupBuilder.Pick>> seconds)
+	{
+		Map<GearSlot, SetupBuilder.Pick> current = new LinkedHashMap<>(start);
+		double best = seconds.applyAsDouble(current);
+		if (!(best > 0))
+		{
+			return current;
+		}
+
+		for (int pass = 0; pass < 2; pass++)
+		{
+			boolean changed = false;
+			for (Map.Entry<GearSlot, List<SetupBuilder.Pick>> entry : shortlists.entrySet())
+			{
+				for (SetupBuilder.Pick candidate : entry.getValue())
+				{
+					SetupBuilder.Pick previous = current.get(entry.getKey());
+					if (previous != null && candidate != null
+						&& previous.getItemId() == candidate.getItemId())
+					{
+						continue;
+					}
+					current.put(entry.getKey(), candidate);
+					double now = seconds.applyAsDouble(current);
+					if (now > 0 && now < best - 1e-9)
+					{
+						best = now;
+						changed = true;
+					}
+					else
+					{
+						current.put(entry.getKey(), previous);
+					}
+				}
+			}
+			if (!changed)
+			{
+				break;
+			}
+		}
+		return current;
+	}
+
+	/** The heuristic's top few for a slot, as finalists for the DPS compare. */
+	private List<SetupBuilder.Pick> shortlist(
+		List<SetupBuilder.Pick> candidates, GearNeed style, boolean crystalBow)
+	{
+		if (candidates == null || candidates.isEmpty())
+		{
+			return java.util.Collections.emptyList();
+		}
+		List<SetupBuilder.Pick> sorted = new ArrayList<>(candidates);
+		sorted.sort((a, b) -> Double.compare(
+			score(b.getItemId(), style, crystalBow),
+			score(a.getItemId(), style, crystalBow)));
+		return sorted.subList(0, Math.min(SHORTLIST, sorted.size()));
+	}
+
+	private static final int SHORTLIST = 6;
 
 	private void useSnapshot(Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
 	{
@@ -136,6 +367,8 @@ public class GearResolver
 			}
 		}
 
+		picks = refineByDps(style, picks, items, includeGroupStorage);
+
 		cachedResolve.put(style, new LinkedHashMap<>(picks));
 		return picks;
 	}
@@ -186,13 +419,77 @@ public class GearResolver
 				}
 			}
 
+			// A score comparison ("6 vs 0") tells you nothing about whether the
+			// slot mattered. Seconds do: an item that wins its slot but saves
+			// a fraction of a second is worth knowing about, because it looks
+			// like a considered choice and is really just the only thing left.
 			String detail = runnerUp == null
 				? "only option you own"
-				: String.format("beat %s (%.0f vs %.0f)", runnerUp.getOption().getName(),
+				: String.format("beat %s", runnerUp.getOption().getName());
+
+			String worth = worthOf(style, slot, pick, chosen, runnerUp, items, includeGroupStorage);
+			if (worth != null)
+			{
+				detail += worth;
+			}
+			else if (runnerUp != null)
+			{
+				detail += String.format(" (%.0f vs %.0f)",
 					score(pick.getItemId(), style, crystalBow), runnerUpScore);
+			}
 			explanation.addGearChoice(style.getDisplayName() + " " + slot.getDisplayName()
 				+ ": " + pick.getOption().getName() + " — " + detail);
 		}
+	}
+
+	/**
+	 * What a chosen slot is actually worth, in seconds saved over the next
+	 * best thing you own and over leaving the slot empty — null when there is
+	 * no DPS context to price it with.
+	 */
+	private String worthOf(
+		GearNeed style,
+		GearSlot slot,
+		SetupBuilder.Pick pick,
+		Map<GearSlot, SetupBuilder.Pick> chosen,
+		SetupBuilder.Pick runnerUp,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		SetupBuilder.Pick weapon = chosen.get(GearSlot.WEAPON);
+		if (dpsEstimator == null || dpsPlayer == null || weapon == null
+			|| slot == GearSlot.WEAPON || slot == GearSlot.AMMO)
+		{
+			return null;
+		}
+		List<MonsterProfile> targets = dpsTargets(style);
+		if (targets.isEmpty())
+		{
+			return null;
+		}
+
+		Map<GearSlot, SetupBuilder.Pick> probe = new LinkedHashMap<>(chosen);
+		double with = totalSeconds(style, weapon, probe, targets, items, includeGroupStorage);
+		if (with <= 0)
+		{
+			return null;
+		}
+
+		probe.put(slot, null);
+		double empty = totalSeconds(style, weapon, probe, targets, items, includeGroupStorage);
+
+		StringBuilder sb = new StringBuilder();
+		if (runnerUp != null)
+		{
+			probe.put(slot, runnerUp);
+			double next = totalSeconds(style, weapon, probe, targets, items, includeGroupStorage);
+			sb.append(String.format(" by %.1fs", Math.max(0, next - with)));
+		}
+		if (empty > 0)
+		{
+			sb.append(String.format("; worth %.1fs over an empty slot", Math.max(0, empty - with)));
+		}
+		return sb.length() == 0 ? null : sb.toString();
 	}
 
 	/** Every owned equipable item, grouped by the slot it actually occupies. */
