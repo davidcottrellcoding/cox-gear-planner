@@ -286,7 +286,7 @@ public class SwitchAdvisor
 			// per-style cap the base style's switch-backs look free, so the
 			// optimiser strips its gear slot by slot and hands back a "melee"
 			// base outfit wearing a magic hood and a ranged cape.
-			if (switchesBack(candidate, primary, advice.getSlot()))
+			if (switchesBack(candidate, primary, advice.getSlot(), thresholdSeconds))
 			{
 				continue;
 			}
@@ -418,20 +418,33 @@ public class SwitchAdvisor
 			items, includeGroupStorage, player, elitePrayers);
 	}
 
-	/** Whether the base style ends up carrying a switch for this slot. */
-	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot)
+	/** Whether the base style ends up wanting this slot back for real value. */
+	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot,
+		double thresholdSeconds)
 	{
 		for (Advice advice : result.getAdvice())
 		{
-			// Only a switch-back that is actually CARRIED means nothing was
-			// freed. If it lost to the budget, the slot really did become
-			// available for something better - which is the trade working, not
-			// failing. Counting that as failure vetoed every trade whenever the
-			// minimum switch value was low enough to make each switch-back look
-			// worth having, which is how a Mage's book and a seers ring worth
-			// 0.7s each stayed on while a 5.1s anguish went uncarried.
-			if (advice.getStyle() == primary && advice.getSlot() == slot
-				&& advice.isWorthIt())
+			if (advice.getStyle() != primary || advice.getSlot() != slot)
+			{
+				continue;
+			}
+			// A carried switch-back means nothing was freed — the switch just
+			// changed owner and an inventory slot was spent moving it.
+			if (advice.isWorthIt())
+			{
+				return true;
+			}
+			// A switch-back that lost to the budget is worse than it looks:
+			// every traded slot is a swap the budget never sees. Under a tight
+			// budget every switch-back loses to the cap, so judging only
+			// carried ones let the search strip the base outfit slot by slot —
+			// a "1-swap" plan wearing another style's neck, body and legs is
+			// really a four-swap plan, which is why tightening the budget
+			// barely moved the clock. A trade is only fair when the base style
+			// would not bother carrying its item back at all, so anything at
+			// or above the minimum switch value vetoes it. Cheap slots (the
+			// 0.7s mage's book that once vetoed a 5.1s anguish) still trade.
+			if (advice.getSecondsSaved() > 0 && advice.getSecondsSaved() >= thresholdSeconds)
 			{
 				return true;
 			}
