@@ -155,6 +155,24 @@ GearYouAreActuallyBringing`) that fails the build if a section ever names
 gear that isn't being brought, and that a skipped switch is never described
 as worn.
 
+## One shared swap budget (v1.23)
+
+**Total swap items (all styles)** replaces per-style thinking with a single
+inventory allowance. Set it to 10 and the planner carries exactly ten swap
+items, spending each one wherever it saves the most time — which may land on
+eight items for one style and two for another. A per-style cap cannot move a
+slot from a style that barely benefits to one that does; this can.
+
+- Allocation is by **time saved**, not fairness. An uneven split is the point.
+- **Weapons and their ammo count** against the allowance, since they occupy
+  inventory too. An offhand rides free with its weapon.
+- Items the budget could not afford are listed as **"Over limit"** with what
+  they were worth, so you can see the cost of the constraint.
+- **0 turns it off** and falls back to the per-style cap below.
+
+With the debug panel on, you get the running allocation: how much went to
+weapons, and each purchase in order with what it bought and what was left.
+
 ## Max items per switch (v1.13)
 
 **Minimum switch value** answers "is this piece worth carrying?" one item at a

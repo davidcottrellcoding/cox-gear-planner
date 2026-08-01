@@ -146,6 +146,7 @@ public class SwitchAdvisor
 		boolean elitePrayers,
 		double thresholdSeconds,
 		int maxSwitchItems,
+		int totalSwapItems,
 		PlanExplanation explanation)
 	{
 		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle = new EnumMap<>(GearNeed.class);
@@ -172,7 +173,7 @@ public class SwitchAdvisor
 		for (GearNeed candidate : byStyle.keySet())
 		{
 			double total = evaluate(candidate, byStyle, items, includeGroupStorage, player,
-				partySize, elitePrayers, thresholdSeconds, maxSwitchItems, null).getTotalSeconds();
+				partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems, null).getTotalSeconds();
 			if (total < bestSeconds)
 			{
 				bestSeconds = total;
@@ -185,7 +186,7 @@ public class SwitchAdvisor
 			for (GearNeed candidate : byStyle.keySet())
 			{
 				double total = evaluate(candidate, byStyle, items, includeGroupStorage, player,
-					partySize, elitePrayers, thresholdSeconds, maxSwitchItems, null).getTotalSeconds();
+					partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems, null).getTotalSeconds();
 				explanation.addSwitchChoice(String.format("base outfit %s: %.0fs total raid time%s",
 					candidate.getDisplayName().toLowerCase(), total,
 					candidate == best ? "  <-- chosen" : ""));
@@ -194,7 +195,7 @@ public class SwitchAdvisor
 
 		// Re-run the winner so the explanation records its decisions only
 		return evaluate(best, byStyle, items, includeGroupStorage, player,
-			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, explanation);
+			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems, explanation);
 	}
 
 	/** Total raid time with one style worn as the base outfit. */
@@ -208,10 +209,19 @@ public class SwitchAdvisor
 		boolean elitePrayers,
 		double thresholdSeconds,
 		int maxSwitchItems,
+		int totalSwapItems,
 		PlanExplanation explanation)
 	{
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
 			estimator.getResolver().resolve(primary, items, includeGroupStorage);
+
+		// One shared budget across all styles beats a per-style cap, because
+		// it can move a slot from a style that barely benefits to one that does
+		if (totalSwapItems > 0)
+		{
+			return adviseWithSharedBudget(primary, byStyle, primaryPicks, items,
+				includeGroupStorage, player, partySize, elitePrayers, totalSwapItems, explanation);
+		}
 
 		// Rooms fought with the base outfit run at full speed already
 		double total = sumSeconds(byStyle.get(primary));
@@ -239,6 +249,195 @@ public class SwitchAdvisor
 	{
 		return times == null ? 0
 			: times.stream().mapToDouble(RoomTimeEstimator.RoomTime::getSeconds).sum();
+	}
+
+	/**
+	 * Working state for one secondary style while the shared budget is spent.
+	 * Adding a piece only affects its own style's time, so the styles can be
+	 * advanced independently and compared against each other each round.
+	 */
+	private static class StyleState
+	{
+		private final GearNeed style;
+		private final List<RoomTimeEstimator.RoomTime> times;
+		private final Map<GearSlot, SetupBuilder.Pick> picks;
+		private final Map<GearSlot, SetupBuilder.Pick> notCarried = new LinkedHashMap<>();
+		private final List<Advice> advice = new ArrayList<>();
+		private double seconds;
+
+		StyleState(GearNeed style, List<RoomTimeEstimator.RoomTime> times,
+			Map<GearSlot, SetupBuilder.Pick> picks)
+		{
+			this.style = style;
+			this.times = times;
+			this.picks = picks;
+		}
+	}
+
+	/**
+	 * Spends ONE budget across every style at once, always buying whichever
+	 * remaining piece saves the most time regardless of which style it belongs
+	 * to. A per-style cap cannot trade slots between styles; this can, so it
+	 * may land on eight items for one style and two for another.
+	 *
+	 * Weapons and any ammo the base outfit isn't already wearing are mandatory
+	 * — you cannot use a style without them — and count against the budget.
+	 * An offhand rides free with its weapon.
+	 */
+	private Result adviseWithSharedBudget(
+		GearNeed primary,
+		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		int totalSwapItems,
+		PlanExplanation explanation)
+	{
+		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
+		List<StyleState> states = new ArrayList<>();
+		int mandatory = 0;
+
+		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
+		{
+			if (entry.getKey() == primary)
+			{
+				continue;
+			}
+			GearNeed style = entry.getKey();
+			Map<GearSlot, SetupBuilder.Pick> picks =
+				estimator.getResolver().resolve(style, items, includeGroupStorage);
+			StyleState state = new StyleState(style, entry.getValue(), picks);
+
+			for (GearSlot slot : SWITCHABLE)
+			{
+				SetupBuilder.Pick pick = picks.get(slot);
+				if (pick == null)
+				{
+					continue;
+				}
+				SetupBuilder.Pick primaryPick = primaryPicks.get(slot);
+				if (primaryPick != null && primaryPick.getItemId() == pick.getItemId())
+				{
+					state.advice.add(new Advice(style, slot, pick.getOption().getName(),
+						null, 0, false, true));
+					continue;
+				}
+				state.notCarried.put(slot, primaryPick);
+			}
+
+			state.seconds = totalSeconds(style, state.times, picks, state.notCarried,
+				items, includeGroupStorage, player, elitePrayers);
+			mandatory += mandatoryItems(style, state.times, primaryPicks, items, includeGroupStorage);
+			states.add(state);
+		}
+
+		int budget = Math.max(0, totalSwapItems - mandatory);
+		if (explanation != null)
+		{
+			explanation.addSwitchChoice(String.format(
+				"shared budget: %d items total, %d taken by weapons/ammo, %d left for armour",
+				totalSwapItems, mandatory, budget));
+		}
+
+		while (budget > 0)
+		{
+			StyleState bestState = null;
+			GearSlot bestSlot = null;
+			double bestGain = 0;
+
+			for (StyleState state : states)
+			{
+				for (GearSlot slot : state.notCarried.keySet())
+				{
+					Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(state.notCarried);
+					trial.remove(slot);
+					double gain = state.seconds - totalSeconds(state.style, state.times,
+						state.picks, trial, items, includeGroupStorage, player, elitePrayers);
+					if (gain > bestGain)
+					{
+						bestGain = gain;
+						bestSlot = slot;
+						bestState = state;
+					}
+				}
+			}
+
+			if (bestState == null)
+			{
+				break; // nothing left saves any time
+			}
+
+			SetupBuilder.Pick instead = bestState.notCarried.remove(bestSlot);
+			bestState.seconds -= bestGain;
+			bestState.advice.add(new Advice(bestState.style, bestSlot,
+				bestState.picks.get(bestSlot).getOption().getName(),
+				instead != null ? instead.getOption().getName() : null, bestGain, true, false));
+
+			// The offhand travels with its weapon, so it costs no budget
+			if (bestSlot != GearSlot.SHIELD)
+			{
+				budget--;
+			}
+
+			if (explanation != null)
+			{
+				explanation.addSwitchChoice(String.format("CARRY %s %s: %s saves %.1fs (%d left)",
+					bestState.style.getDisplayName().toLowerCase(),
+					bestSlot.getDisplayName().toLowerCase(),
+					bestState.picks.get(bestSlot).getOption().getName(), bestGain, budget));
+			}
+		}
+
+		List<Advice> advices = new ArrayList<>();
+		double total = sumSeconds(byStyle.get(primary));
+		for (StyleState state : states)
+		{
+			for (Map.Entry<GearSlot, SetupBuilder.Pick> left : state.notCarried.entrySet())
+			{
+				Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(state.notCarried);
+				trial.remove(left.getKey());
+				double gain = state.seconds - totalSeconds(state.style, state.times,
+					state.picks, trial, items, includeGroupStorage, player, elitePrayers);
+				Advice advice = new Advice(state.style, left.getKey(),
+					state.picks.get(left.getKey()).getOption().getName(),
+					left.getValue() != null ? left.getValue().getOption().getName() : null,
+					gain, false, false);
+				advice.overLimit = gain > 0; // it was worth something, the budget just ran out
+				state.advice.add(advice);
+			}
+			advices.addAll(state.advice);
+			total += state.seconds;
+		}
+
+		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
+		return new Result(primary, advices, total);
+	}
+
+	/** Weapon, plus ammo the base outfit isn't already wearing. */
+	private int mandatoryItems(
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		int count = 1;
+		SetupBuilder.Pick weapon = busiestWeapon(styleTimes);
+		if (style == GearNeed.RANGED && weapon != null
+			&& RoomTimeEstimator.needsAmmo(weapon.getItemId()))
+		{
+			SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(
+				weapon.getItemId(), items, includeGroupStorage);
+			SetupBuilder.Pick wornAmmo = primaryPicks.get(GearSlot.AMMO);
+			if (ammo != null && (wornAmmo == null || wornAmmo.getItemId() != ammo.getItemId()))
+			{
+				count++;
+			}
+		}
+		return count;
 	}
 
 	/** One style's switch decisions and the time they leave it taking. */
