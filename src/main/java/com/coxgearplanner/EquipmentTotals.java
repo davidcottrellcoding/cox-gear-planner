@@ -29,6 +29,9 @@ public class EquipmentTotals
 	double inquisitorCrush;
 	// Tome of fire: standard-spellbook fire spells only, not powered staves
 	double fireSpellMult = 1.0;
+	// Complete-set effects (void, obsidian) — see GearSetBonus
+	double setAccMult = 1.0;
+	double setDmgMult = 1.0;
 
 	void add(ItemStats stats)
 	{
@@ -69,6 +72,8 @@ public class EquipmentTotals
 		c.salveRangedMagicMult = salveRangedMagicMult;
 		c.inquisitorCrush = inquisitorCrush;
 		c.fireSpellMult = fireSpellMult;
+		c.setAccMult = setAccMult;
+		c.setDmgMult = setDmgMult;
 		return c;
 	}
 }

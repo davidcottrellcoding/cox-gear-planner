@@ -78,7 +78,8 @@ public final class GearDatabase
 			ItemOption.of("Inquisitor's hauberk", 24420),
 			ItemOption.of("Blood moon chestplate", 29022),
 			ItemOption.of("Fighter torso", 10551),
-			ItemOption.of("Obsidian platebody", 21301)));
+			ItemOption.of("Obsidian platebody", 21301),
+			ItemOption.of("Void knight top", 13072, 8839)));
 		melee.put(GearSlot.LEGS, Arrays.asList(
 			ItemOption.of("Oathplate legs", 30756, 30781), // + radiant
 			ItemOption.of("Torva platelegs", 26386),
@@ -86,11 +87,13 @@ public final class GearDatabase
 			ItemOption.of("Bandos tassets", 11834),
 			ItemOption.of("Blood moon tassets", 29025),
 			ItemOption.of("Obsidian platelegs", 21304),
-			ItemOption.of("Dragon platelegs", 4087)));
+			ItemOption.of("Dragon platelegs", 4087),
+			ItemOption.of("Void knight robe", 13073, 8840)));
 		melee.put(GearSlot.GLOVES, Arrays.asList(
 			ItemOption.of("Ferocious gloves", 22981),
 			ItemOption.of("Barrows gloves", 7462),
-			ItemOption.of("Dragon gloves", 7461)));
+			ItemOption.of("Dragon gloves", 7461),
+			ItemOption.of("Void knight gloves", 8842)));
 		melee.put(GearSlot.BOOTS, Arrays.asList(
 			ItemOption.of("Avernic treads", 31097, 31091, 31094, 31095), // melee-capable variants
 			ItemOption.of("Primordial boots", 13239),

@@ -85,6 +85,55 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Set bonuses, effects and interactions (v1.10 / v1.11)
+
+Anything whose value is a *multiplier* rather than an equipment stat is
+invisible to the stats-based picker, so each one has to be modelled by hand.
+All figures below were verified against the OSRS wiki.
+
+**Weapon effects**
+
+| Effect | Applies to | Modelled as |
+|---|---|---|
+| Twisted bow scaling | target magic level, CoX cap 350 | accuracy + damage curve |
+| Dragon hunter crossbow | draconic (all Olm parts) | 1.30 acc / 1.25 dmg |
+| **Dragon hunter lance** | draconic (all Olm parts) | 1.20 acc / 1.20 dmg |
+| Scythe of vitur | large targets | 1.75× average damage (3 hits) |
+| Osmumten's fang | all | double accuracy roll |
+| **Eye of ayak** | — | `⌊Magic/3⌋−6` at **3 ticks** (fastest magic weapon) |
+| Tumeken's shadow | — | `⌊Magic/3⌋+1` at 5 ticks, triples magic bonuses (dmg capped 100%) |
+| Sanguinesti / tridents / harmonised | — | own formulas and speeds |
+
+**Per-piece effects**
+
+| Effect | Applies to | Modelled as |
+|---|---|---|
+| Crystal armour | crystal bow / bofa only | helm 5%/2.5%, body 15%/7.5%, legs 10%/5% |
+| Salve amulet | undead (Skeletal Mystics) | 15%/20%, imbued extends to ranged and magic |
+| **Inquisitor's** | **crush style only** | helm 0.5%, hauberk 1%, skirt 1% |
+| **Tome of fire** | standard fire spells, **not** powered staves | **+10% vs NPCs** (the quoted 50% is PvP) |
+
+**Complete-set effects** (new machinery — these pay out only when every piece
+is worn, and the planner picks slots independently, so it would never
+assemble one by accident. Each owned set is now evaluated as a whole
+alternative loadout and kept only when it is genuinely faster.)
+
+| Set | Effect |
+|---|---|
+| Void (melee) | 1.10 accuracy and damage |
+| Void (ranged) | 1.10 accuracy, 1.10 damage — elite 1.125 damage |
+| Void (magic) | 1.45 accuracy, no damage — elite 1.05 damage |
+| Obsidian armour | 1.10 accuracy and damage, **only with an obsidian weapon** |
+
+The void helm decides which style the set boosts, and all four of
+helm/top/robe/gloves are required.
+
+**Not modelled**, and why: bolt proc effects (ruby/diamond) need a
+current-HP simulation; special attacks including DWH/BGS/elder maul defence
+reduction; Olm's head 66% non-ranged mitigation (see above); demon-bane
+weapons such as arclight and emberlight (magic dominates the Ice Demon room
+regardless, since its magic defence is 60 against 200 melee).
+
 ## Uncharged and broken items count as owned (v1.9)
 
 An uncharged scythe is still a scythe — you just charge it before the raid.

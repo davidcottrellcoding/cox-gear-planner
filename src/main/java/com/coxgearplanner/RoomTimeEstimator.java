@@ -262,11 +262,27 @@ public class RoomTimeEstimator
 					}
 				}
 
+				// Complete sets (void, obsidian) only pay out when every piece
+				// is worn, so they have to be tried as whole alternatives —
+				// the per-slot picker would never assemble one on its own.
+				List<Map<GearSlot, SetupBuilder.Pick>> setOverrides =
+					setOverrides(style, items, includeGroupStorage);
+
 				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage))
 				{
 					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
 						items, includeGroupStorage, player, monster, elitePrayers);
 					SetupBuilder.Pick usedSalve = null;
+
+					for (Map<GearSlot, SetupBuilder.Pick> setOverride : setOverrides)
+					{
+						double setDps = loadoutDps(style, weapon, picks, setOverride,
+							items, includeGroupStorage, player, monster, elitePrayers);
+						if (setDps > dps)
+						{
+							dps = setDps;
+						}
+					}
 
 					if (!salveOverride.isEmpty())
 					{
@@ -362,6 +378,7 @@ public class RoomTimeEstimator
 	{
 		boolean twoHanded = weapon.getOption().isTwoHanded();
 		EquipmentTotals totals = new EquipmentTotals();
+		Set<Integer> equippedIds = new HashSet<>();
 
 		for (GearSlot slot : GearSlot.values())
 		{
@@ -380,6 +397,7 @@ public class RoomTimeEstimator
 				addCrystalSetBonus(totals, pick.getItemId());
 				addSalveBonus(totals, pick.getItemId());
 				addPieceEffects(totals, pick.getItemId());
+				equippedIds.add(pick.getItemId());
 			}
 		}
 
@@ -393,6 +411,11 @@ public class RoomTimeEstimator
 		{
 			addAmmo(totals, weapon.getItemId(), items, includeGroupStorage);
 		}
+
+		// Complete-set effects depend on the whole worn combination
+		double[] set = GearSetBonus.multipliers(equippedIds, style, weapon.getItemId());
+		totals.setAccMult = set[0];
+		totals.setDmgMult = set[1];
 
 		return dpsFor(style, weapon.getItemId(), totals, player, monster, elitePrayers);
 	}
@@ -546,6 +569,36 @@ public class RoomTimeEstimator
 		}
 	}
 
+	/** Each complete set you own, expressed as slot overrides to evaluate. */
+	private List<Map<GearSlot, SetupBuilder.Pick>> setOverrides(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		List<Map<GearSlot, SetupBuilder.Pick>> overrides = new ArrayList<>();
+		for (GearSetBonus.SetOption set : GearSetBonus.ownedSets(style, items, includeGroupStorage))
+		{
+			Map<GearSlot, SetupBuilder.Pick> override = new java.util.HashMap<>();
+			boolean complete = true;
+			for (Map.Entry<GearSlot, Integer> piece : set.getPieces().entrySet())
+			{
+				SetupBuilder.Pick pick = SetupBuilder.findOwned(
+					ItemOption.of(set.getName(), piece.getValue()), items, includeGroupStorage);
+				if (pick == null)
+				{
+					complete = false;
+					break;
+				}
+				override.put(piece.getKey(), pick);
+			}
+			if (complete)
+			{
+				overrides.add(override);
+			}
+		}
+		return overrides;
+	}
+
 	/** Best owned salve amulet, or null — used as a neck swap for undead rooms. */
 	static SetupBuilder.Pick findSalve(
 		Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
@@ -636,7 +689,7 @@ public class RoomTimeEstimator
 		double salve = m.isUndead() ? eq.salveMeleeMult : 1.0;
 		// Dragon hunter lance: 20% accuracy and damage vs draconic targets
 		double bane = weaponId == DRAGON_HUNTER_LANCE && m.isDraconic() ? 1.20 : 1.0;
-		maxHit = (int) Math.floor(maxHit * salve * bane);
+		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult);
 
 		double best = 0;
 		for (int i = 0; i < styles.length; i++)
@@ -648,7 +701,7 @@ public class RoomTimeEstimator
 			int styleMax = (int) Math.floor(maxHit * inq);
 
 			double acc = CombatFormulas.accuracy(
-				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq,
+				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
 			if (weaponId == FANG)
 			{
@@ -674,8 +727,9 @@ public class RoomTimeEstimator
 		int effAtk = CombatFormulas.effectiveLevel(p.getRanged(), elite ? 1.20 : 1.0, 0);
 		int maxHit = CombatFormulas.maxHit(effStr, eq.rangedStr);
 
-		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk);
+		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk) * eq.setAccMult;
 		double defRoll = CombatFormulas.defenceRoll(m.getDefenceLevel(), m.getDRange());
+		maxHit = (int) Math.floor(maxHit * eq.setDmgMult);
 		double avgMax = maxHit;
 
 		if (m.isUndead() && eq.salveRangedMagicMult > 1.0)
@@ -769,7 +823,8 @@ public class RoomTimeEstimator
 		}
 		// Augury boosts accuracy only
 		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 9;
-		double atkRoll = effMagic * (magicAtkBonus + 64);
+		double atkRoll = effMagic * (magicAtkBonus + 64) * eq.setAccMult;
+		maxHit = (int) Math.floor(maxHit * eq.setDmgMult);
 
 		double salve = m.isUndead() ? eq.salveRangedMagicMult : 1.0;
 		atkRoll *= salve;
