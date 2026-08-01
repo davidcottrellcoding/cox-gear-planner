@@ -85,6 +85,27 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Salve amulet at Skeletal Mystics (v1.7)
+
+Skeletal mystics are the one undead encounter in the raid, so the salve
+amulet applies there. Its bonus is a damage/accuracy multiplier that does
+**not** appear anywhere in the item's equipment stats, which means the
+stats-based picker in v1.5 could never find it — the amulet looks weak on
+paper and always lost to anguish/torture/occult.
+
+It is now modelled explicitly:
+
+- Skeletal mystics carry an `undead` flag (`RoomMonsters.java`).
+- Salve amulet **+15%**, **(e) +20%** (melee only), **(i) +15%** and
+  **(ei) +20%** (all three styles) to both accuracy and max hit vs undead.
+- For undead rooms the planner tries your best owned salve as a neck swap
+  against the normally-best amulet and keeps whichever is actually faster,
+  so the Mystics room time reflects it and the amulet is added to the
+  inventory list as "for Skeletal Mystics".
+
+Other multiplier-style effects that don't live in item stats (void, obsidian,
+inquisitor's crush bonus, bolt procs) are still not modelled.
+
 ## Explicit 11 + 28 layout and debug panel (v1.6)
 
 The plan is now stated as a real loadout you can actually pack:

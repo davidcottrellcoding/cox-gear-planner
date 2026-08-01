@@ -61,9 +61,11 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.VASA, new Encounter(new MonsterProfile(
 			"Vasa Nistirio", 300, 175, 230, 170, 170, 170, 230, 60, true, false,
 			GearNeed.RANGED), 1));
+		// Skeletal mystics are undead, so the salve amulet applies here — the
+		// only CoX room where it does. Add .undead() to others if that changes.
 		ENCOUNTERS.put(CoxRoom.MYSTICS, new Encounter(new MonsterProfile(
 			"Skeletal mystic", 160, 187, 140, 70, 70, 70, 80, 50, false, false,
-			GearNeed.MELEE, GearNeed.RANGED), 3));
+			GearNeed.MELEE, GearNeed.RANGED).undead(), 3));
 		ENCOUNTERS.put(CoxRoom.VANGUARDS, new Encounter(new MonsterProfile(
 			"Vanguard", 180, 110, 150, 50, 50, 50, 50, 50, false, false,
 			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 3));

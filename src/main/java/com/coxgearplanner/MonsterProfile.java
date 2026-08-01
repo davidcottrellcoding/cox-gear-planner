@@ -23,6 +23,8 @@ public class MonsterProfile
 	private final boolean large;
 	private final boolean draconic;
 	private final Set<GearNeed> usableStyles;
+	/** Undead monsters take the salve amulet's damage/accuracy bonus. */
+	private boolean undead;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -40,6 +42,18 @@ public class MonsterProfile
 		this.large = large;
 		this.draconic = draconic;
 		this.usableStyles = Collections.unmodifiableSet(EnumSet.of(usableStyles[0], usableStyles));
+	}
+
+	/** Marks this monster as undead (salve amulet applies). */
+	MonsterProfile undead()
+	{
+		this.undead = true;
+		return this;
+	}
+
+	public boolean isUndead()
+	{
+		return undead;
 	}
 
 	public String getName()

@@ -50,6 +50,15 @@ public class RoomTimeEstimator
 	private static final Set<Integer> CRYSTAL_LEGS = new HashSet<>(Arrays.asList(
 		23979, 27701, 27713, 27725, 27737, 27749, 27761, 27773));
 
+	// Salve amulet vs undead. The plain and enchanted versions boost melee
+	// only; the imbued versions boost all three styles.
+	static final int SALVE = 4081;
+	static final int SALVE_E = 10588;
+	static final int SALVE_I = 12017;
+	static final int SALVE_EI = 12018;
+	/** Best-first: (ei) and (e) give 20%, (i) and plain give 15%. */
+	static final int[] SALVE_IDS = {SALVE_EI, SALVE_I, SALVE_E, SALVE};
+
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
 	private static final int BLOWPIPE_DART_RSTR = 20;
 
@@ -61,6 +70,8 @@ public class RoomTimeEstimator
 		private final boolean feasible;
 		private final GearNeed style;
 		private final SetupBuilder.Pick weapon;
+		/** Room-specific item the general loadout doesn't cover (salve amulet). */
+		SetupBuilder.Pick extraSwitch;
 
 		RoomTime(CoxRoom room, String detail, double seconds, boolean feasible,
 			GearNeed style, SetupBuilder.Pick weapon)
@@ -103,6 +114,12 @@ public class RoomTimeEstimator
 		public SetupBuilder.Pick getWeapon()
 		{
 			return weapon;
+		}
+
+		/** Room-specific extra item to bring (salve amulet), or null. */
+		public SetupBuilder.Pick getExtraSwitch()
+		{
+			return extraSwitch;
 		}
 	}
 
@@ -165,17 +182,48 @@ public class RoomTimeEstimator
 			double bestDps = 0;
 			GearNeed bestStyle = null;
 			SetupBuilder.Pick bestWeapon = null;
+			SetupBuilder.Pick bestSalve = null;
 			double runnerUpDps = 0;
 			String runnerUpName = null;
+
+			// The globally-best amulet is anguish/torture/occult, but against
+			// undead a salve amulet usually beats all of them. Its bonus isn't
+			// in the item's stats, so it has to be tried explicitly.
+			SetupBuilder.Pick salve = monster.isUndead()
+				? findSalve(items, includeGroupStorage)
+				: null;
 
 			for (GearNeed style : monster.getUsableStyles())
 			{
 				Map<GearSlot, SetupBuilder.Pick> picks = resolver.resolve(style, items, includeGroupStorage);
 
+				Map<GearSlot, SetupBuilder.Pick> salveOverride = Collections.emptyMap();
+				if (salve != null)
+				{
+					SetupBuilder.Pick neck = picks.get(GearSlot.NECK);
+					if (neck == null || neck.getItemId() != salve.getItemId())
+					{
+						salveOverride = Collections.singletonMap(GearSlot.NECK, salve);
+					}
+				}
+
 				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage))
 				{
 					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
 						items, includeGroupStorage, player, monster, elitePrayers);
+					SetupBuilder.Pick usedSalve = null;
+
+					if (!salveOverride.isEmpty())
+					{
+						double salveDps = loadoutDps(style, weapon, picks, salveOverride,
+							items, includeGroupStorage, player, monster, elitePrayers);
+						if (salveDps > dps)
+						{
+							dps = salveDps;
+							usedSalve = salve;
+						}
+					}
+
 					if (dps > bestDps)
 					{
 						runnerUpDps = bestDps;
@@ -183,6 +231,7 @@ public class RoomTimeEstimator
 						bestDps = dps;
 						bestStyle = style;
 						bestWeapon = weapon;
+						bestSalve = usedSalve;
 					}
 					else if (dps > runnerUpDps)
 					{
@@ -201,7 +250,13 @@ public class RoomTimeEstimator
 				double totalHp = monster.getHp() * hpMult * encounter.getCount();
 				String label = bestWeapon.getOption().getName()
 					+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
-				results.add(new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon));
+				if (bestSalve != null)
+				{
+					label += " + " + bestSalve.getOption().getName();
+				}
+				RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);
+				roomTime.extraSwitch = bestSalve;
+				results.add(roomTime);
 
 				if (explanation != null)
 				{
@@ -253,6 +308,7 @@ public class RoomTimeEstimator
 			{
 				totals.add(itemManager.getItemStats(pick.getItemId()));
 				addCrystalSetBonus(totals, pick.getItemId());
+				addSalveBonus(totals, pick.getItemId());
 			}
 		}
 
@@ -364,6 +420,54 @@ public class RoomTimeEstimator
 		}
 	}
 
+	/**
+	 * Salve amulet: +15%/+20% accuracy and damage against undead. Only the
+	 * imbued variants extend the bonus to ranged and magic. Applied by the
+	 * per-style DPS methods, and only when the monster is undead.
+	 */
+	static void addSalveBonus(EquipmentTotals totals, int itemId)
+	{
+		switch (itemId)
+		{
+			case SALVE_EI:
+				totals.salveMeleeMult = 1.20;
+				totals.salveRangedMagicMult = 1.20;
+				break;
+			case SALVE_I:
+				totals.salveMeleeMult = 1.15;
+				totals.salveRangedMagicMult = 1.15;
+				break;
+			case SALVE_E:
+				totals.salveMeleeMult = 1.20;
+				break;
+			case SALVE:
+				totals.salveMeleeMult = 1.15;
+				break;
+			default:
+				break;
+		}
+	}
+
+	/** Best owned salve amulet, or null — used as a neck swap for undead rooms. */
+	static SetupBuilder.Pick findSalve(
+		Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
+	{
+		for (int id : SALVE_IDS)
+		{
+			String name = id == SALVE_EI ? "Salve amulet (ei)"
+				: id == SALVE_I ? "Salve amulet (i)"
+				: id == SALVE_E ? "Salve amulet (e)"
+				: "Salve amulet";
+			SetupBuilder.Pick pick = SetupBuilder.findOwned(
+				ItemOption.of(name, id), items, includeGroupStorage);
+			if (pick != null)
+			{
+				return pick;
+			}
+		}
+		return null;
+	}
+
 	/** Whether the weapon consumes arrow/bolt ammo from the quiver slot. */
 	public static boolean needsAmmo(int weaponId)
 	{
@@ -430,11 +534,15 @@ public class RoomTimeEstimator
 			{eq.crushAtk, m.getDCrush()},
 		};
 
+		// Salve amulet multiplies both accuracy and damage against undead
+		double salve = m.isUndead() ? eq.salveMeleeMult : 1.0;
+		maxHit = (int) Math.floor(maxHit * salve);
+
 		double best = 0;
 		for (int[] s : styles)
 		{
 			double acc = CombatFormulas.accuracy(
-				CombatFormulas.attackRoll(effAtk, s[0]),
+				CombatFormulas.attackRoll(effAtk, s[0]) * salve,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
 			if (weaponId == FANG)
 			{
@@ -463,6 +571,13 @@ public class RoomTimeEstimator
 		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk);
 		double defRoll = CombatFormulas.defenceRoll(m.getDefenceLevel(), m.getDRange());
 		double avgMax = maxHit;
+
+		if (m.isUndead() && eq.salveRangedMagicMult > 1.0)
+		{
+			atkRoll *= eq.salveRangedMagicMult;
+			maxHit = (int) Math.floor(maxHit * eq.salveRangedMagicMult);
+			avgMax = maxHit;
+		}
 
 		if (weaponId == TBOW)
 		{
@@ -531,8 +646,13 @@ public class RoomTimeEstimator
 		int maxHit = (int) (baseHit * (1 + dmgPercent / 100.0));
 		// Augury boosts accuracy only
 		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 9;
-		double acc = CombatFormulas.accuracy(
-			effMagic * (magicAtkBonus + 64),
+		double atkRoll = effMagic * (magicAtkBonus + 64);
+
+		double salve = m.isUndead() ? eq.salveRangedMagicMult : 1.0;
+		atkRoll *= salve;
+		maxHit = (int) Math.floor(maxHit * salve);
+
+		double acc = CombatFormulas.accuracy(atkRoll,
 			CombatFormulas.defenceRoll(m.getMagicLevel(), m.getDMagic()));
 		return CombatFormulas.dps(acc, maxHit, speed);
 	}

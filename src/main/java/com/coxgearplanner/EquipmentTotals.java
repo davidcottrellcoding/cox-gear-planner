@@ -21,6 +21,10 @@ public class EquipmentTotals
 	// Crystal armour set bonus vs crystal bow / bow of faerdhinen
 	double crystalAcc;
 	double crystalDmg;
+	// Salve amulet multiplier vs undead: 1.0 when no salve is worn. The
+	// non-imbued versions only boost melee, so the two are tracked apart.
+	double salveMeleeMult = 1.0;
+	double salveRangedMagicMult = 1.0;
 
 	void add(ItemStats stats)
 	{
@@ -57,6 +61,8 @@ public class EquipmentTotals
 		c.speedTicks = speedTicks;
 		c.crystalAcc = crystalAcc;
 		c.crystalDmg = crystalDmg;
+		c.salveMeleeMult = salveMeleeMult;
+		c.salveRangedMagicMult = salveRangedMagicMult;
 		return c;
 	}
 }

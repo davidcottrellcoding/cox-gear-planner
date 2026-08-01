@@ -156,7 +156,20 @@ public final class RaidLoadoutBuilder
 			}
 		}
 
-		// 2. Only the worth-it armour switches
+		// 2. Room-specific extras the general loadout can't cover (salve amulet)
+		for (RoomTimeEstimator.RoomTime time : times)
+		{
+			SetupBuilder.Pick extra = time.getExtraSwitch();
+			if (extra == null || worn.contains(extra.getItemId()))
+			{
+				continue;
+			}
+			inventory.putIfAbsent(extra.getItemId(), new Entry(
+				extra.getOption().getName(), extra.getSource(),
+				"for " + time.getRoom().getDisplayName(), false));
+		}
+
+		// 3. Only the worth-it armour switches
 		for (SwitchAdvisor.Advice a : advice)
 		{
 			if (!a.isWorthIt() || a.isAlreadyShared())
@@ -176,7 +189,7 @@ public final class RaidLoadoutBuilder
 				false));
 		}
 
-		// 3. Utility items the selected rooms demand
+		// 4. Utility items the selected rooms demand
 		int missingKey = -1;
 		for (GearNeed need : GearNeed.values())
 		{
