@@ -118,6 +118,20 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
+## Still-unmodelled item effects
+
+Confliction gauntlets are modelled as of v1.38 — a second accuracy roll, worth
+about +30% relative when your base accuracy is around 10% and tapering to
+nothing above 95%.
+
+**Known gap:** items whose magic damage is conditional on the spell being cast
+are not distinguished. Virtus pieces carry an additional Ancient Magicks
+bonus, which should not apply to a powered staff like Tumeken's shadow or an
+eye of ayak. Whether the plugin currently over-applies it depends on which
+figure RuneLite reports in the item stats, and that has not been checked. This
+needs one pass over every item with a spell-conditional bonus rather than
+item-by-item patching.
+
 ## Prayer bonus decides what damage cannot
 
 Gear is ranked by damage, but some slots make no difference to damage at all —
@@ -410,6 +424,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.38 | Confliction gauntlets' second accuracy roll is modelled; their value was previously only their raw stats |
 | 1.37 | Already-worn slots are priced against the next best item you own, not against an empty slot, which produced runaway figures like 3286s |
 | 1.36.1 | Crash: an empty ammo slot hit a curated list that names no ammunition for melee or magic |
 | 1.36 | The base outfit no longer claims a shield behind a two-handed weapon or ammo for a bow that fires none |

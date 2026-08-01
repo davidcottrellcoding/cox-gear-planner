@@ -29,6 +29,8 @@ public class EquipmentTotals
 	double salveMagicMult = 1.0;
 	// Inquisitor's armour: crush accuracy and damage only, summed per piece
 	double inquisitorCrush;
+	/** Confliction gauntlets: a second accuracy roll, worth most when inaccurate. */
+	boolean confliction;
 	// Tome of fire: standard-spellbook fire spells only, not powered staves
 	double fireSpellMult = 1.0;
 	// Complete-set effects (void, obsidian) — see GearSetBonus

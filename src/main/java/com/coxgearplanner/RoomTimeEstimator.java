@@ -772,10 +772,15 @@ public class RoomTimeEstimator
 	 * 10% damage to standard-spellbook fire spells against NPCs — the 50%
 	 * figure quoted for the tome is player-versus-player only.
 	 */
+	private static final int CONFLICTION_GAUNTLETS = 31106;
+
 	static void addPieceEffects(EquipmentTotals totals, int itemId)
 	{
 		switch (itemId)
 		{
+			case CONFLICTION_GAUNTLETS:
+				totals.confliction = true;
+				break;
 			case INQUISITOR_HELM:
 				totals.inquisitorCrush += 0.005;
 				break;
@@ -1011,6 +1016,29 @@ public class RoomTimeEstimator
 		return null;
 	}
 
+	/**
+	 * Confliction gauntlets grant a second accuracy roll.
+	 *
+	 * The wiki gives the exact form as Ptwo / (1 + Ptwo - Pone), which needs
+	 * the raw attack and defence rolls, and alongside it this average over the
+	 * base hit chance - which is all that is available here. It reproduces the
+	 * documented behaviour: about +30% relative at 10% base accuracy, tapering
+	 * to nothing as accuracy climbs.
+	 *
+	 * Clamped so it can never reduce accuracy. The quadratic dips just below
+	 * the input above roughly 93%, an artefact of the fit rather than the
+	 * effect, and the wiki is explicit that at 95% and above there is
+	 * virtually no effect - not a penalty.
+	 */
+	static double withConfliction(double acc, EquipmentTotals eq)
+	{
+		if (eq == null || !eq.confliction)
+		{
+			return acc;
+		}
+		return Math.min(1, Math.max(acc, acc * (1.3275 - 0.36 * acc)));
+	}
+
 	private static double dpsFor(GearNeed style, int weaponId, EquipmentTotals eq,
 		PlayerSnapshot player, MonsterProfile m, boolean elitePrayers)
 	{
@@ -1069,6 +1097,7 @@ public class RoomTimeEstimator
 			double acc = CombatFormulas.accuracy(
 				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult * demonbane,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
+			acc = withConfliction(acc, eq);
 			if (weaponId == FANG && i == 0)
 			{
 				// The fang rolls accuracy twice, but only on stab styles —
@@ -1173,7 +1202,7 @@ public class RoomTimeEstimator
 			avgMax = Math.floor(maxHit * (1 + eq.crystalDmg));
 		}
 
-		double acc = CombatFormulas.accuracy(atkRoll, defRoll);
+		double acc = withConfliction(CombatFormulas.accuracy(atkRoll, defRoll), eq);
 		// Rapid is one tick faster, but a target that demands more reach than
 		// the weapon has forces longrange, which gives that tick back.
 		int speed = needsLongrange(weaponId, m)
@@ -1266,8 +1295,8 @@ public class RoomTimeEstimator
 		}
 		maxHit = (int) Math.floor(maxHit * m.getMagicDamageMult());
 
-		double acc = CombatFormulas.accuracy(atkRoll,
-			CombatFormulas.defenceRoll(m.getMagicDefenceLevel(), m.getDMagic()));
+		double acc = withConfliction(CombatFormulas.accuracy(atkRoll,
+			CombatFormulas.defenceRoll(m.getMagicDefenceLevel(), m.getDMagic())), eq);
 		return CombatFormulas.dps(acc, maxHit, speed);
 	}
 }
