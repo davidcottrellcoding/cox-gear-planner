@@ -82,6 +82,21 @@ on the Ice demon and CoX strategy pages but is not corroborated by the
 only makes sense under that reading, which is the best available evidence,
 but it is inference rather than a directly documented mechanic.
 
+## The base outfit is chosen by total time (v1.22)
+
+The base outfit used to be whichever style had the most combat seconds. That
+was self-defeating: seconds are HP/DPS, so making a style **stronger** cut its
+share of the clock and made it *less* likely to be worn. Forcing a slower
+4-tick staff at Olm could flip the base outfit from melee to magic purely
+because magic had been made worse — which showed up as the ring changing from
+berserker to seers for no good reason.
+
+Each style is now tried as the base outfit, its switches chosen by the same
+greedy selection, and whichever produces the **lowest total raid time** wins.
+That optimises the thing you actually care about and cannot be gamed by a
+style being slow. With the debug panel on, the totals for all three candidates
+are listed with the chosen one marked.
+
 ## Room style constraints (v1.16)
 
 DPS alone can't tell you that a target is across a gap, or that you'd be
@@ -149,6 +164,10 @@ set it to 4 and each secondary style is a 4-way switch, no more.
 - The **weapon counts** toward the total, as does ammo the base outfit isn't
   already wearing — a "4-way switch" is four clicks, so a bow plus its arrows
   leaves room for two armour pieces.
+- **An offhand rides along with the weapon and is free.** A fang plus a dragon
+  defender is one swap, not two, so a 4-item cap still allows three real
+  armour switches beside it. The shield is still priced for value; it just
+  doesn't consume cap budget.
 - Pieces are still chosen by greedy value order, so the ones kept are the
   most valuable that fit — the cap trims the tail, not the head.
 - Pieces cut by the cap (rather than by low value) are listed separately as

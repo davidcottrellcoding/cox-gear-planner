@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.21.1";
+	static final String VERSION = "1.22.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -308,12 +308,15 @@ public class CoxGearPlannerPlugin extends Plugin
 			List<RoomTimeEstimator.RoomTime> times = estimator.estimate(
 				rooms, snapshot, includeGroup, player,
 				config.partySize(), config.assumeElitePrayers(), explanation);
-			List<SwitchAdvisor.Advice> advice = new SwitchAdvisor(estimator).advise(
+			// The advisor now picks the base outfit itself, by trying each style
+			// and keeping whichever gives the lowest total raid time.
+			SwitchAdvisor.Result switches = new SwitchAdvisor(estimator).advise(
 				times, snapshot, includeGroup, player,
 				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds(),
 				config.maxSwitchItems(), explanation);
 
-			GearNeed primary = primaryStyle(times);
+			List<SwitchAdvisor.Advice> advice = switches.getAdvice();
+			GearNeed primary = switches.getPrimary();
 			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
 				rooms, times, advice, primary, snapshot, includeGroup,
 				estimator.getResolver(), getNeedsCharging());
@@ -334,23 +337,6 @@ public class CoxGearPlannerPlugin extends Plugin
 			result.setExportText(PlanExport.render(rooms, player, config, result));
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});
-	}
-
-	/** Style with the most estimated combat time — the base outfit you wear. */
-	private static GearNeed primaryStyle(List<RoomTimeEstimator.RoomTime> times)
-	{
-		Map<GearNeed, Double> totals = new EnumMap<>(GearNeed.class);
-		for (RoomTimeEstimator.RoomTime time : times)
-		{
-			if (time.isFeasible() && time.getStyle() != null)
-			{
-				totals.merge(time.getStyle(), time.getSeconds(), Double::sum);
-			}
-		}
-		return totals.entrySet().stream()
-			.max(Map.Entry.comparingByValue())
-			.map(Map.Entry::getKey)
-			.orElse(null);
 	}
 
 	private PlayerSnapshot snapshotPlayer()

@@ -97,33 +97,47 @@ public class SwitchAdvisor
 		this.estimator = estimator;
 	}
 
-	/**
-	 * @return advice per secondary-style armour switch, or an empty list when
-	 * fewer than two styles are actually used across the selected rooms.
-	 * The primary style (worn as the base outfit) is the one with the most
-	 * estimated combat time.
-	 */
-	public List<Advice> advise(
-		List<RoomTimeEstimator.RoomTime> times,
-		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage,
-		PlayerSnapshot player,
-		int partySize,
-		boolean elitePrayers,
-		double thresholdSeconds,
-		PlanExplanation explanation)
+	/** The chosen base outfit, its switches, and the raid time that produces. */
+	public static class Result
 	{
-		return advise(times, items, includeGroupStorage, player, partySize, elitePrayers,
-			thresholdSeconds, 0, explanation);
+		private final GearNeed primary;
+		private final List<Advice> advice;
+		private final double totalSeconds;
+
+		Result(GearNeed primary, List<Advice> advice, double totalSeconds)
+		{
+			this.primary = primary;
+			this.advice = advice;
+			this.totalSeconds = totalSeconds;
+		}
+
+		public GearNeed getPrimary()
+		{
+			return primary;
+		}
+
+		public List<Advice> getAdvice()
+		{
+			return advice;
+		}
+
+		public double getTotalSeconds()
+		{
+			return totalSeconds;
+		}
 	}
 
 	/**
-	 * @param maxSwitchItems hard cap on how many items are swapped per
-	 * secondary style, counting the weapon and its ammo; 0 means no limit.
-	 * Applied after the value ordering, so the pieces kept are the most
-	 * valuable ones that fit.
+	 * Picks the base outfit by trying every style and keeping whichever gives
+	 * the lowest total raid time once its switches are chosen.
+	 *
+	 * The old rule — wear whichever style has the most combat seconds — was
+	 * self-defeating, because seconds are HP/DPS: making a style stronger cut
+	 * its share of the clock and so made it LESS likely to be worn. Forcing a
+	 * weaker 4-tick staff at Olm could flip the base outfit from melee to
+	 * magic purely by making magic slower.
 	 */
-	public List<Advice> advise(
+	public Result advise(
 		List<RoomTimeEstimator.RoomTime> times,
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage,
@@ -142,25 +156,65 @@ public class SwitchAdvisor
 				byStyle.computeIfAbsent(time.getStyle(), k -> new ArrayList<>()).add(time);
 			}
 		}
-		if (byStyle.size() < 2)
+		if (byStyle.isEmpty())
 		{
-			return Collections.emptyList();
+			return new Result(null, Collections.emptyList(), 0);
+		}
+		if (byStyle.size() == 1)
+		{
+			GearNeed only = byStyle.keySet().iterator().next();
+			return new Result(only, Collections.emptyList(), sumSeconds(byStyle.get(only)));
 		}
 
-		GearNeed primary = null;
-		double primarySeconds = -1;
-		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
+		// Try each style as the base outfit and keep the best total
+		GearNeed best = null;
+		double bestSeconds = Double.MAX_VALUE;
+		for (GearNeed candidate : byStyle.keySet())
 		{
-			double total = entry.getValue().stream().mapToDouble(RoomTimeEstimator.RoomTime::getSeconds).sum();
-			if (total > primarySeconds)
+			double total = evaluate(candidate, byStyle, items, includeGroupStorage, player,
+				partySize, elitePrayers, thresholdSeconds, maxSwitchItems, null).getTotalSeconds();
+			if (total < bestSeconds)
 			{
-				primarySeconds = total;
-				primary = entry.getKey();
+				bestSeconds = total;
+				best = candidate;
 			}
 		}
 
+		if (explanation != null)
+		{
+			for (GearNeed candidate : byStyle.keySet())
+			{
+				double total = evaluate(candidate, byStyle, items, includeGroupStorage, player,
+					partySize, elitePrayers, thresholdSeconds, maxSwitchItems, null).getTotalSeconds();
+				explanation.addSwitchChoice(String.format("base outfit %s: %.0fs total raid time%s",
+					candidate.getDisplayName().toLowerCase(), total,
+					candidate == best ? "  <-- chosen" : ""));
+			}
+		}
+
+		// Re-run the winner so the explanation records its decisions only
+		return evaluate(best, byStyle, items, includeGroupStorage, player,
+			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, explanation);
+	}
+
+	/** Total raid time with one style worn as the base outfit. */
+	private Result evaluate(
+		GearNeed primary,
+		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		double thresholdSeconds,
+		int maxSwitchItems,
+		PlanExplanation explanation)
+	{
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks =
 			estimator.getResolver().resolve(primary, items, includeGroupStorage);
+
+		// Rooms fought with the base outfit run at full speed already
+		double total = sumSeconds(byStyle.get(primary));
 
 		List<Advice> advices = new ArrayList<>();
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
@@ -169,14 +223,35 @@ public class SwitchAdvisor
 			{
 				continue;
 			}
-			advices.addAll(adviseStyle(entry.getKey(), entry.getValue(), primaryPicks,
+			StyleResult styleResult = adviseStyle(entry.getKey(), entry.getValue(), primaryPicks,
 				items, includeGroupStorage, player, partySize, elitePrayers,
-				thresholdSeconds, maxSwitchItems, explanation));
+				thresholdSeconds, maxSwitchItems, explanation);
+			advices.addAll(styleResult.advice);
+			total += styleResult.seconds;
 		}
 
 		// Most valuable switches first; shared/zero-value entries last
 		advices.sort((a, b) -> Double.compare(b.getSecondsSaved(), a.getSecondsSaved()));
-		return advices;
+		return new Result(primary, advices, total);
+	}
+
+	private static double sumSeconds(List<RoomTimeEstimator.RoomTime> times)
+	{
+		return times == null ? 0
+			: times.stream().mapToDouble(RoomTimeEstimator.RoomTime::getSeconds).sum();
+	}
+
+	/** One style's switch decisions and the time they leave it taking. */
+	private static class StyleResult
+	{
+		private final List<Advice> advice;
+		private final double seconds;
+
+		StyleResult(List<Advice> advice, double seconds)
+		{
+			this.advice = advice;
+			this.seconds = seconds;
+		}
 	}
 
 	/**
@@ -190,7 +265,7 @@ public class SwitchAdvisor
 	 * loadout, so all were dropped even though wearing none of them is far
 	 * worse than the individual numbers suggest.
 	 */
-	private List<Advice> adviseStyle(
+	private StyleResult adviseStyle(
 		GearNeed style,
 		List<RoomTimeEstimator.RoomTime> styleTimes,
 		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
@@ -278,7 +353,12 @@ public class SwitchAdvisor
 
 			SetupBuilder.Pick instead = notCarried.remove(bestSlot);
 			currentSeconds -= bestGain;
-			carried++;
+			// A shield rides along with the weapon swap — a fang and defender
+			// is one swap, not two — so the offhand costs no cap budget.
+			if (bestSlot != GearSlot.SHIELD)
+			{
+				carried++;
+			}
 			advices.add(new Advice(style, bestSlot, picks.get(bestSlot).getOption().getName(),
 				instead != null ? instead.getOption().getName() : null, bestGain, true, false));
 
@@ -291,7 +371,8 @@ public class SwitchAdvisor
 			}
 		}
 
-		// Whatever is left didn't clear the threshold
+		// Whatever is left didn't clear the threshold (currentSeconds below is
+		// the time this style ends up taking with the switches actually kept)
 		for (Map.Entry<GearSlot, SetupBuilder.Pick> left : notCarried.entrySet())
 		{
 			GearSlot slot = left.getKey();
@@ -317,7 +398,7 @@ public class SwitchAdvisor
 					instead != null ? instead.getOption().getName() : "nothing"));
 			}
 		}
-		return advices;
+		return new StyleResult(advices, currentSeconds);
 	}
 
 	/** The weapon this style spends the most time using. */
