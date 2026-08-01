@@ -103,12 +103,24 @@ public class SwitchAdvisor
 		private final GearNeed primary;
 		private final List<Advice> advice;
 		private final double totalSeconds;
+		/**
+		 * The outfit the advice was actually computed against. Not always the
+		 * primary style's own optimum: a slot may have been traded to remove a
+		 * switch. Whatever is displayed has to come from here, or the plan
+		 * reports times for a loadout it never tells you to wear.
+		 */
+		private Map<GearSlot, SetupBuilder.Pick> basePicks;
 
 		Result(GearNeed primary, List<Advice> advice, double totalSeconds)
 		{
 			this.primary = primary;
 			this.advice = advice;
 			this.totalSeconds = totalSeconds;
+		}
+
+		public Map<GearSlot, SetupBuilder.Pick> getBasePicks()
+		{
+			return basePicks;
 		}
 
 		public GearNeed getPrimary()
@@ -272,9 +284,11 @@ public class SwitchAdvisor
 			}
 		}
 
-		return resultFor(primary, base, byStyle, items, includeGroupStorage, player,
+		Result settled = resultFor(primary, base, byStyle, items, includeGroupStorage, player,
 			partySize, elitePrayers, thresholdSeconds, maxSwitchItems, totalSwapItems,
 			explanation);
+		settled.basePicks = base;
+		return settled;
 	}
 
 	/** Total raid time for one specific base outfit. */

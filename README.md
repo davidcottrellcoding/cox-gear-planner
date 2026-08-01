@@ -356,6 +356,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.31.1 | The traded base outfit was computed but never displayed — the item list showed the untraded one, so a swapped-in ring vanished from the plan |
 | 1.31 | Base outfit priced against the switches it forces, instead of only its own style's damage |
 | 1.30 | Armour ranked by real DPS instead of a heuristic score; debug panel reports what each slot is worth in seconds |
 | 1.29 | Imbued heart, as a competing boost — a CoX overload beats it at every level |

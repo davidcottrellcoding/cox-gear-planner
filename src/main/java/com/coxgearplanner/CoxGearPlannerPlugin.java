@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.31.0";
+	static final String VERSION = "1.31.1";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -322,6 +322,11 @@ public class CoxGearPlannerPlugin extends Plugin
 
 			List<SwitchAdvisor.Advice> advice = switches.getAdvice();
 			GearNeed primary = switches.getPrimary();
+			// The advisor may have traded a base slot to remove a switch. Pin
+			// what it settled on, so the item list shows the outfit the times
+			// were actually computed against.
+			estimator.getResolver().pinResolved(primary, switches.getBasePicks(),
+				snapshot, includeGroup);
 			RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
 				rooms, times, advice, primary, snapshot, includeGroup,
 				estimator.getResolver(), getNeedsCharging());

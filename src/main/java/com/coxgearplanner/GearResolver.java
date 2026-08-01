@@ -319,16 +319,19 @@ public class GearResolver
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage)
 	{
-		if (itemManager == null)
-		{
-			return SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
-		}
-
+		// The pin is checked before the no-ItemManager fallback: a pinned
+		// outfit is a decision that has already been made, and falling back
+		// would silently discard it.
 		useSnapshot(items, includeGroupStorage);
 		Map<GearSlot, SetupBuilder.Pick> memo = cachedResolve.get(style);
 		if (memo != null)
 		{
 			return new LinkedHashMap<>(memo);
+		}
+
+		if (itemManager == null)
+		{
+			return SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
 		}
 
 		// The curated tier list still drives weapon and ammo choice
@@ -371,6 +374,33 @@ public class GearResolver
 
 		cachedResolve.put(style, new LinkedHashMap<>(picks));
 		return picks;
+	}
+
+	/**
+	 * Pins a style's resolved loadout, so every later lookup in this snapshot
+	 * returns it.
+	 *
+	 * The switch advisor may trade a base slot to remove an expensive switch,
+	 * which makes the base outfit something {@link #resolve} would not produce
+	 * on its own. Everything that renders the plan resolves the style again to
+	 * find out what is being worn, so without pinning, the item list and the
+	 * times are computed from two different loadouts.
+	 */
+	public void pinResolved(
+		GearNeed style,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		if (picks == null)
+		{
+			return;
+		}
+		// Bind the pin to its snapshot first. Otherwise the next resolve sees
+		// an unfamiliar snapshot, clears the caches, and drops the pin - which
+		// happens to work only because the advisor resolves before it pins.
+		useSnapshot(items, includeGroupStorage);
+		cachedResolve.put(style, new LinkedHashMap<>(picks));
 	}
 
 	/**
