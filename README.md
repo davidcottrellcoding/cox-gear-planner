@@ -372,6 +372,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.32.1 | Worn items were all coloured as the base style, so a traded-in melee helm showed as magic |
 | 1.32 | The base style can now switch back into its own gear, after a slot was traded away from it |
 | 1.31.1 | The traded base outfit was computed but never displayed — the item list showed the untraded one, so a swapped-in ring vanished from the plan |
 | 1.31 | Base outfit priced against the switches it forces, instead of only its own style's damage |

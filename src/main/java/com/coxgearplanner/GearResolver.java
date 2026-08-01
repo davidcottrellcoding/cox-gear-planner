@@ -58,6 +58,9 @@ public class GearResolver
 	private Map<ItemSource, Map<Integer, Integer>> cachedFor;
 	private boolean cachedIncludeGroup;
 	private Map<GearSlot, List<SetupBuilder.Pick>> cachedScan;
+	/** What each style picked for itself, before any pin replaced it. */
+	private final Map<GearNeed, Map<GearSlot, SetupBuilder.Pick>> prePin =
+		new java.util.EnumMap<>(GearNeed.class);
 	private final Map<GearNeed, Map<GearSlot, SetupBuilder.Pick>> cachedResolve =
 		new java.util.EnumMap<>(GearNeed.class);
 	private final Map<Integer, Double> cachedScores = new java.util.HashMap<>();
@@ -305,6 +308,7 @@ public class GearResolver
 			cachedIncludeGroup = includeGroupStorage;
 			cachedScan = null;
 			cachedResolve.clear();
+			prePin.clear();
 			cachedScores.clear();
 		}
 	}
@@ -396,11 +400,26 @@ public class GearResolver
 		{
 			return;
 		}
+		// Keep what the style would have chosen for itself. The pin replaces
+		// it, but callers still need to tell "this is the base style's own
+		// gear" from "this was traded in for another style" - colouring the
+		// worn set depends on the difference.
+		prePin.put(style, new LinkedHashMap<>(resolve(style, items, includeGroupStorage)));
 		// Bind the pin to its snapshot first. Otherwise the next resolve sees
 		// an unfamiliar snapshot, clears the caches, and drops the pin - which
 		// happens to work only because the advisor resolves before it pins.
 		useSnapshot(items, includeGroupStorage);
 		cachedResolve.put(style, new LinkedHashMap<>(picks));
+	}
+
+	/** What a style chose for itself, ignoring any pin. Never null. */
+	public Map<GearSlot, SetupBuilder.Pick> ownPicks(
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		Map<GearSlot, SetupBuilder.Pick> own = prePin.get(style);
+		return own != null ? own : resolve(style, items, includeGroupStorage);
 	}
 
 	/**

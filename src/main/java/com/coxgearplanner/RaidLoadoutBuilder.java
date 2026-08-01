@@ -177,13 +177,27 @@ public final class RaidLoadoutBuilder
 
 		List<SetupBuilder.Line> equipped =
 			equippedLines(primary, primaryWeapon, primaryPicks, items, includeGroupStorage);
-		// The worn set is the base outfit, so every line carries its style
+		// The worn set used to be entirely the base style's own gear, so every
+		// line could take that style. It no longer is: a slot may have been
+		// traded to another style's item to remove a switch, and colouring an
+		// oathplate helm as magic because magic is the base style is exactly
+		// the sort of thing the colours exist to prevent. Each line takes the
+		// style whose gear it actually is.
+		Map<String, GearSlot> bySlotName = new LinkedHashMap<>();
+		for (GearSlot slot : GearSlot.values())
+		{
+			bySlotName.put(slot.getDisplayName(), slot);
+		}
 		for (SetupBuilder.Line line : equipped)
 		{
-			if (!line.isMissing() && line.getSource() != null)
+			if (line.isMissing() || line.getSource() == null)
 			{
-				line.style = primary;
+				continue;
 			}
+			GearSlot slot = bySlotName.get(line.getLabel());
+			line.style = slot == null ? primary
+				: wornStyle(resolver, primary, slot, primaryPicks.get(slot),
+					items, includeGroupStorage);
 		}
 
 		// Inventory, deduped by item id (LinkedHashMap keeps insertion order)
@@ -421,6 +435,50 @@ public final class RaidLoadoutBuilder
 	private static String charge(Set<Integer> needsCharging, int itemId, String note)
 	{
 		return needsCharging.contains(itemId) ? note + " — CHARGE IT FIRST" : note;
+	}
+
+	/**
+	 * Which style a worn item belongs to.
+	 *
+	 * The base style gets first claim, so gear it would have chosen anyway -
+	 * including pieces every style shares, like a neutral pair of boots - is
+	 * not relabelled as another style's just because that style also wants it.
+	 * Only a slot the base style would not have picked is attributed
+	 * elsewhere, which is precisely the traded ones.
+	 */
+	private static GearNeed wornStyle(
+		GearResolver resolver,
+		GearNeed primary,
+		GearSlot slot,
+		SetupBuilder.Pick worn,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		if (resolver == null || worn == null)
+		{
+			return primary;
+		}
+
+		SetupBuilder.Pick own = resolver.ownPicks(primary, items, includeGroupStorage).get(slot);
+		if (own != null && own.getItemId() == worn.getItemId())
+		{
+			return primary;
+		}
+
+		for (GearNeed style : new GearNeed[]{GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC})
+		{
+			if (style == primary)
+			{
+				continue;
+			}
+			SetupBuilder.Pick pick =
+				resolver.ownPicks(style, items, includeGroupStorage).get(slot);
+			if (pick != null && pick.getItemId() == worn.getItemId())
+			{
+				return style;
+			}
+		}
+		return primary;
 	}
 
 	/** Stats-scanned picks when a resolver is available, curated list otherwise. */
