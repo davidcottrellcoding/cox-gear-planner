@@ -205,17 +205,17 @@ public final class RoomMonsters
 			.prefers("fire spells and demonbane bypass its 67% damage cut",
 				GearNeed.MAGIC, GearNeed.MELEE), 1)));
 
-		// The Great Olm is three targets, and the claws are not merely WEAK to
-		// their style — they are immune to the others:
+		// The Great Olm is three targets, and none of them can be hit with
+		// every style — each part is immune outside what is listed:
 		//   left claw  ("melee hand") — takes damage from melee ONLY
 		//   right claw ("mage hand")  — takes damage from magic ONLY
-		//   head                      — any style; range def 50 favours ranged
+		//   head                      — melee and ranged only; CANNOT be maged
 		//
-		// The immunity matters beyond weapon choice: with no melee armour in
+		// The immunities matter beyond weapon choice: with no melee armour in
 		// the kit the estimator once "fell back" to a shadow on the melee hand,
 		// which the real fight simply does not allow. An unarmoured fang is the
-		// honest answer there, and owning no melee weapon at all makes the hand
-		// infeasible rather than magically rangeable.
+		// honest answer there, and owning no weapon of a part's style makes it
+		// infeasible rather than quietly attackable with something else.
 		//
 		// The head also has 66% mitigation against non-ranged damage and heals
 		// if hit outside the final phase, so its 800 HP comes down during the
@@ -232,7 +232,7 @@ public final class RoomMonsters
 				.prefers("takes damage from magic only", GearNeed.MAGIC), 1),
 			new Encounter(new MonsterProfile(
 				"Olm head", 800, 150, 250, 200, 200, 200, 200, 50, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1)));
+				GearNeed.MELEE, GearNeed.RANGED).size(3), 1)));
 	}
 
 	/**

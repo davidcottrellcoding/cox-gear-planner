@@ -152,11 +152,11 @@ public class RoomStyleConstraintTest
 	}
 
 	@Test
-	public void olmClawsAreImmuneOutsideTheirStyleButTheHeadIsNot()
+	public void noOlmPartAllowsEveryStyleButTheVanguardsDo()
 	{
-		// The claws take damage from exactly one style each; only the head is
-		// open to all three. The vanguards stay unconstrained — each is soft to
-		// one style but attackable with any.
+		// The claws take damage from exactly one style each and the head only
+		// from melee and ranged. The vanguards stay unconstrained — each is
+		// soft to one style but attackable with any.
 		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.OLM))
 		{
 			MonsterProfile profile = encounter.getProfile();
@@ -167,7 +167,9 @@ public class RoomStyleConstraintTest
 			}
 			else
 			{
-				assertEquals(3, profile.getUsableStyles().size());
+				assertEquals("the head takes melee and ranged only",
+					2, profile.getUsableStyles().size());
+				assertFalse(profile.getUsableStyles().contains(GearNeed.MAGIC));
 			}
 		}
 		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.VANGUARDS))

@@ -65,12 +65,13 @@ public class OlmTest
 	}
 
 	/**
-	 * The claws are not merely weak to their style — they are immune to the
-	 * others. With no melee armour carried the estimator once "fell back" to a
-	 * shadow on the melee hand, a plan the real fight does not allow.
+	 * No Olm part takes damage from every style. The claws are locked to their
+	 * own style, and the head cannot be maged at all. With no melee armour
+	 * carried the estimator once "fell back" to a shadow on the melee hand, a
+	 * plan the real fight does not allow.
 	 */
 	@Test
-	public void theClawsTakeDamageFromTheirOwnStyleOnly()
+	public void eachPartOnlyTakesDamageFromItsLegalStyles()
 	{
 		MonsterProfile left = part("left claw");
 		assertEquals(1, left.getUsableStyles().size());
@@ -82,8 +83,12 @@ public class OlmTest
 		assertTrue("mage hand is magic only",
 			right.getUsableStyles().contains(GearNeed.MAGIC));
 
-		// The head phase takes damage from anything; ranged merely wins it
-		assertEquals(3, part("head").getUsableStyles().size());
+		MonsterProfile head = part("head");
+		assertEquals(2, head.getUsableStyles().size());
+		assertTrue(head.getUsableStyles().contains(GearNeed.MELEE));
+		assertTrue(head.getUsableStyles().contains(GearNeed.RANGED));
+		assertTrue("the head cannot be maged",
+			!head.getUsableStyles().contains(GearNeed.MAGIC));
 	}
 
 	@Test
