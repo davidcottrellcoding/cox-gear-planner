@@ -34,13 +34,19 @@ public class RoomStyleConstraintTest
 	}
 
 	@Test
-	public void theLargeMuttadileIsOutOfMeleeReach()
+	public void theLargeMuttadileCanBeMeleedOnceItEmerges()
 	{
+		// It is submerged only while the small one is alive; after that it is
+		// fully attackable, so melee must not be excluded. Ranged is still
+		// preferred because its stomp hits everyone in melee range.
 		MonsterProfile large = profile(CoxRoom.MUTTADILES, 1);
-		assertFalse("the large muttadile sits in the water",
+		assertTrue("melee works once it comes out of the water",
 			large.getUsableStyles().contains(GearNeed.MELEE));
+		assertTrue(large.getPreferredStyles().contains(GearNeed.RANGED));
+		assertFalse("melee is possible but not preferred",
+			large.getPreferredStyles().contains(GearNeed.MELEE));
 
-		// The small one on land is meleeable
+		// The small one on land is meleeable too
 		assertTrue(profile(CoxRoom.MUTTADILES, 0).getUsableStyles().contains(GearNeed.MELEE));
 	}
 

@@ -56,15 +56,24 @@ public final class RoomMonsters
 			.magicDamage(0.20)
 			.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1)));
 
-		// Two separate muttadiles with very different stats
+		// Two separate muttadiles with very different stats. The large one is
+		// submerged and unattackable only WHILE the small one is alive; once
+		// the small one dies it emerges and can be fought with any style,
+		// melee included. What actually argues for ranged is its stomp, which
+		// hits everyone in melee range for around 50% more than a normal hit.
+		//
+		// Both eat from the meat tree at ~50% health, healing up to 50% each
+		// and up to three times. That is not modelled: it is preventable, so
+		// baking it in would overstate the room for anyone who stops them.
 		ENCOUNTERS.put(CoxRoom.MUTTADILES, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Muttadile (small)", 250, 138, 1, -5, 72, 50, 60, 0, true, false,
 				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
 			new Encounter(new MonsterProfile(
 				"Muttadile (large)", 250, 220, 250, -5, 82, 60, 75, 0, true, false,
-				GearNeed.RANGED, GearNeed.MAGIC)
-				.prefers("sits in the water, out of melee reach", GearNeed.RANGED), 1)));
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				.prefers("emerges when the small one dies; its stomp punishes melee range",
+					GearNeed.RANGED, GearNeed.MAGIC), 1)));
 
 		// Guardians can only be harmed with a pickaxe — the room's real
 		// requirement is the pickaxe utility item, not a combat weapon.

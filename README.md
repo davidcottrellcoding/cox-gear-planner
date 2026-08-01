@@ -108,7 +108,7 @@ the numbers, and the room line shows the reason in brackets.
 | Room | Constraint |
 |---|---|
 | Tightrope (Deathly ranger/mage) | Ranged or magic only — they stand on platforms across the gap |
-| Muttadile (large) | Ranged or magic only — it sits in the water, out of melee reach |
+
 | Guardians | **Pickaxe only** — the restriction binds the weapon, not just the style, so no other melee weapon is ever suggested |
 
 **Mechanical preferences** — the favoured style wins even when another rates
@@ -118,6 +118,7 @@ you still get a plan rather than "infeasible":
 | Room | Prefers | Why |
 |---|---|---|
 | Skeletal Mystics | Ranged / magic | Safespotted from behind the pillars |
+| Muttadile (large) | Ranged / magic | Emerges when the small one dies; its stomp hits everyone in melee range |
 | Ice Demon | Magic / melee | Fire spells and demonbane weapons both bypass its 67% damage cut |
 | Vasa Nistirio | Ranged | Teleports around the room |
 | Vespula | Ranged | Flies until downed |
