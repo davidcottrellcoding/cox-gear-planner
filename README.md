@@ -153,25 +153,70 @@ at all.**
 
 # Still to implement
 
-The community's reference efficiency sheet optimises **points per hour**, and
-its Olm tab quantifies three things this plugin does not model at all:
+PecanBread11's **Solo CoX points per hour** workbook is the community
+reference. It is a different kind of model to this plugin — it is a routing
+and efficiency model where you supply DPS figures, whereas this plugin derives
+DPS from the gear in your bank. They are complementary, and the sheet exposes
+several dimensions missing here entirely.
 
-- **Special attacks are assumed, and they are large.** "1 maul/dwh per phase,
-  and a ZCB on head phase — this is optimal usage." One elder maul on Olm's
-  melee hand moves accuracy from 73.04% to 81.98%, cutting time-to-kill from
-  88.0 to 77.8 ticks. That is an **11.6% swing** this plugin silently omits,
-  and it is the single biggest gap in the Olm numbers.
-- **Dead time dominates points per hour.** 25 ticks from the floor end to your
-  first Olm attack, 80 ticks between phases, 30 ticks from the kill to being
-  back in a raid. Around 135 ticks of pure overhead per raid at Olm alone,
-  against a reported total time-to-kill of 741 ticks. This plugin reports zero
-  overhead, so any per-hour figure derived from it would be badly optimistic.
-- **Thralls are worth about 5.5%.** 0.625 DPS flat, which the sheet applies as
-  a 5.45-5.89% adjustment depending on the target.
+### Room variants are a whole missing dimension
 
-One discrepancy worth chasing: the sheet uses **703.2 HP for Olm's head**
-where this plugin uses 800. That is a scaling difference worth understanding
-before trusting either number.
+Every CoX room generates in **three variants** — left-turning, straight and
+right-turning — and they are not cosmetic. Measured tick counts from the sheet:
+
+| Room | Left | Straight | Right |
+|---|---|---|---|
+| Crabs | 105 | 80.5 | 88 |
+| Thieving | 144.4 | 150.8 | 148.3 |
+| Tekton | 18.5 | 16.5 | 18.5 |
+
+Crabs varies by 30% depending on which variant you get. This plugin models one
+profile per room and cannot express this at all.
+
+### Points per room, which is the real objective
+
+| Room | Points | | Room | Points |
+|---|---|---|---|---|
+| Olm | 20,544 | | Guardians | 2,160 |
+| Thieving | 4,485 | | Muttadiles | 2,160 |
+| Tightrope | 4,073 | | Mystics | 2,074 |
+| Ice demon | 3,701 | | Vasa | 1,855 |
+| Vespula | 2,469 | | Shamans | 1,642 |
+| Vanguards | 2,333 | | Crabs | 1,600 |
+| | | | **Tekton** | **1,296** |
+
+Tekton gives the **fewest points of any combat room** while being among the
+slowest — a strategic conclusion this plugin structurally cannot reach, because
+it only ever minimises time.
+
+The sheet also shows that some actions are worth doing *despite* costing time:
+downing Vespula is marked "worth it for points per hour" at an effective
+237,930, as is killing the tightrope NPCs.
+
+### Techniques and mechanics not modelled here
+
+- **Tekton's enraged phase.** Accuracy drops from 0.579 to 0.384 — the plugin
+  only carries non-enraged stats, so it overrates Tekton badly.
+- **Tekton anvil mechanics**: 0/1/2-anvil probabilities, roughly a 25% 0-anvil
+  rate in max gear with thralls and a free shadow hit during the lure.
+- **Special attacks throughout**: 1 maul/DWH per Olm phase, ZCB on the head
+  (88% accuracy) and on Vasa (90%), ZGS on the muttadiles.
+- **Room techniques**: Vasa tech (entrance-dependent — leaving the proc tile on
+  North/East rooms gains 8 attacking ticks), Vespula down tech, tightrope
+  skipping, overthieving to 39 grubs.
+- **Ice demon chopping strategy**, where 25/24/12 is optimal for speed but
+  27/27/27 is optimal for points per hour — the same room, two different right
+  answers depending on the objective.
+- **Tick-level positioning.** Tekton start tiles are 5 tiles from the aggro
+  radius "for maximal scythe/fang hits with 2 mauls, go 3 farther away or 1
+  closer with a 4t weapon" — which means weapon speed and positioning interact.
+- **Thralls**: 0.625 DPS, a 5.5-5.9% uplift.
+- **Fixed dead time**: 25 ticks to reach Olm, 80 between phases, 30 back into
+  a raid.
+
+One discrepancy to chase: the sheet uses **703.2 HP for Olm's head** where this
+plugin uses 800, though its author notes "the calcs here aren't amazing" on
+that tab.
 
 Roughly in order of value:
 
