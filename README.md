@@ -410,6 +410,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.36.1 | Crash: an empty ammo slot hit a curated list that names no ammunition for melee or magic |
 | 1.36 | The base outfit no longer claims a shield behind a two-handed weapon or ammo for a bow that fires none |
 | 1.35.2 | Over-limit lines named the per-style cap even when a shared swap budget was the real constraint, reading "exceeds your 0-item switch" |
 | 1.35.1 | The switch-back guard vetoed every useful base-outfit trade, keeping 0.7s items equipped while 5s switches went uncarried |

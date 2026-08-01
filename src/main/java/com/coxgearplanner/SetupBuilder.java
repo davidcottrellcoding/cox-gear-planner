@@ -263,13 +263,29 @@ public final class SetupBuilder
 				{
 					section.getLines().add(new Line(slot.getDisplayName(), pick.getOption().getName(),
 						pick.getSource(), false, pick.getQuantity()));
+					continue;
 				}
-				else
+
+				if (slot == GearSlot.AMMO && weapon != null
+					&& !RoomTimeEstimator.needsAmmo(weapon.getItemId()))
 				{
-					List<ItemOption> options = GearDatabase.loadout(style).get(slot);
-					String best = options.isEmpty() ? "?" : options.get(0).getName();
-					section.getLines().add(new Line(slot.getDisplayName(), "nothing you own — BiS to chase: " + best, null, true, 0));
+					section.getLines().add(new Line(slot.getDisplayName(),
+						"— (weapon uses no ammo)", null, false, 0));
+					continue;
 				}
+
+				// The curated list has no entry for every slot - melee and
+				// magic name no ammunition at all - so an empty slot here is
+				// not necessarily something you are missing, and there may be
+				// nothing to suggest chasing.
+				List<ItemOption> options = GearDatabase.loadout(style).get(slot);
+				if (options == null || options.isEmpty())
+				{
+					section.getLines().add(new Line(slot.getDisplayName(), "(empty)", null, false, 0));
+					continue;
+				}
+				section.getLines().add(new Line(slot.getDisplayName(),
+					"nothing you own — BiS to chase: " + options.get(0).getName(), null, true, 0));
 			}
 			sections.add(section);
 		}
@@ -291,7 +307,8 @@ public final class SetupBuilder
 				else
 				{
 					List<ItemOption> options = GearDatabase.utility(need);
-					String best = options.isEmpty() ? "?" : options.get(0).getName();
+					String best = options == null || options.isEmpty()
+						? "?" : options.get(0).getName();
 					utilities.getLines().add(new Line(need.getDisplayName(), "nothing you own — BiS to chase: " + best, null, true, 0));
 				}
 			}
