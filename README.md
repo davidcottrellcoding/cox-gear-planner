@@ -118,6 +118,29 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
+## Prayer bonus decides what damage cannot
+
+Gear is ranked by damage, but some slots make no difference to damage at all —
+the clearest case being the ammo slot next to a bow of faerdhinen, which fires
+no ammo. Every candidate ties, and the winner used to be whichever the bank
+scan reached first. That is how broad arrows ended up equipped beside a bow
+that cannot use them.
+
+Two rules now apply:
+
+- In the DPS search, a difference under **one second across the whole raid**
+  is treated as noise, and the higher prayer bonus wins instead. Anything
+  larger still goes to damage — prayer breaks ties, it does not outrank a real
+  gain.
+- In the heuristic that seeds the search, prayer is added with a small weight,
+  enough to settle a tie and never enough to overturn a genuine offensive
+  difference. This matters because the ammo and weapon slots are not part of
+  the DPS search, so the heuristic is all they have.
+
+Prayer bonus is not simulated as such — nothing here models drain rate or how
+long your restores last. It is used as a tiebreaker because it is free value
+in a slot that is otherwise doing nothing.
+
 ## The base outfit is not necessarily the base style's gear
 
 Before v1.31 the worn set was, by definition, whatever the base style would
@@ -387,6 +410,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.34 | Prayer bonus decides slots the clock cannot separate, so an empty-value slot no longer goes to whatever the bank scan reached first |
 | 1.33 | Swept every consumer of the base outfit after the v1.31 trade broke the assumption that it is the base style's own gear |
 | 1.32.2 | Switches the advice said to carry were missing from the inventory; base-outfit trades that only moved a switch instead of removing it are now rejected |
 | 1.32.1 | Worn items were all coloured as the base style, so a traded-in melee helm showed as magic |

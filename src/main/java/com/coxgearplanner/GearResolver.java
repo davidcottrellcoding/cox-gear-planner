@@ -214,7 +214,8 @@ public class GearResolver
 		}
 
 		return improve(picks, shortlists,
-			probe -> totalSeconds(style, weapon, probe, targets, items, includeGroupStorage));
+			probe -> totalSeconds(style, weapon, probe, targets, items, includeGroupStorage),
+			this::prayerBonus);
 	}
 
 	/**
@@ -242,12 +243,30 @@ public class GearResolver
 		Map<GearSlot, List<SetupBuilder.Pick>> shortlists,
 		java.util.function.ToDoubleFunction<Map<GearSlot, SetupBuilder.Pick>> seconds)
 	{
+		return improve(start, shortlists, seconds, picks -> 0);
+	}
+
+	/**
+	 * As above, but with prayer bonus deciding anything the clock cannot.
+	 *
+	 * A tenth of a second across a whole raid is not a real difference - it is
+	 * inside the error of everything this plugin estimates - so spending a
+	 * slot on it while giving up prayer bonus is a bad trade. Within a second
+	 * either way, the higher prayer bonus wins.
+	 */
+	static Map<GearSlot, SetupBuilder.Pick> improve(
+		Map<GearSlot, SetupBuilder.Pick> start,
+		Map<GearSlot, List<SetupBuilder.Pick>> shortlists,
+		java.util.function.ToDoubleFunction<Map<GearSlot, SetupBuilder.Pick>> seconds,
+		java.util.function.ToDoubleFunction<Map<GearSlot, SetupBuilder.Pick>> prayer)
+	{
 		Map<GearSlot, SetupBuilder.Pick> current = new LinkedHashMap<>(start);
 		double best = seconds.applyAsDouble(current);
 		if (!(best > 0))
 		{
 			return current;
 		}
+		double bestPrayer = prayer.applyAsDouble(current);
 
 		for (int pass = 0; pass < 2; pass++)
 		{
@@ -264,9 +283,31 @@ public class GearResolver
 					}
 					current.put(entry.getKey(), candidate);
 					double now = seconds.applyAsDouble(current);
-					if (now > 0 && now < best - 1e-9)
+					double nowPrayer = prayer.applyAsDouble(current);
+					double saved = best - now;
+
+					boolean better;
+					if (now <= 0)
+					{
+						better = false;
+					}
+					else if (saved > TIE_SECONDS)
+					{
+						better = true;
+					}
+					else if (saved < -TIE_SECONDS)
+					{
+						better = false;
+					}
+					else
+					{
+						better = nowPrayer > bestPrayer;
+					}
+
+					if (better)
 					{
 						best = now;
+						bestPrayer = nowPrayer;
 						changed = true;
 					}
 					else
@@ -282,6 +323,28 @@ public class GearResolver
 		}
 		return current;
 	}
+
+	/** Total prayer bonus of a worn set. */
+	private double prayerBonus(Map<GearSlot, SetupBuilder.Pick> picks)
+	{
+		double total = 0;
+		for (SetupBuilder.Pick pick : picks.values())
+		{
+			if (pick == null)
+			{
+				continue;
+			}
+			ItemStats stats = itemManager.getItemStats(pick.getItemId());
+			if (stats != null && stats.getEquipment() != null)
+			{
+				total += stats.getEquipment().getPrayer();
+			}
+		}
+		return total;
+	}
+
+	/** Seconds below which a difference is noise, and prayer decides instead. */
+	static final double TIE_SECONDS = 1.0;
 
 	/** The heuristic's top few for a slot, as finalists for the DPS compare. */
 	private List<SetupBuilder.Pick> shortlist(
@@ -691,8 +754,18 @@ public class GearResolver
 			default:
 				return Double.NEGATIVE_INFINITY;
 		}
-		return value;
+
+		// Prayer bonus is worth something in every slot and costs nothing, but
+		// it is not damage, so it only ever breaks a tie. Without this the
+		// ammo slot is decided arbitrarily: nothing you can put there has
+		// melee stats, so with a melee base outfit every candidate scores zero
+		// and whichever the bank scan reached first wins - which is how broad
+		// arrows beat a Rada's blessing next to a bow that fires no ammo.
+		return value + eq.getPrayer() * TIEBREAK_WEIGHT;
 	}
+
+	/** Small enough that prayer never outranks a real offensive difference. */
+	private static final double TIEBREAK_WEIGHT = 0.01;
 
 	private boolean ownsCrystalBow(Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
 	{
