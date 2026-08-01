@@ -236,8 +236,13 @@ public final class RaidLoadoutBuilder
 			{
 				continue;
 			}
+			// The style's OWN item, not whatever the base outfit settled on.
+			// For the base style those are the same thing until a slot is
+			// traded; after that, resolving it here returns the item already
+			// worn, which then fails the "not already worn" test below and
+			// silently drops a switch the advice said to carry.
 			SetupBuilder.Pick pick =
-				picksFor(resolver, a.getStyle(), items, includeGroupStorage).get(a.getSlot());
+				ownPicksFor(resolver, a.getStyle(), items, includeGroupStorage).get(a.getSlot());
 			if (pick == null || worn.contains(pick.getItemId()))
 			{
 				continue;
@@ -479,6 +484,18 @@ public final class RaidLoadoutBuilder
 			}
 		}
 		return primary;
+	}
+
+	/** A style's own picks, ignoring a pinned base outfit. */
+	private static Map<GearSlot, SetupBuilder.Pick> ownPicksFor(
+		GearResolver resolver,
+		GearNeed style,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		return resolver != null
+			? resolver.ownPicks(style, items, includeGroupStorage)
+			: SetupBuilder.resolveLoadout(style, items, includeGroupStorage);
 	}
 
 	/** Stats-scanned picks when a resolver is available, curated list otherwise. */

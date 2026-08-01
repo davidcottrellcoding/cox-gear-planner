@@ -34,7 +34,7 @@ public class SwitchAdvisor
 		private final boolean worthIt;
 		private final boolean alreadyShared;
 		/** Dropped because of the max-items-per-switch cap, not its value. */
-		private boolean overLimit;
+		boolean overLimit;
 
 		Advice(GearNeed style, GearSlot slot, String itemName, String wearInstead,
 			double secondsSaved, boolean worthIt, boolean alreadyShared)
@@ -274,6 +274,18 @@ public class SwitchAdvisor
 				player, partySize, elitePrayers, thresholdSeconds, maxSwitchItems,
 				totalSwapItems, null);
 
+			// A trade is only worth making if it REMOVES a switch. If the base
+			// style has to carry its own item back into that slot, nothing was
+			// removed - the switch just changed owner, and an inventory slot
+			// was spent to move it. Left unchecked this compounds: with a
+			// per-style cap the base style's switch-backs look free, so the
+			// optimiser strips its gear slot by slot and hands back a "melee"
+			// base outfit wearing a magic hood and a ranged cape.
+			if (switchesBack(candidate, primary, advice.getSlot()))
+			{
+				continue;
+			}
+
 			if (candidate.getTotalSeconds() < best.getTotalSeconds() - 1e-9)
 			{
 				base = trial;
@@ -295,6 +307,20 @@ public class SwitchAdvisor
 			explanation);
 		settled.basePicks = base;
 		return settled;
+	}
+
+	/** Whether the base style ends up carrying a switch for this slot. */
+	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot)
+	{
+		for (Advice advice : result.getAdvice())
+		{
+			if (advice.getStyle() == primary && advice.getSlot() == slot
+				&& (advice.isWorthIt() || advice.isOverLimit()))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Total raid time for one specific base outfit. */
