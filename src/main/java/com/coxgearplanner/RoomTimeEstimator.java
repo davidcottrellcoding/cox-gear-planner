@@ -100,6 +100,53 @@ public class RoomTimeEstimator
 		return bonus == null ? 1.0 : 1.0 + bonus * monster.getDemonbaneEffectiveness();
 	}
 
+	/**
+	 * Base attack reach in tiles, for targets that can only be hit from a
+	 * distance. RuneLite's item stats do not expose reach, so this is a table.
+	 * Longrange adds 2 tiles but gives up the rapid speed bonus, which is
+	 * exactly why a 10-tile bow is worth carrying for the abyssal portal.
+	 */
+	private static final Map<Integer, Integer> WEAPON_REACH = new java.util.HashMap<>();
+	private static final int LONGRANGE_BONUS = 2;
+	private static final int DEFAULT_REACH = 7;
+
+	static
+	{
+		// 10 tiles — reach the portal on rapid, no longrange needed
+		WEAPON_REACH.put(20997, 10); // twisted bow
+		WEAPON_REACH.put(25865, 10); // bow of faerdhinen
+		WEAPON_REACH.put(25867, 10);
+		WEAPON_REACH.put(23983, 10); // crystal bow
+		WEAPON_REACH.put(29591, 10); // scorching bow
+		// 8 tiles — also reach on rapid
+		WEAPON_REACH.put(11785, 8);  // armadyl crossbow
+		WEAPON_REACH.put(26374, 8);  // zaryte crossbow
+		WEAPON_REACH.put(27275, 8);  // tumeken's shadow
+		// 5 tiles — cannot reach the portal even on longrange
+		WEAPON_REACH.put(12926, 5);  // toxic blowpipe
+	}
+
+	/** Base reach of a weapon in tiles, defaulting to the common 7. */
+	static int weaponReach(int weaponId)
+	{
+		Integer reach = WEAPON_REACH.get(weaponId);
+		return reach == null ? DEFAULT_REACH : reach;
+	}
+
+	/** True when this weapon can only reach the target by using longrange. */
+	static boolean needsLongrange(int weaponId, MonsterProfile monster)
+	{
+		int required = monster.getMinReach();
+		return required > 0 && weaponReach(weaponId) < required;
+	}
+
+	/** True when the weapon cannot reach the target even on longrange. */
+	static boolean cannotReach(int weaponId, MonsterProfile monster)
+	{
+		int required = monster.getMinReach();
+		return required > 0 && weaponReach(weaponId) + LONGRANGE_BONUS < required;
+	}
+
 	/** Pickaxe item id -> its Mining level requirement, for the Guardians' damage formula. */
 	private static final Map<Integer, Integer> PICKAXE_TIER = new java.util.HashMap<>();
 
@@ -674,6 +721,19 @@ public class RoomTimeEstimator
 			}
 		}
 
+		if (monster != null && monster.getMinReach() > 0)
+		{
+			List<SetupBuilder.Pick> reaching = new ArrayList<>();
+			for (SetupBuilder.Pick pick : candidates)
+			{
+				if (!cannotReach(pick.getItemId(), monster))
+				{
+					reaching.add(pick);
+				}
+			}
+			candidates = reaching;
+		}
+
 		if (atOlm && olmFourTick && (style == GearNeed.MELEE || style == GearNeed.MAGIC))
 		{
 			List<SetupBuilder.Pick> fourTick = new ArrayList<>();
@@ -1053,7 +1113,11 @@ public class RoomTimeEstimator
 		}
 
 		double acc = CombatFormulas.accuracy(atkRoll, defRoll);
-		int speed = Math.max(1, eq.speedTicks - 1); // rapid
+		// Rapid is one tick faster, but a target that demands more reach than
+		// the weapon has forces longrange, which gives that tick back.
+		int speed = needsLongrange(weaponId, m)
+			? eq.speedTicks
+			: Math.max(1, eq.speedTicks - 1);
 		return CombatFormulas.dps(acc, avgMax, speed);
 	}
 

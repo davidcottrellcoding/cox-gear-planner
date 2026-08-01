@@ -59,6 +59,12 @@ public class MonsterProfile
 	 * any weapon of a usable style works.
 	 */
 	private GearNeed requiredWeapon;
+	/**
+	 * Minimum weapon reach in tiles. The abyssal portal sits 8 tiles from the
+	 * only safe standing tiles, so anything shorter must switch to longrange
+	 * (giving up the rapid speed bonus) or cannot attack it at all.
+	 */
+	private int minReach;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -139,6 +145,18 @@ public class MonsterProfile
 	{
 		this.requiredWeapon = utility;
 		return this;
+	}
+
+	MonsterProfile minReach(int tiles)
+	{
+		this.minReach = tiles;
+		return this;
+	}
+
+	/** Tiles of reach needed to attack this target at all; 0 when irrelevant. */
+	public int getMinReach()
+	{
+		return minReach;
 	}
 
 	/** The only weapon class that can damage this monster, or null. */

@@ -90,7 +90,8 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Abyssal portal", 250, 88, 88, 0, 0, 0, 70, 60, true, false,
 			GearNeed.RANGED, GearNeed.MAGIC)
-			.prefers("portal needs 7+ tile reach; Redemption method skips Vespula",
+			.minReach(8)
+			.prefers("8 tiles out; 10-tile bows stay on rapid, shorter ones need longrange",
 				GearNeed.RANGED, GearNeed.MAGIC), 1)));
 
 		ENCOUNTERS.put(CoxRoom.SHAMANS, Collections.singletonList(new Encounter(new MonsterProfile(
