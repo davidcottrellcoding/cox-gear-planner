@@ -85,6 +85,29 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Force 4-tick weapons at Olm (v1.17)
+
+Olm is much easier to learn when melee and magic share one attack rhythm —
+mixing a 5-tick scythe or Tumeken's shadow with a 4-tick swap means counting
+two different cadences while also tracking phases. The **Force 4-tick weapons
+at Olm** setting restricts Olm's melee and magic weapons to 4-tick options.
+
+- Applies to **melee and magic only**. Ranged is on its own rhythm regardless,
+  and the twisted bow is too dominant at the head to trade away.
+- Typically keeps a rapier, blade of saeldor, dragon hunter lance or whip for
+  melee, and a sanguinesti staff or trident for magic — while excluding the
+  scythe and fang (5 ticks), the shadow (5) and eye of ayak (3).
+- **Falls back** to your fastest option if you own no 4-tick weapon for a
+  style, so you always get a usable plan.
+- Affected Olm lines are tagged **[4-tick]**.
+- Off by default; this trades some DPS for consistency, which is the right
+  trade while learning and the wrong one once you aren't.
+
+Powered staves carry their own cast speeds that can't be read from an item's
+attack speed, so the filter and the damage maths share one
+`magicSpeedTicks()` helper and are covered by tests that pin every staff's
+speed — they cannot drift apart.
+
 ## Room style constraints (v1.16)
 
 DPS alone can't tell you that a target is across a gap, or that you'd be

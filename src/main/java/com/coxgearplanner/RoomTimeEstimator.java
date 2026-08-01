@@ -169,6 +169,8 @@ public class RoomTimeEstimator
 
 	private final ItemManager itemManager;
 	private final GearResolver resolver;
+	/** Restrict Olm's melee and magic weapons to 4-tick options. */
+	private boolean olmFourTick;
 
 	public RoomTimeEstimator(ItemManager itemManager)
 	{
@@ -179,6 +181,17 @@ public class RoomTimeEstimator
 	public GearResolver getResolver()
 	{
 		return resolver;
+	}
+
+	/**
+	 * When set, Olm's melee and magic weapons are restricted to 4-tick
+	 * options so both styles share one attack rhythm — much easier to learn
+	 * than mixing a 5-tick scythe or shadow with a 4-tick swap. Ranged is
+	 * left alone; it is on its own rhythm regardless.
+	 */
+	public void setOlmFourTick(boolean olmFourTick)
+	{
+		this.olmFourTick = olmFourTick;
 	}
 
 	/**
@@ -273,7 +286,8 @@ public class RoomTimeEstimator
 				for (GearNeed style : monster.getPreferredStyles())
 				{
 					if (styles.contains(style)
-						&& !weaponCandidates(style, items, includeGroupStorage, monster).isEmpty())
+						&& !weaponCandidates(style, items, includeGroupStorage, monster,
+							room == CoxRoom.OLM).isEmpty())
 					{
 						preferred.add(style);
 					}
@@ -304,7 +318,8 @@ public class RoomTimeEstimator
 				List<Map<GearSlot, SetupBuilder.Pick>> setOverrides =
 					setOverrides(style, items, includeGroupStorage);
 
-				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage, monster))
+				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage,
+					monster, room == CoxRoom.OLM))
 				{
 					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
 						items, includeGroupStorage, player, monster, elitePrayers);
@@ -376,6 +391,11 @@ public class RoomTimeEstimator
 			if (monster.getStyleNote() != null)
 			{
 				label += " [" + monster.getStyleNote() + "]";
+			}
+			if (room == CoxRoom.OLM && olmFourTick && bestStyle != GearNeed.RANGED
+				&& effectiveSpeedTicks(bestStyle, bestWeapon.getItemId()) == 4)
+			{
+				label += " [4-tick]";
 			}
 
 			RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);
@@ -497,7 +517,7 @@ public class RoomTimeEstimator
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage)
 	{
-		return weaponCandidates(style, items, includeGroupStorage, null);
+		return weaponCandidates(style, items, includeGroupStorage, null, false);
 	}
 
 	/**
@@ -510,7 +530,8 @@ public class RoomTimeEstimator
 		GearNeed style,
 		Map<ItemSource, Map<Integer, Integer>> items,
 		boolean includeGroupStorage,
-		MonsterProfile monster)
+		MonsterProfile monster,
+		boolean atOlm)
 	{
 		if (monster != null && monster.getRequiredWeapon() != null)
 		{
@@ -569,6 +590,24 @@ public class RoomTimeEstimator
 			if (usable)
 			{
 				candidates.add(pick);
+			}
+		}
+
+		if (atOlm && olmFourTick && (style == GearNeed.MELEE || style == GearNeed.MAGIC))
+		{
+			List<SetupBuilder.Pick> fourTick = new ArrayList<>();
+			for (SetupBuilder.Pick pick : candidates)
+			{
+				if (effectiveSpeedTicks(style, pick.getItemId()) == 4)
+				{
+					fourTick.add(pick);
+				}
+			}
+			// Only enforce it if you actually own something that qualifies,
+			// otherwise you would get no plan at all for that style.
+			if (!fourTick.isEmpty())
+			{
+				return fourTick;
 			}
 		}
 		return candidates;
@@ -724,6 +763,45 @@ public class RoomTimeEstimator
 			}
 		}
 		return overrides;
+	}
+
+	/**
+	 * Cast speed of a magic weapon in ticks. Powered staves have their own
+	 * built-in speeds, so this cannot be read from the item's attack speed —
+	 * it is shared by the DPS maths and the Olm 4-tick filter so the two
+	 * cannot drift apart.
+	 */
+	static int magicSpeedTicks(int weaponId)
+	{
+		if (weaponId == SHADOW)
+		{
+			return 5;
+		}
+		if (weaponId == EYE_OF_AYAK)
+		{
+			return 3;
+		}
+		if (SANG.contains(weaponId) || weaponId == TRIDENT_SWAMP
+			|| weaponId == TRIDENT_SEAS || weaponId == HARMONISED)
+		{
+			return 4;
+		}
+		return 5; // ordinary staff casting from the standard spellbook
+	}
+
+	/** Attack rhythm a style would actually use, in ticks. */
+	int effectiveSpeedTicks(GearNeed style, int weaponId)
+	{
+		if (style == GearNeed.MAGIC)
+		{
+			return magicSpeedTicks(weaponId);
+		}
+		ItemStats stats = itemManager.getItemStats(weaponId);
+		int base = stats != null && stats.getEquipment() != null
+			? Math.max(1, stats.getEquipment().getAspeed())
+			: 4;
+		// Ranged is assumed to be on rapid, which is one tick faster
+		return style == GearNeed.RANGED ? Math.max(1, base - 1) : base;
 	}
 
 	/** Best owned salve amulet, or null — used as a neck swap for undead rooms. */
@@ -892,15 +970,16 @@ public class RoomTimeEstimator
 	{
 		int magic = p.getMagic();
 		int baseHit;
-		int speed;
 		boolean castsFireSpell = false;
 		double magicAtkBonus = eq.magicAtk;
 		double dmgPercent = eq.magicDmgPercent;
 
+		// Speed comes from the shared helper so the Olm 4-tick filter and the
+		// damage maths can never disagree about a weapon's rhythm.
+		int speed = magicSpeedTicks(weaponId);
 		if (weaponId == SHADOW)
 		{
 			baseHit = magic / 3 + 1;
-			speed = 5;
 			// Shadow triples the equipment's magic accuracy and damage bonuses
 			magicAtkBonus *= 3;
 			dmgPercent = Math.min(dmgPercent * 3, 100);
@@ -911,33 +990,27 @@ public class RoomTimeEstimator
 			// offsets its lower base hit — without this it fell through to the
 			// generic 24-at-speed-5 branch and lost to a plain trident.
 			baseHit = magic / 3 - 6;
-			speed = 3;
 		}
 		else if (SANG.contains(weaponId))
 		{
 			baseHit = magic / 3; // buffed 22 Jul 2026, was magic/3 - 1
-			speed = 4;
 		}
 		else if (weaponId == TRIDENT_SWAMP)
 		{
 			baseHit = magic / 3 - 2;
-			speed = 4;
 		}
 		else if (weaponId == TRIDENT_SEAS)
 		{
 			baseHit = magic / 3 - 5;
-			speed = 4;
 		}
 		else if (weaponId == HARMONISED)
 		{
 			baseHit = 24; // Fire Surge, no cast delay
-			speed = 4;
 			castsFireSpell = true;
 		}
 		else
 		{
 			baseHit = 24; // Fire Surge on an ordinary staff
-			speed = 5;
 			castsFireSpell = true;
 		}
 

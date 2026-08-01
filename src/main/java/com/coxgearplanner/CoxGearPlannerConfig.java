@@ -91,10 +91,21 @@ public interface CoxGearPlannerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "olmFourTick",
+		name = "Force 4-tick weapons at Olm",
+		description = "Restricts the melee and magic weapon at Olm to 4-tick options, so both styles share one attack rhythm. Easier to learn than mixing a 5-tick scythe or shadow with a 4-tick swap. Falls back to your fastest option if you own no 4-tick weapon for a style.",
+		position = 8
+	)
+	default boolean olmFourTick()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "hideMissing",
 		name = "Hide unowned recommendations",
 		description = "Only plan with gear you actually own — hide the red 'BiS to chase' lines for slots where you own nothing",
-		position = 8
+		position = 9
 	)
 	default boolean hideMissing()
 	{
@@ -105,7 +116,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "showDebug",
 		name = "Show debug panel",
 		description = "Adds a section explaining why each item, weapon and switch was chosen over the alternatives you own",
-		position = 9
+		position = 10
 	)
 	default boolean showDebug()
 	{
