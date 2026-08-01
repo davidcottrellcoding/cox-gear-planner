@@ -11,6 +11,8 @@ public class PlanResult
 	private final GearNeed primaryStyle;
 	private final RaidLoadoutBuilder.RaidLoadout loadout;
 	private final PlanExplanation explanation;
+	/** Plain-text rendering of this plan, for sharing. */
+	private String exportText = "";
 
 	PlanResult(List<SetupBuilder.Section> sections,
 		List<RoomTimeEstimator.RoomTime> times,
@@ -25,6 +27,17 @@ public class PlanResult
 		this.primaryStyle = primaryStyle;
 		this.loadout = loadout;
 		this.explanation = explanation;
+	}
+
+	void setExportText(String exportText)
+	{
+		this.exportText = exportText;
+	}
+
+	/** The whole plan as plain text, ready to paste to someone else. */
+	public String getExportText()
+	{
+		return exportText;
 	}
 
 	/** Debug reasoning; null unless the debug panel is enabled. */

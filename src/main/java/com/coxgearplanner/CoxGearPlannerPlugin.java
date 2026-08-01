@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.18.0";
+	static final String VERSION = "1.21.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -331,6 +331,7 @@ public class CoxGearPlannerPlugin extends Plugin
 			}
 
 			PlanResult result = new PlanResult(sections, times, advice, primary, loadout, explanation);
+			result.setExportText(PlanExport.render(rooms, player, config, result));
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});
 	}

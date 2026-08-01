@@ -33,6 +33,8 @@ public class CoxGearPlannerPanel extends PluginPanel
 	private final Map<CoxRoom, JCheckBox> roomBoxes = new EnumMap<>(CoxRoom.class);
 	private final JLabel statusLabel = new JLabel();
 	private final JPanel resultsPanel = new JPanel();
+	private final JButton shareButton = new JButton("Copy plan for a friend");
+	private PlanResult lastResult;
 
 	CoxGearPlannerPanel(CoxGearPlannerPlugin plugin)
 	{
@@ -105,6 +107,11 @@ public class CoxGearPlannerPanel extends PluginPanel
 		JButton suggestButton = new JButton("Suggest gear setup");
 		suggestButton.addActionListener(e -> suggest());
 		buttons.add(suggestButton);
+
+		shareButton.setToolTipText("Copies the whole plan as text — rooms, gear, times, switch decisions and the settings behind them — ready to paste to someone");
+		shareButton.setEnabled(false);
+		shareButton.addActionListener(e -> sharePlan());
+		buttons.add(shareButton);
 
 		top.add(buttons);
 		return top;
@@ -243,6 +250,8 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 	private void renderResults(PlanResult result)
 	{
+		lastResult = result;
+		shareButton.setEnabled(true);
 		resultsPanel.removeAll();
 		List<SetupBuilder.Section> sections = result.getSections();
 		List<RoomTimeEstimator.RoomTime> times = result.getTimes();
@@ -341,6 +350,48 @@ public class CoxGearPlannerPanel extends PluginPanel
 		resultsPanel.add(legend);
 
 		revalidateResults();
+	}
+
+	/**
+	 * Puts the plan on the clipboard and also writes it next to the RuneLite
+	 * settings, since a full plan can run past a chat client's message limit.
+	 */
+	private void sharePlan()
+	{
+		if (lastResult == null)
+		{
+			return;
+		}
+
+		String text = lastResult.getExportText();
+		try
+		{
+			Toolkit.getDefaultToolkit().getSystemClipboard()
+				.setContents(new java.awt.datatransfer.StringSelection(text), null);
+		}
+		catch (RuntimeException e)
+		{
+			statusLabel.setText("<html><font color='#eb6464'>Could not access the clipboard.</font></html>");
+			return;
+		}
+
+		String note = "Plan copied to clipboard (" + text.length() + " chars).";
+		try
+		{
+			java.io.File file = new java.io.File(
+				net.runelite.client.RuneLite.RUNELITE_DIR, "cox-gear-plan.txt");
+			try (java.io.Writer writer = new java.io.OutputStreamWriter(
+				new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8))
+			{
+				writer.write(text);
+			}
+			note += "<br>Also saved to " + file.getName() + " in your .runelite folder.";
+		}
+		catch (java.io.IOException e)
+		{
+			note += "<br>Could not write the file, but the clipboard copy worked.";
+		}
+		statusLabel.setText("<html>" + note + "</html>");
 	}
 
 	private JLabel lineLabel(SetupBuilder.Line line)
