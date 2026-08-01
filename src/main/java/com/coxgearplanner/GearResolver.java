@@ -651,6 +651,17 @@ public class GearResolver
 				{
 					continue;
 				}
+				// Salve amulets are not generic gear: they have no offensive
+				// stats, and their whole value is the situational bonus
+				// against the undead. Letting them compete for the neck slot
+				// here could win them the BASE pick against an undead-heavy
+				// target pool — which silences the per-room extra-switch path
+				// that is their one honest route into the plan, and wears a
+				// statless neck in every room that is not undead.
+				if (isSalve(id))
+				{
+					continue;
+				}
 
 				ItemStats stats = itemManager.getItemStats(id);
 				if (stats == null || !stats.isEquipable() || stats.getEquipment() == null)
@@ -673,6 +684,19 @@ public class GearResolver
 
 		cachedScan = result;
 		return result;
+	}
+
+	/** True for any salve amulet variant — handled as a room extra, never as base gear. */
+	private static boolean isSalve(int id)
+	{
+		for (int salve : RoomTimeEstimator.SALVE_IDS)
+		{
+			if (id == salve)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private String nameOf(int id)
