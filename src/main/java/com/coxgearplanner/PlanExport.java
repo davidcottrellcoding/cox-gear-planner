@@ -144,7 +144,7 @@ public final class PlanExport
 					// Already worn, so there is no decision - but the slot is
 					// still worth something, and saying how much is the only
 					// way to tell a slot doing nothing from one doing a lot.
-					sb.append(String.format("%.1fs vs empty", a.getSecondsSaved()));
+					sb.append(String.format("%.1fs vs next best", a.getSecondsSaved()));
 				}
 				else
 				{

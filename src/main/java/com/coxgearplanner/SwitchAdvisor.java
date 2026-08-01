@@ -343,12 +343,71 @@ public class SwitchAdvisor
 			{
 				continue;
 			}
-			Map<GearSlot, SetupBuilder.Pick> bare = new LinkedHashMap<>(notCarried);
-			bare.put(advice.getSlot(), null);
-			double without = totalSeconds(style, styleTimes, picks, bare,
-				items, includeGroupStorage, player, elitePrayers);
-			advice.secondsSaved = Math.max(0, without - baseline);
+			advice.secondsSaved = Math.max(0, worstCaseWithout(advice.getSlot(), style,
+				styleTimes, picks, notCarried, items, includeGroupStorage, player,
+				elitePrayers) - baseline);
 		}
+	}
+
+	/**
+	 * Time this style would take wearing the next best thing it owns in a
+	 * slot, or nothing at all if it owns nothing else.
+	 *
+	 * Pricing against an empty slot was the obvious reading of "what is this
+	 * worth", and it produced numbers like an avernic defender saving 3286
+	 * seconds. That is not a bug in the arithmetic so much as in the question:
+	 * stripping a slot can drop an accuracy roll below the point where hit
+	 * chance collapses, and time being health over damage, the answer runs
+	 * away. It is also a comparison nobody faces - you do not raid with a bare
+	 * slot, you raid with the second best thing in your bank.
+	 *
+	 * Against a real alternative the number is both finite and directly
+	 * comparable to the carried switches listed above it, which are priced the
+	 * same way.
+	 */
+	private double worstCaseWithout(
+		GearSlot slot,
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<GearSlot, SetupBuilder.Pick> notCarried,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		boolean elitePrayers)
+	{
+		SetupBuilder.Pick worn = picks.get(slot);
+		double best = Double.MAX_VALUE;
+
+		List<SetupBuilder.Pick> owned = estimator.getResolver()
+			.scan(items, includeGroupStorage)
+			.getOrDefault(slot, java.util.Collections.emptyList());
+		for (SetupBuilder.Pick candidate : owned)
+		{
+			if (worn != null && candidate.getItemId() == worn.getItemId())
+			{
+				continue;
+			}
+			Map<GearSlot, SetupBuilder.Pick> trial = new LinkedHashMap<>(notCarried);
+			trial.put(slot, candidate);
+			double seconds = totalSeconds(style, styleTimes, picks, trial,
+				items, includeGroupStorage, player, elitePrayers);
+			if (seconds > 0 && seconds < best)
+			{
+				best = seconds;
+			}
+		}
+
+		if (best < Double.MAX_VALUE)
+		{
+			return best;
+		}
+
+		// Nothing else owned for this slot, so empty really is the alternative
+		Map<GearSlot, SetupBuilder.Pick> bare = new LinkedHashMap<>(notCarried);
+		bare.put(slot, null);
+		return totalSeconds(style, styleTimes, picks, bare,
+			items, includeGroupStorage, player, elitePrayers);
 	}
 
 	/** Whether the base style ends up carrying a switch for this slot. */
