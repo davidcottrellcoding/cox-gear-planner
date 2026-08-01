@@ -85,6 +85,35 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Room style constraints (v1.16)
+
+DPS alone can't tell you that a target is across a gap, or that you'd be
+giving up a safespot. Each room now carries the mechanical reality as well as
+the numbers, and the room line shows the reason in brackets.
+
+**Hard constraints** — the style is removed from the room entirely:
+
+| Room | Constraint |
+|---|---|
+| Tightrope (Deathly ranger/mage) | Ranged or magic only — they stand on platforms across the gap |
+| Muttadile (large) | Ranged or magic only — it sits in the water, out of melee reach |
+| Guardians | Melee only, and specifically a **pickaxe** — nothing else harms them |
+
+**Mechanical preferences** — the favoured style wins even when another rates
+higher on raw DPS, but falls back gracefully if you own no weapon for it, so
+you still get a plan rather than "infeasible":
+
+| Room | Prefers | Why |
+|---|---|---|
+| Skeletal Mystics | Ranged / magic | Safespotted from behind the pillars |
+| Ice Demon | Magic | Fire spells break the ice and do 150% damage |
+| Vasa Nistirio | Ranged | Teleports around the room |
+| Vespula | Ranged | Flies until downed |
+| Tekton | Melee | Fought at the anvil, no safespot |
+
+Olm and the Vanguards are deliberately left unconstrained — both rooms are
+designed to demand all three styles across their separate targets.
+
 ## Per-style sections now match the inventory (v1.14)
 
 The Melee / Ranged / Magic sections used to show each style's *ideal* loadout

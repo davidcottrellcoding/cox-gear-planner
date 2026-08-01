@@ -262,7 +262,29 @@ public class RoomTimeEstimator
 				? findSalve(items, includeGroupStorage)
 				: null;
 
-			for (GearNeed style : monster.getUsableStyles())
+			// Prefer the styles the fight actually favours — safespotting, a
+			// target melee can't reach, a mechanic that demands one style.
+			// DPS can't see any of that. Fall back to whatever is usable only
+			// when you own no weapon for the preferred styles.
+			Set<GearNeed> styles = monster.getUsableStyles();
+			if (!monster.getPreferredStyles().isEmpty())
+			{
+				Set<GearNeed> preferred = new java.util.LinkedHashSet<>();
+				for (GearNeed style : monster.getPreferredStyles())
+				{
+					if (styles.contains(style)
+						&& !weaponCandidates(style, items, includeGroupStorage).isEmpty())
+					{
+						preferred.add(style);
+					}
+				}
+				if (!preferred.isEmpty())
+				{
+					styles = preferred;
+				}
+			}
+
+			for (GearNeed style : styles)
 			{
 				Map<GearSlot, SetupBuilder.Pick> picks = resolver.resolve(style, items, includeGroupStorage);
 
@@ -350,6 +372,10 @@ public class RoomTimeEstimator
 			if (phases > 1)
 			{
 				label += String.format(" ×%.0f phases", phases);
+			}
+			if (monster.getStyleNote() != null)
+			{
+				label += " [" + monster.getStyleNote() + "]";
 			}
 
 			RoomTime roomTime = new RoomTime(room, label, totalHp / bestDps, true, bestStyle, bestWeapon);

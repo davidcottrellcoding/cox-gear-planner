@@ -35,6 +35,14 @@ public class MonsterProfile
 	private double fireSpellDamageMult = 1.0;
 	/** The ice demon rolls magic defence off its Defence level, not Magic. */
 	private boolean magicDefenceFromDefence;
+	/**
+	 * Styles the fight actually favours for positional reasons — safespotting,
+	 * a target you can't reach in melee, a mechanic that demands one style.
+	 * DPS alone can't see any of this. Empty means "no preference, pick on
+	 * damage". Falls back to {@link #usableStyles} if you own nothing for it.
+	 */
+	private Set<GearNeed> preferredStyles = Collections.emptySet();
+	private String styleNote;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -94,6 +102,25 @@ public class MonsterProfile
 	{
 		this.magicDefenceFromDefence = true;
 		return this;
+	}
+
+	/** Marks the styles this fight favours, and why. */
+	MonsterProfile prefers(String note, GearNeed... styles)
+	{
+		this.styleNote = note;
+		this.preferredStyles = Collections.unmodifiableSet(EnumSet.of(styles[0], styles));
+		return this;
+	}
+
+	public Set<GearNeed> getPreferredStyles()
+	{
+		return preferredStyles;
+	}
+
+	/** Why this fight favours those styles, for the room line. */
+	public String getStyleNote()
+	{
+		return styleNote;
 	}
 
 	public boolean isDemon()

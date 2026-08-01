@@ -52,7 +52,9 @@ public final class RoomMonsters
 		// magic damage, which is what actually keeps you off magic here.
 		ENCOUNTERS.put(CoxRoom.TEKTON, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Tekton", 300, 205, 205, 155, 165, 105, 0, 0, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).magicDamage(0.20), 1)));
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			.magicDamage(0.20)
+			.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1)));
 
 		// Two separate muttadiles with very different stats
 		ENCOUNTERS.put(CoxRoom.MUTTADILES, Arrays.asList(
@@ -61,17 +63,19 @@ public final class RoomMonsters
 				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
 			new Encounter(new MonsterProfile(
 				"Muttadile (large)", 250, 220, 250, -5, 82, 60, 75, 0, true, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+				GearNeed.RANGED, GearNeed.MAGIC)
+				.prefers("sits in the water, out of melee reach", GearNeed.RANGED), 1)));
 
 		// Guardians can only be harmed with a pickaxe — the room's real
 		// requirement is the pickaxe utility item, not a combat weapon.
 		ENCOUNTERS.put(CoxRoom.GUARDIANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Guardian", 250, 100, 1, 80, 180, -10, 0, 0, true, false,
-			GearNeed.MELEE), 2)));
+			GearNeed.MELEE).prefers("can only be harmed with a pickaxe", GearNeed.MELEE), 2)));
 
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Vespula", 200, 88, 88, 0, 0, 0, 70, 60, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			.prefers("flies until downed — ranged while airborne", GearNeed.RANGED), 1)));
 
 		ENCOUNTERS.put(CoxRoom.SHAMANS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Lizardman shaman", 190, 210, 130, 102, 160, 150, 160, 0, true, false,
@@ -79,13 +83,16 @@ public final class RoomMonsters
 
 		ENCOUNTERS.put(CoxRoom.VASA, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Vasa Nistirio", 300, 175, 230, 170, 190, 40, 400, 40, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			.prefers("teleports around the room and drains at range", GearNeed.RANGED), 1)));
 
 		// Skeletal mystics are undead → the salve amulet applies here.
 		// 2x2, so the scythe hits twice rather than three times.
 		ENCOUNTERS.put(CoxRoom.MYSTICS, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Skeletal mystic", 160, 187, 140, 155, 155, 75, 140, 115, false, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).undead(), 3)));
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			.undead()
+			.prefers("safespotted from behind the pillars", GearNeed.RANGED, GearNeed.MAGIC), 3)));
 
 		// The three vanguards share levels but have deliberately opposite
 		// defences: each is soft to exactly one style.
@@ -103,10 +110,14 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.TIGHTROPE, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Deathly ranger", 120, 155, 155, 0, 0, 0, 0, 0, false, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 2),
+				GearNeed.RANGED, GearNeed.MAGIC)
+				.prefers("on platforms across the gap — melee cannot reach",
+					GearNeed.RANGED, GearNeed.MAGIC), 2),
 			new Encounter(new MonsterProfile(
 				"Deathly mage", 120, 155, 210, 0, 0, 0, 0, 0, false, false,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 2)));
+				GearNeed.RANGED, GearNeed.MAGIC)
+				.prefers("on platforms across the gap — melee cannot reach",
+					GearNeed.RANGED, GearNeed.MAGIC), 2)));
 
 		// The ice demon reduces ALL non-fire damage by 67% and takes 150% extra
 		// from fire spells — which is why the room is a fire-spell check rather
@@ -114,7 +125,8 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.ICE_DEMON, Collections.singletonList(new Encounter(new MonsterProfile(
 			"Ice demon", 140, 160, 390, 70, 70, 110, 40, 140, false, false,
 			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
-			.demon().nonFireDamage(0.33).fireSpellDamage(2.50).magicDefenceFromDefenceLevel(), 1)));
+			.demon().nonFireDamage(0.33).fireSpellDamage(2.50).magicDefenceFromDefenceLevel()
+			.prefers("fire spells break the ice and do 150% damage", GearNeed.MAGIC), 1)));
 
 		// The Great Olm is three targets with deliberately opposite defensive
 		// profiles, which is why it demands all three styles:
