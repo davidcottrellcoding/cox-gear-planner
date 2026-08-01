@@ -205,11 +205,17 @@ public final class RoomMonsters
 			.prefers("fire spells and demonbane bypass its 67% damage cut",
 				GearNeed.MAGIC, GearNeed.MELEE), 1)));
 
-		// The Great Olm is three targets with deliberately opposite defensive
-		// profiles, which is why it demands all three styles:
-		//   left claw  ("melee hand") — melee def 50, magic/range def 200
-		//   right claw ("mage hand")  — magic def 50 and magic level 87
-		//   head                      — range def 50, everything else 200
+		// The Great Olm is three targets, and the claws are not merely WEAK to
+		// their style — they are immune to the others:
+		//   left claw  ("melee hand") — takes damage from melee ONLY
+		//   right claw ("mage hand")  — takes damage from magic ONLY
+		//   head                      — any style; range def 50 favours ranged
+		//
+		// The immunity matters beyond weapon choice: with no melee armour in
+		// the kit the estimator once "fell back" to a shadow on the melee hand,
+		// which the real fight simply does not allow. An unarmoured fang is the
+		// honest answer there, and owning no melee weapon at all makes the hand
+		// infeasible rather than magically rangeable.
 		//
 		// The head also has 66% mitigation against non-ranged damage and heals
 		// if hit outside the final phase, so its 800 HP comes down during the
@@ -218,10 +224,12 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.OLM, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Olm left claw (melee hand)", 600, 175, 175, 50, 50, 50, 200, 200, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
+				GearNeed.MELEE).size(3)
+				.prefers("takes damage from melee only", GearNeed.MELEE), 1),
 			new Encounter(new MonsterProfile(
 				"Olm right claw (mage hand)", 600, 175, 87, 200, 200, 200, 50, 200, true, true,
-				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1),
+				GearNeed.MAGIC).size(3)
+				.prefers("takes damage from magic only", GearNeed.MAGIC), 1),
 			new Encounter(new MonsterProfile(
 				"Olm head", 800, 150, 250, 200, 200, 200, 200, 50, true, true,
 				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(3), 1)));

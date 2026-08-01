@@ -55,15 +55,35 @@ public class OlmTest
 	}
 
 	@Test
-	public void everyPartIsDraconicAndUsableByAllStyles()
+	public void everyPartIsDraconic()
 	{
 		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.OLM))
 		{
-			MonsterProfile profile = encounter.getProfile();
-			assertTrue(profile.getName() + " is draconic", profile.isDraconic());
-			assertEquals(profile.getName() + " allows all styles",
-				3, profile.getUsableStyles().size());
+			assertTrue(encounter.getProfile().getName() + " is draconic",
+				encounter.getProfile().isDraconic());
 		}
+	}
+
+	/**
+	 * The claws are not merely weak to their style — they are immune to the
+	 * others. With no melee armour carried the estimator once "fell back" to a
+	 * shadow on the melee hand, a plan the real fight does not allow.
+	 */
+	@Test
+	public void theClawsTakeDamageFromTheirOwnStyleOnly()
+	{
+		MonsterProfile left = part("left claw");
+		assertEquals(1, left.getUsableStyles().size());
+		assertTrue("melee hand is melee only",
+			left.getUsableStyles().contains(GearNeed.MELEE));
+
+		MonsterProfile right = part("right claw");
+		assertEquals(1, right.getUsableStyles().size());
+		assertTrue("mage hand is magic only",
+			right.getUsableStyles().contains(GearNeed.MAGIC));
+
+		// The head phase takes damage from anything; ranged merely wins it
+		assertEquals(3, part("head").getUsableStyles().size());
 	}
 
 	@Test

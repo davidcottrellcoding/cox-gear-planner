@@ -152,13 +152,23 @@ public class RoomStyleConstraintTest
 	}
 
 	@Test
-	public void olmAndVanguardsStayUnconstrained()
+	public void olmClawsAreImmuneOutsideTheirStyleButTheHeadIsNot()
 	{
-		// Both rooms deliberately demand all three styles across their targets
+		// The claws take damage from exactly one style each; only the head is
+		// open to all three. The vanguards stay unconstrained — each is soft to
+		// one style but attackable with any.
 		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.OLM))
 		{
-			assertEquals(3, encounter.getProfile().getUsableStyles().size());
-			assertTrue(encounter.getProfile().getPreferredStyles().isEmpty());
+			MonsterProfile profile = encounter.getProfile();
+			if (profile.getName().contains("claw"))
+			{
+				assertEquals(profile.getName() + " allows exactly one style",
+					1, profile.getUsableStyles().size());
+			}
+			else
+			{
+				assertEquals(3, profile.getUsableStyles().size());
+			}
 		}
 		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.VANGUARDS))
 		{
