@@ -29,6 +29,67 @@ public class CoxGearPlannerPanel extends PluginPanel
 	private static final Color COLOR_GROUP = new Color(130, 190, 255);
 	private static final Color COLOR_MISSING = new Color(235, 100, 100);
 
+	// What the item is for — the usual OSRS style colours
+	private static final Color STYLE_MELEE = new Color(226, 104, 104);
+	private static final Color STYLE_RANGED = new Color(122, 200, 110);
+	private static final Color STYLE_MAGIC = new Color(114, 166, 255);
+	private static final Color STYLE_NONE = new Color(205, 205, 205);
+
+	// Where the item is right now — deliberately a different palette so the
+	// two questions never get confused for one another
+	private static final Color WHERE_WORN = new Color(255, 205, 90);
+	private static final Color WHERE_INVENTORY = new Color(240, 160, 95);
+	private static final Color WHERE_BANK = new Color(155, 155, 165);
+	private static final Color WHERE_GROUP = new Color(190, 140, 245);
+
+	/** Colour for what the item is used for. */
+	private static Color styleColour(GearNeed style)
+	{
+		if (style == GearNeed.MELEE)
+		{
+			return STYLE_MELEE;
+		}
+		if (style == GearNeed.RANGED)
+		{
+			return STYLE_RANGED;
+		}
+		if (style == GearNeed.MAGIC)
+		{
+			return STYLE_MAGIC;
+		}
+		return STYLE_NONE;
+	}
+
+	/** Colour for where the item currently sits. */
+	private static Color whereColour(ItemSource source)
+	{
+		if (source == ItemSource.EQUIPMENT)
+		{
+			return WHERE_WORN;
+		}
+		if (source == ItemSource.INVENTORY)
+		{
+			return WHERE_INVENTORY;
+		}
+		if (source == ItemSource.GROUP_STORAGE)
+		{
+			return WHERE_GROUP;
+		}
+		return WHERE_BANK;
+	}
+
+	/** "Twisted bow [bank]" with the name styled and the location tagged. */
+	private static String styled(String name, GearNeed style, ItemSource source)
+	{
+		String text = colored(name, styleColour(style));
+		if (source != null)
+		{
+			text += " " + colored("[" + source.getDisplayName().toLowerCase() + "]",
+				whereColour(source));
+		}
+		return text;
+	}
+
 	private final CoxGearPlannerPlugin plugin;
 	private final Map<CoxRoom, JCheckBox> roomBoxes = new EnumMap<>(CoxRoom.class);
 	private final JLabel statusLabel = new JLabel();
@@ -339,11 +400,17 @@ public class CoxGearPlannerPanel extends PluginPanel
 		renderSwitchAdvice(result);
 		renderDebug(result);
 
-		JLabel legend = new JLabel("<html><br>"
-			+ colored("■", COLOR_ON_HAND) + " on you &nbsp;"
-			+ colored("■", COLOR_BANK) + " bank &nbsp;"
-			+ colored("■", COLOR_GROUP) + " group &nbsp;"
-			+ colored("■", COLOR_MISSING) + " missing</html>");
+		JLabel legend = new JLabel("<html><br><b>Item is for:</b> "
+			+ colored("■ melee", STYLE_MELEE) + " &nbsp;"
+			+ colored("■ ranged", STYLE_RANGED) + " &nbsp;"
+			+ colored("■ magic", STYLE_MAGIC) + " &nbsp;"
+			+ colored("■ utility", STYLE_NONE)
+			+ "<br><b>Currently in:</b> "
+			+ colored("[worn]", WHERE_WORN) + " &nbsp;"
+			+ colored("[inventory]", WHERE_INVENTORY) + " &nbsp;"
+			+ colored("[bank]", WHERE_BANK) + " &nbsp;"
+			+ colored("[group storage]", WHERE_GROUP) + " &nbsp;"
+			+ colored("missing", COLOR_MISSING) + "</html>");
 		legend.setFont(FontManager.getRunescapeSmallFont());
 		legend.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		legend.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -467,7 +534,14 @@ public class CoxGearPlannerPanel extends PluginPanel
 			{
 				continue;
 			}
-			resultsPanel.add(lineLabel(line));
+			JLabel label = new JLabel("<html><b>" + line.getLabel() + ":</b> "
+				+ (line.isMissing()
+					? colored(line.getItemName(), COLOR_MISSING)
+					: styled(line.getItemName(), line.getStyle(), line.getSource()))
+				+ "</html>");
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
 		}
 
 		JLabel invHeader = new JLabel("INVENTORY (" + loadout.getUsedSlots()
@@ -485,15 +559,13 @@ public class CoxGearPlannerPanel extends PluginPanel
 			{
 				continue;
 			}
-			Color color = entry.isMissing() ? COLOR_MISSING
-				: entry.getSource() == ItemSource.BANK ? COLOR_BANK
-				: entry.getSource() == ItemSource.GROUP_STORAGE ? COLOR_GROUP
-				: COLOR_ON_HAND;
 			String prefix = entry.isMissing() ? "&nbsp;— " : (++slot) + ". ";
-			JLabel label = new JLabel("<html>" + prefix + entry.getName()
-				+ " <font color='#a0a0a0'>— " + entry.getNote() + "</font></html>");
+			JLabel label = new JLabel("<html>" + prefix
+				+ (entry.isMissing()
+					? colored(entry.getName(), COLOR_MISSING)
+					: styled(entry.getName(), entry.getStyle(), entry.getSource()))
+				+ " <font color='#9a9a9a'>— " + entry.getNote() + "</font></html>");
 			label.setFont(FontManager.getRunescapeSmallFont());
-			label.setForeground(color);
 			label.setAlignmentX(Component.LEFT_ALIGNMENT);
 			resultsPanel.add(label);
 		}

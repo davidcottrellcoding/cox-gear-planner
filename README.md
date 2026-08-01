@@ -155,6 +155,21 @@ GearYouAreActuallyBringing`) that fails the build if a section ever names
 gear that isn't being brought, and that a skipped switch is never described
 as worn.
 
+## Two colours, two questions (v1.26)
+
+The equipped and inventory lists used one colour for everything, which meant
+"what is this for?" and "where is it right now?" were competing for the same
+signal. They are now separate:
+
+- **The item name** is coloured by what it is for — melee red, ranged green,
+  magic blue, utility grey. At a glance the inventory shows how your swaps
+  split between styles.
+- **A bracketed tag** after it says where the item currently is, in a
+  deliberately different palette: `[worn]` gold, `[inventory]` orange,
+  `[bank]` grey, `[group storage]` purple. Missing items stay red.
+
+The legend below the plan spells out both scales.
+
 ## Vasa's crystal is a real target (v1.25)
 
 v1.24 bolted a hardcoded "bring a stab weapon" list onto the Vasa room, which

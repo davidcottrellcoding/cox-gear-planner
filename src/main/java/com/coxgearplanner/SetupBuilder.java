@@ -65,6 +65,8 @@ public final class SetupBuilder
 		private final ItemSource source; // null when the item isn't owned anywhere
 		private final boolean missing;
 		private final int quantity;
+		/** Combat style this item is for; null for utilities and empty slots. */
+		GearNeed style;
 
 		Line(String label, String itemName, ItemSource source, boolean missing, int quantity)
 		{
@@ -98,6 +100,11 @@ public final class SetupBuilder
 		public int getQuantity()
 		{
 			return quantity;
+		}
+
+		public GearNeed getStyle()
+		{
+			return style;
 		}
 	}
 

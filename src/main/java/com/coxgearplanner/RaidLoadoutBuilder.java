@@ -26,6 +26,8 @@ public final class RaidLoadoutBuilder
 		private final ItemSource source; // null when missing
 		private final String note;
 		private final boolean missing;
+		/** Combat style this item is for; null for utilities. */
+		GearNeed style;
 
 		Entry(String name, ItemSource source, String note, boolean missing)
 		{
@@ -53,6 +55,11 @@ public final class RaidLoadoutBuilder
 		public boolean isMissing()
 		{
 			return missing;
+		}
+
+		public GearNeed getStyle()
+		{
+			return style;
 		}
 	}
 
@@ -170,6 +177,14 @@ public final class RaidLoadoutBuilder
 
 		List<SetupBuilder.Line> equipped =
 			equippedLines(primary, primaryWeapon, primaryPicks, items, includeGroupStorage);
+		// The worn set is the base outfit, so every line carries its style
+		for (SetupBuilder.Line line : equipped)
+		{
+			if (!line.isMissing() && line.getSource() != null)
+			{
+				line.style = primary;
+			}
+		}
 
 		// Inventory, deduped by item id (LinkedHashMap keeps insertion order)
 		Map<Integer, Entry> inventory = new LinkedHashMap<>();
@@ -193,9 +208,11 @@ public final class RaidLoadoutBuilder
 			{
 				continue;
 			}
-			inventory.putIfAbsent(extra.getItemId(), new Entry(
+			Entry extraEntry = new Entry(
 				extra.getOption().getName(), extra.getSource(),
-				charge(needsCharging, extra.getItemId(), "for " + time.getDisplayName()), false));
+				charge(needsCharging, extra.getItemId(), "for " + time.getDisplayName()), false);
+			extraEntry.style = time.getStyle();
+			inventory.putIfAbsent(extra.getItemId(), extraEntry);
 		}
 
 		// 3. Only the worth-it armour switches
@@ -211,12 +228,14 @@ public final class RaidLoadoutBuilder
 			{
 				continue;
 			}
-			inventory.putIfAbsent(pick.getItemId(), new Entry(
+			Entry switchEntry = new Entry(
 				pick.getOption().getName(), pick.getSource(),
 				charge(needsCharging, pick.getItemId(),
 					a.getStyle().getDisplayName().toLowerCase() + " "
 						+ a.getSlot().getDisplayName().toLowerCase() + " switch"),
-				false));
+				false);
+			switchEntry.style = a.getStyle();
+			inventory.putIfAbsent(pick.getItemId(), switchEntry);
 		}
 
 		// 4. Utility items the selected rooms demand
@@ -546,10 +565,12 @@ public final class RaidLoadoutBuilder
 			{
 				continue;
 			}
-			inventory.putIfAbsent(weapon.getItemId(), new Entry(
+			Entry weaponEntry = new Entry(
 				weapon.getOption().getName(), weapon.getSource(),
 				charge(needsCharging, weapon.getItemId(),
-					style.getDisplayName().toLowerCase() + " weapon"), false));
+					style.getDisplayName().toLowerCase() + " weapon"), false);
+			weaponEntry.style = style;
+			inventory.putIfAbsent(weapon.getItemId(), weaponEntry);
 
 			if (style == GearNeed.RANGED && RoomTimeEstimator.needsAmmo(weapon.getItemId()))
 			{
@@ -557,9 +578,11 @@ public final class RaidLoadoutBuilder
 					RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage);
 				if (ammo != null && !worn.contains(ammo.getItemId()))
 				{
-					inventory.putIfAbsent(ammo.getItemId(), new Entry(
+					Entry ammoEntry = new Entry(
 						ammo.getOption().getName(), ammo.getSource(),
-						"ammo for " + weapon.getOption().getName(), false));
+						"ammo for " + weapon.getOption().getName(), false);
+					ammoEntry.style = style;
+					inventory.putIfAbsent(ammo.getItemId(), ammoEntry);
 				}
 			}
 		}
