@@ -153,6 +153,26 @@ at all.**
 
 # Still to implement
 
+The community's reference efficiency sheet optimises **points per hour**, and
+its Olm tab quantifies three things this plugin does not model at all:
+
+- **Special attacks are assumed, and they are large.** "1 maul/dwh per phase,
+  and a ZCB on head phase — this is optimal usage." One elder maul on Olm's
+  melee hand moves accuracy from 73.04% to 81.98%, cutting time-to-kill from
+  88.0 to 77.8 ticks. That is an **11.6% swing** this plugin silently omits,
+  and it is the single biggest gap in the Olm numbers.
+- **Dead time dominates points per hour.** 25 ticks from the floor end to your
+  first Olm attack, 80 ticks between phases, 30 ticks from the kill to being
+  back in a raid. Around 135 ticks of pure overhead per raid at Olm alone,
+  against a reported total time-to-kill of 741 ticks. This plugin reports zero
+  overhead, so any per-hour figure derived from it would be badly optimistic.
+- **Thralls are worth about 5.5%.** 0.625 DPS flat, which the sheet applies as
+  a 5.45-5.89% adjustment depending on the target.
+
+One discrepancy worth chasing: the sheet uses **703.2 HP for Olm's head**
+where this plugin uses 800. That is a scaling difference worth understanding
+before trusting either number.
+
 Roughly in order of value:
 
 1. **Validate the DPS engine against a reference.** The wiki's own calculator
@@ -166,10 +186,14 @@ Roughly in order of value:
    then verifying the greedy switch choice against exhaustive search on small
    candidate sets to measure how often greedy is wrong.
 4. **Fix the two known combat bugs** above (fang stab-only, scythe on 2x2).
-5. **Bolt procs and special attacks**, the two largest unmodelled damage
-   sources.
-6. **Challenge Mode**, largely a 1.5x stat multiplier plus different tactics.
-7. **Empirical validation in-game** — subscribe to hitsplat events and compare
+5. **Special attack simulation** (elder maul, DWH, ZCB), quantified above at
+   roughly 11.6% of Olm melee time-to-kill, plus **bolt procs**.
+6. **Points per hour**, which is what the community actually optimises. Needs
+   the CoX points formula plus the fixed overheads above, so that the output
+   becomes points/hour rather than raw kill time.
+7. **Thralls**, a flat 0.625 DPS and about a 5.5% uplift.
+8. **Challenge Mode**, largely a 1.5x stat multiplier plus different tactics.
+9. **Empirical validation in-game** — subscribe to hitsplat events and compare
    observed hit rate and average damage against predicted, over real raids.
    The strongest possible evidence, and the slowest to gather.
 
