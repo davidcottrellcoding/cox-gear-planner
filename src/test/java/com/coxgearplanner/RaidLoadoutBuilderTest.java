@@ -129,6 +129,68 @@ public class RaidLoadoutBuilderTest
 	}
 
 	@Test
+	public void styleSectionsOnlyNameGearYouAreActuallyBringing()
+	{
+		Map<ItemSource, Map<Integer, Integer>> items =
+			bankWith(TBOW, DRAGON_ARROW, SCYTHE, RANCOUR, PRIMORDIAL, DWH);
+
+		SetupBuilder.Pick tbow = pick(items, ItemOption.twoHanded("Twisted bow", TBOW));
+		SetupBuilder.Pick scythe = pick(items, ItemOption.twoHanded("Scythe of vitur", SCYTHE));
+
+		List<RoomTimeEstimator.RoomTime> times = new ArrayList<>(Arrays.asList(
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "tbow", 200, true, GearNeed.RANGED, tbow),
+			new RoomTimeEstimator.RoomTime(CoxRoom.TEKTON, "scythe", 100, true, GearNeed.MELEE, scythe)));
+
+		List<SwitchAdvisor.Advice> advice = Arrays.asList(
+			new SwitchAdvisor.Advice(GearNeed.MELEE, GearSlot.NECK, "Amulet of rancour", null, 8.0, true, false),
+			new SwitchAdvisor.Advice(GearNeed.MELEE, GearSlot.BOOTS, "Primordial boots", null, 0.5, false, false));
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			EnumSet.of(CoxRoom.OLM, CoxRoom.TEKTON), times, advice, GearNeed.RANGED, items, true, null);
+
+		// Everything the plan says you can wear, anywhere
+		java.util.Set<String> available = new java.util.HashSet<>();
+		loadout.getEquipped().forEach(l -> available.add(strip(l.getItemName())));
+		loadout.getInventory().forEach(e -> available.add(strip(e.getName())));
+
+		assertFalse("style sections are produced", loadout.getStyleSections().isEmpty());
+		for (SetupBuilder.Section section : loadout.getStyleSections())
+		{
+			assertEquals("every section covers all 11 slots",
+				GearSlot.values().length, section.getLines().size());
+
+			for (SetupBuilder.Line line : section.getLines())
+			{
+				String item = strip(line.getItemName());
+				if (item.startsWith("(empty)") || item.startsWith("—"))
+				{
+					continue; // an empty or suppressed slot names no item
+				}
+				assertTrue("style section names '" + item
+						+ "', which is neither equipped nor in the inventory",
+					available.contains(item));
+			}
+		}
+
+		// The skipped switch must not appear as something you wear
+		for (SetupBuilder.Section section : loadout.getStyleSections())
+		{
+			for (SetupBuilder.Line line : section.getLines())
+			{
+				assertFalse("a skipped switch is being described as worn",
+					strip(line.getItemName()).equals("Primordial boots"));
+			}
+		}
+	}
+
+	/** Style-section lines carry a " — stays on"/" — SWAP IN" note. */
+	private static String strip(String itemName)
+	{
+		int dash = itemName.indexOf(" — ");
+		return dash < 0 ? itemName : itemName.substring(0, dash);
+	}
+
+	@Test
 	public void missingUtilityIsListedButTakesNoSlot()
 	{
 		Map<ItemSource, Map<Integer, Integer>> items = bankWith(SCYTHE);

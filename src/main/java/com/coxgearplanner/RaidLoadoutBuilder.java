@@ -61,12 +61,23 @@ public final class RaidLoadoutBuilder
 		private final GearNeed primaryStyle;
 		private final List<SetupBuilder.Line> equipped;
 		private final List<Entry> inventory;
+		private final List<SetupBuilder.Section> styleSections = new ArrayList<>();
 
 		RaidLoadout(GearNeed primaryStyle, List<SetupBuilder.Line> equipped, List<Entry> inventory)
 		{
 			this.primaryStyle = primaryStyle;
 			this.equipped = equipped;
 			this.inventory = inventory;
+		}
+
+		/**
+		 * What you will actually be wearing for each style once you've made the
+		 * swaps — built from the equipped set plus the carried switches, so it
+		 * can only ever name items that are in the equipped or inventory lists.
+		 */
+		public List<SetupBuilder.Section> getStyleSections()
+		{
+			return styleSections;
 		}
 
 		public GearNeed getPrimaryStyle()
@@ -242,7 +253,111 @@ public final class RaidLoadoutBuilder
 			}
 		}
 
-		return new RaidLoadout(primary, equipped, new ArrayList<>(inventory.values()));
+		RaidLoadout loadout = new RaidLoadout(primary, equipped, new ArrayList<>(inventory.values()));
+
+		// Per-style sections describing the *actual* result of swapping, so
+		// they never name gear that isn't in the equipped or inventory lists.
+		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
+		{
+			loadout.styleSections.add(wornForStyle(entry.getKey(), entry.getValue(), primary,
+				primaryPicks, primaryWeapon, advice, resolver, items, includeGroupStorage));
+		}
+		return loadout;
+	}
+
+	/**
+	 * The eleven slots as they will look while fighting with one style: the
+	 * base outfit, with the switches you are actually carrying swapped in.
+	 */
+	private static SetupBuilder.Section wornForStyle(
+		GearNeed style,
+		List<RoomTimeEstimator.RoomTime> styleTimes,
+		GearNeed primary,
+		Map<GearSlot, SetupBuilder.Pick> primaryPicks,
+		SetupBuilder.Pick primaryWeapon,
+		List<SwitchAdvisor.Advice> advice,
+		GearResolver resolver,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage)
+	{
+		StringBuilder rooms = new StringBuilder();
+		for (RoomTimeEstimator.RoomTime rt : styleTimes)
+		{
+			if (rooms.length() > 0)
+			{
+				rooms.append(", ");
+			}
+			rooms.append(rt.getDisplayName());
+		}
+		SetupBuilder.Section section = new SetupBuilder.Section(
+			style.getDisplayName() + " — while fighting " + rooms);
+
+		SetupBuilder.Pick weapon = style == primary ? primaryWeapon : mainWeapon(styleTimes);
+		boolean twoHanded = weapon != null && weapon.getOption().isTwoHanded();
+
+		// Only switches that are actually carried change anything
+		Map<GearSlot, SetupBuilder.Pick> swapped = new LinkedHashMap<>();
+		if (style != primary)
+		{
+			Map<GearSlot, SetupBuilder.Pick> stylePicks =
+				picksFor(resolver, style, items, includeGroupStorage);
+			for (SwitchAdvisor.Advice a : advice)
+			{
+				if (a.getStyle() == style && a.isWorthIt() && !a.isAlreadyShared())
+				{
+					SetupBuilder.Pick pick = stylePicks.get(a.getSlot());
+					if (pick != null)
+					{
+						swapped.put(a.getSlot(), pick);
+					}
+				}
+			}
+		}
+
+		for (GearSlot slot : GearSlot.values())
+		{
+			if (slot == GearSlot.WEAPON)
+			{
+				section.getLines().add(line(slot, weapon,
+					weapon == null ? "(empty)" : null,
+					style == primary ? "worn" : "from inventory"));
+				continue;
+			}
+			if (slot == GearSlot.SHIELD && twoHanded)
+			{
+				section.getLines().add(new SetupBuilder.Line(
+					slot.getDisplayName(), "— (two-handed weapon)", null, false, 0));
+				continue;
+			}
+			if (slot == GearSlot.AMMO)
+			{
+				SetupBuilder.Pick ammo = weapon != null && style == GearNeed.RANGED
+					? RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage)
+					: primaryPicks.get(GearSlot.AMMO);
+				section.getLines().add(line(slot, ammo, "(empty)",
+					style == GearNeed.RANGED ? "with the bow" : "worn"));
+				continue;
+			}
+
+			SetupBuilder.Pick swap = swapped.get(slot);
+			SetupBuilder.Pick worn = primaryPicks.get(slot);
+			section.getLines().add(swap != null
+				? line(slot, swap, null, "SWAP IN")
+				: line(slot, worn, "(empty)", "stays on"));
+		}
+		return section;
+	}
+
+	private static SetupBuilder.Line line(GearSlot slot, SetupBuilder.Pick pick,
+		String emptyText, String note)
+	{
+		if (pick == null)
+		{
+			return new SetupBuilder.Line(slot.getDisplayName(),
+				emptyText == null ? "(empty)" : emptyText, null, false, 0);
+		}
+		return new SetupBuilder.Line(slot.getDisplayName(),
+			pick.getOption().getName() + " — " + note, pick.getSource(), false, pick.getQuantity());
 	}
 
 	/** Appends a charge warning to a note when the item is owned uncharged. */

@@ -249,10 +249,17 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		renderLoadout(result.getLoadout());
 
-		if (result.getLoadout() != null && !sections.isEmpty())
+		// Per-style sections are derived from the loadout above, so they only
+		// ever name gear that is actually equipped or in the inventory list.
+		// The standalone SetupBuilder sections are the fallback for when no
+		// room has a feasible kill and there is no loadout to derive from.
+		if (result.getLoadout() != null)
 		{
-			JLabel caption = new JLabel("<html><br>Per-style loadouts below are reference"
-				+ " (what each style would ideally wear), not extra items to bring.</html>");
+			sections = result.getLoadout().getStyleSections();
+
+			JLabel caption = new JLabel("<html><br>Below: what you're actually wearing"
+				+ " for each style after swapping. Every item named here is either"
+				+ " equipped or in the inventory list above.</html>");
 			caption.setFont(FontManager.getRunescapeSmallFont());
 			caption.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			caption.setAlignmentX(Component.LEFT_ALIGNMENT);

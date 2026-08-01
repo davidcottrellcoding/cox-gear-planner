@@ -85,6 +85,28 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Per-style sections now match the inventory (v1.14)
+
+The Melee / Ranged / Magic sections used to show each style's *ideal* loadout
+— the best item you own for every slot — regardless of whether that item was
+actually being brought. So the magic section could tell you to wear an
+ancestral hat that the switch advisor had already decided wasn't worth an
+inventory slot. Two sections of the same panel disagreed about what you'd be
+wearing.
+
+They are now derived from the loadout instead of computed independently, and
+describe **what you will actually be wearing once you've swapped**:
+
+- Slots you swap show the item plus **SWAP IN**
+- Slots you don't show the base outfit's item plus **stays on**
+- Two-handed weapons still blank the shield slot, and empty slots say so
+
+By construction every item named in these sections is either in the EQUIPPED
+list or the INVENTORY list above — there is a test (`styleSectionsOnlyName
+GearYouAreActuallyBringing`) that fails the build if a section ever names
+gear that isn't being brought, and that a skipped switch is never described
+as worn.
+
 ## Max items per switch (v1.13)
 
 **Minimum switch value** answers "is this piece worth carrying?" one item at a
