@@ -7,64 +7,74 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Vasa's room needs two different things: ranged for Vasa himself, and a stab
- * weapon for the glowing crystals he siphons from. The crystals are immune to
- * ranged, take 66% less from magic and resist crush and slash, so the ranged
- * setup that kills Vasa cannot touch them.
+ * Vasa's room has two targets whose answers are opposites: Vasa himself wants
+ * ranged, and the glowing crystal he siphons from wants stab. The crystal is
+ * a real target rather than a hardcoded "bring a stab weapon" note, so the
+ * DPS maths picks the weapon — and will reuse your melee weapon if it already
+ * stabs well enough, instead of adding one for its own sake.
  */
 public class VasaCrystalTest
 {
-	@Test
-	public void theRoomDemandsAStabWeaponAsWellAsRanged()
+	private static MonsterProfile part(String needle)
 	{
-		assertTrue("Vasa himself is a ranged target",
-			CoxRoom.VASA.getNeeds().contains(GearNeed.RANGED));
-		assertTrue("the crystals need stab",
-			CoxRoom.VASA.getNeeds().contains(GearNeed.STAB_WEAPON));
-	}
-
-	@Test
-	public void onlyVasaNeedsAStabWeapon()
-	{
-		for (CoxRoom room : CoxRoom.values())
+		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.VASA))
 		{
-			if (room != CoxRoom.VASA)
+			if (encounter.getProfile().getName().toLowerCase().contains(needle))
 			{
-				assertFalse(room + " should not demand a stab weapon",
-					room.getNeeds().contains(GearNeed.STAB_WEAPON));
+				return encounter.getProfile();
 			}
 		}
+		throw new AssertionError("no Vasa target matching " + needle);
 	}
 
 	@Test
-	public void theStabListIsRealStabWeapons()
+	public void theRoomHasBothVasaAndTheCrystal()
 	{
-		java.util.List<ItemOption> stab = GearDatabase.utility(GearNeed.STAB_WEAPON);
-		assertFalse(stab.isEmpty());
-		// Best-first: the fang leads, and every entry is a genuine stab weapon
-		assertEquals("Osmumten's fang", stab.get(0).getName());
+		assertEquals(2, RoomMonsters.getAll(CoxRoom.VASA).size());
+	}
 
-		java.util.Set<String> names = new java.util.HashSet<>();
-		for (ItemOption option : stab)
+	@Test
+	public void theCrystalIsAStabTargetByItsRealStats()
+	{
+		MonsterProfile crystal = part("crystal");
+		assertEquals(120, crystal.getHp());
+		// -5 stab against +180 slash and crush is what makes stab the answer
+		assertEquals(-5, crystal.getDStab());
+		assertEquals(180, crystal.getDSlash());
+		assertEquals(180, crystal.getDCrush());
+		assertTrue("stab is far softer than anything else",
+			crystal.getDStab() < crystal.getDSlash() - 100);
+	}
+
+	@Test
+	public void theCrystalIsImmuneToRangedAndResistsMagic()
+	{
+		MonsterProfile crystal = part("crystal");
+		assertFalse("immune to ranged entirely",
+			crystal.getUsableStyles().contains(GearNeed.RANGED));
+		assertTrue(crystal.getUsableStyles().contains(GearNeed.MELEE));
+		assertEquals("a third damage from magic", 1.0 / 3.0, crystal.getMagicDamageMult(), 1e-9);
+	}
+
+	@Test
+	public void vasaHimselfStaysARangedFight()
+	{
+		MonsterProfile vasa = part("vasa");
+		assertTrue(vasa.getPreferredStyles().contains(GearNeed.RANGED));
+		// His own defences are the opposite shape to the crystal's
+		assertTrue("Vasa resists magic far more than ranged",
+			vasa.getDMagic() > vasa.getDRange());
+	}
+
+	@Test
+	public void noHardcodedStabWeaponListRemains()
+	{
+		// The weapon is chosen by the dps maths against the crystal's real
+		// stats, so a fang is never added just because a list said so.
+		for (GearNeed need : GearNeed.values())
 		{
-			names.add(option.getName());
-			for (int id : option.getItemIds())
-			{
-				assertTrue("id must be positive", id > 0);
-			}
+			assertFalse("stab should not be a listed utility",
+				need.name().contains("STAB"));
 		}
-		assertTrue(names.contains("Ghrazi rapier"));
-		assertTrue(names.contains("Abyssal dagger"));
-		// A crush weapon has no business here
-		assertFalse(names.contains("Inquisitor's mace"));
-		assertFalse(names.contains("Dragon warhammer"));
-	}
-
-	@Test
-	public void aStabWeaponIsAUtilityNotACombatStyle()
-	{
-		// It rides in the utility list, so if your melee weapon already stabs
-		// the loadout dedupes it and it costs no extra inventory slot
-		assertFalse(GearNeed.STAB_WEAPON.isCombatStyle());
 	}
 }

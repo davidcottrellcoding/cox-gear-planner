@@ -107,10 +107,26 @@ public final class RoomMonsters
 			"Lizardman shaman", 190, 210, 130, 102, 160, 150, 160, 0, true, false,
 			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 3)));
 
-		ENCOUNTERS.put(CoxRoom.VASA, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Vasa Nistirio", 300, 175, 230, 170, 190, 40, 400, 40, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
-			.prefers("teleports around the room and drains at range", GearNeed.RANGED), 1)));
+		// Two targets with opposite answers. Vasa himself is a ranged fight
+		// (range defence 40 against magic's 400). The glowing crystal he
+		// siphons from is immune to ranged entirely, takes a third damage from
+		// magic, and has -5 stab defence against +180 slash and crush — so it
+		// is a stab check, and the ranged setup that kills Vasa cannot touch
+		// it. Break it inside the ~40s window or he heals back what he took.
+		//
+		// Count is 1: four crystals sit in the corners but he siphons from one
+		// at a time and you break the one he goes to.
+		ENCOUNTERS.put(CoxRoom.VASA, Arrays.asList(
+			new Encounter(new MonsterProfile(
+				"Vasa", 300, 175, 230, 170, 190, 40, 400, 40, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				.prefers("teleports around the room and drains at range", GearNeed.RANGED), 1),
+			new Encounter(new MonsterProfile(
+				"Glowing crystal", 120, 100, 100, -5, 180, 180, 0, 0, true, false,
+				GearNeed.MELEE, GearNeed.MAGIC)
+				.magicDamage(1.0 / 3.0)
+				.prefers("immune to ranged, 1/3 from magic, -5 stab vs +180 slash/crush",
+					GearNeed.MELEE), 1)));
 
 		// Skeletal mystics are undead → the salve amulet applies here.
 		// 2x2, so the scythe hits twice rather than three times.

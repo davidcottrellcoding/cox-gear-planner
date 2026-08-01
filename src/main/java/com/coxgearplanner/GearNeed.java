@@ -13,7 +13,6 @@ public enum GearNeed
 	AXE("Axe (Ice Demon kindling)"),
 	LOCKPICK("Lockpick (Thieving)"),
 	FIRE_SPELLS("Fire spells (Ice Demon)"),
-	STAB_WEAPON("Stab weapon (Vasa crystals)"),
 	DEF_REDUCTION("Defence reduction special");
 
 	private final String displayName;

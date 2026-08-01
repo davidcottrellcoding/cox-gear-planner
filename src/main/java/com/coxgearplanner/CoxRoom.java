@@ -27,7 +27,7 @@ public enum CoxRoom
 	// to ranged, take 66% less from magic, and resist crush and slash. Failing
 	// to break one in the ~40s window lets him heal back what he siphoned.
 	VASA("Vasa Nistirio", true, new String[]{"vasa"},
-		GearNeed.RANGED, GearNeed.MELEE, GearNeed.STAB_WEAPON),
+		GearNeed.RANGED, GearNeed.MELEE),
 	MYSTICS("Skeletal Mystics", true, new String[]{"mystic", "skeletal"},
 		GearNeed.RANGED, GearNeed.MELEE),
 	VANGUARDS("Vanguards", true, new String[]{"vanguard", "vangs"},

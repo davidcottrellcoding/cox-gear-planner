@@ -155,7 +155,29 @@ GearYouAreActuallyBringing`) that fails the build if a section ever names
 gear that isn't being brought, and that a skipped switch is never described
 as worn.
 
-## Vasa needs a stab weapon (v1.24)
+## Vasa's crystal is a real target (v1.25)
+
+v1.24 bolted a hardcoded "bring a stab weapon" list onto the Vasa room, which
+meant it would add a fang whether or not you already owned something better.
+The crystal is now modelled as an actual target with its wiki stats, and the
+DPS maths picks the weapon:
+
+| | HP | Def | Stab | Slash | Crush | Notes |
+|---|---|---|---|---|---|---|
+| Glowing crystal | 120 | 100 | **-5** | +180 | +180 | Immune to ranged, 1/3 from magic, 4x4 |
+
+Because it is a target rather than a checklist entry, the planner compares
+every melee weapon you own against it. **If your existing melee weapon already
+stabs well enough it is reused and costs no extra slot**; a separate stab
+weapon is only carried when it genuinely wins. Nothing is added on principle.
+
+Room lines now also name the **attack style**, not just the weapon — "use a
+fang" is only half the instruction when the target has -5 stab against +180
+slash. You will see e.g. `Vasa Nistirio — Glowing crystal: 0:14 — Osmumten's
+fang (melee, stab style)`, and the per-weapon section names the target it is
+for.
+
+## Vasa needs a stab weapon (v1.24, superseded)
 
 Vasa's room asks for two different things and the planner only saw one. Vasa
 himself is a ranged target — his ranged defence is 40 against magic's 400 —

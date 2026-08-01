@@ -506,7 +506,17 @@ public class RoomTimeEstimator
 			double yourShare = totalHp / Math.max(1, partySize);
 
 			String label = bestWeapon.getOption().getName()
-				+ " (" + bestStyle.getDisplayName().toLowerCase() + ")";
+				+ " (" + bestStyle.getDisplayName().toLowerCase();
+			// For melee, name the attack style too — "use a fang" is only half
+			// the instruction if the target wants stab specifically.
+			String meleeStyle = bestMeleeStyle(bestStyle, bestWeapon.getItemId(),
+				resolver.resolve(bestStyle, items, includeGroupStorage),
+				items, includeGroupStorage, player, monster, elitePrayers);
+			if (meleeStyle != null)
+			{
+				label += ", " + meleeStyle + " style";
+			}
+			label += ")";
 			if (bestSalve != null)
 			{
 				label += " + " + bestSalve.getOption().getName();
@@ -1047,6 +1057,7 @@ public class RoomTimeEstimator
 		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * demonbane * reduction * pickaxe);
 
 		double best = 0;
+		int bestStyleIndex = 0;
 		for (int i = 0; i < styles.length; i++)
 		{
 			int[] s = styles[i];
@@ -1069,9 +1080,46 @@ public class RoomTimeEstimator
 				// Scythe hits 100% + 50% + 25% on large targets
 				avgMax *= 1.75;
 			}
-			best = Math.max(best, CombatFormulas.dps(acc, avgMax, eq.speedTicks));
+			double dps = CombatFormulas.dps(acc, avgMax, eq.speedTicks);
+			if (dps > best)
+			{
+				best = dps;
+				bestStyleIndex = i;
+			}
 		}
+		lastMeleeStyle.set(MELEE_STYLE_NAMES[bestStyleIndex]);
 		return best;
+	}
+
+	/**
+	 * Which attack style the last melee calculation settled on. The crystal at
+	 * Vasa has -5 stab defence against +180 slash and crush, so "use a fang"
+	 * is only half the instruction — you have to be on the stab style too.
+	 */
+	private static final String[] MELEE_STYLE_NAMES = {"stab", "slash", "crush"};
+	private static final ThreadLocal<String> lastMeleeStyle = new ThreadLocal<>();
+
+	/** The melee attack style a weapon should use against a target. */
+	String bestMeleeStyle(GearNeed style, int weaponId,
+		Map<GearSlot, SetupBuilder.Pick> picks,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player, MonsterProfile monster, boolean elitePrayers)
+	{
+		if (style != GearNeed.MELEE)
+		{
+			return null;
+		}
+		SetupBuilder.Pick weapon = SetupBuilder.findOwned(
+			ItemOption.of("weapon", weaponId), items, includeGroupStorage);
+		if (weapon == null)
+		{
+			return null;
+		}
+		lastMeleeStyle.remove();
+		loadoutDps(style, weapon, picks, Collections.emptyMap(), items,
+			includeGroupStorage, player, monster, elitePrayers);
+		return lastMeleeStyle.get();
 	}
 
 	private static double rangedDps(int weaponId, EquipmentTotals eq,
