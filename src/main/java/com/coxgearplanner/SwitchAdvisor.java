@@ -418,6 +418,110 @@ public class SwitchAdvisor
 			items, includeGroupStorage, player, elitePrayers);
 	}
 
+	/**
+	 * Re-prices every switch decision against the kit the plan actually packs.
+	 *
+	 * The advisor prices switches one style at a time, with each room pinned to
+	 * the weapon that won it on the first pass. That is a workable model for
+	 * CHOOSING switches, but its numbers can be far from what a switch is worth
+	 * in the finished plan: drop a style's armour and the re-timed rooms simply
+	 * fall back to another carried style, so "saves 101s" in the advisor's model
+	 * can be 20s in the plan's. The totals on screen come from re-running the
+	 * estimator against the kit, so the advice numbers must come from the same
+	 * place — otherwise the advice contradicts the total two lines above it.
+	 *
+	 * A carried switch is priced by removing it from the kit; an uncarried one
+	 * by adding it. Already-worn slots keep their next-best-alternative pricing,
+	 * which answers a different question and stays internally consistent.
+	 */
+	public void repriceAgainstKit(
+		List<Advice> advice,
+		java.util.Set<CoxRoom> rooms,
+		java.util.Set<Integer> carriedIds,
+		Map<ItemSource, Map<Integer, Integer>> snapshot,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		List<RoomTimeEstimator.RoomTime> realTimes)
+	{
+		double baseline = feasibleSeconds(realTimes);
+		if (!(baseline > 0))
+		{
+			return;
+		}
+
+		for (Advice a : advice)
+		{
+			if (a.isAlreadyShared())
+			{
+				continue;
+			}
+			SetupBuilder.Pick pick = estimator.getResolver()
+				.ownPicks(a.getStyle(), snapshot, includeGroupStorage).get(a.getSlot());
+			if (pick == null)
+			{
+				continue;
+			}
+
+			java.util.Set<Integer> ids = new java.util.HashSet<>(carriedIds);
+			double value;
+			if (a.isWorthIt())
+			{
+				if (!ids.remove(pick.getItemId()))
+				{
+					continue; // wasn't actually packed under this id
+				}
+				value = kitSeconds(rooms, ids, snapshot, includeGroupStorage,
+					player, partySize, elitePrayers) - baseline;
+			}
+			else
+			{
+				if (!ids.add(pick.getItemId()))
+				{
+					continue; // already carried for another reason
+				}
+				value = baseline - kitSeconds(rooms, ids, snapshot, includeGroupStorage,
+					player, partySize, elitePrayers);
+			}
+			a.secondsSaved = Math.max(0, value);
+		}
+
+		// Keep the display order meaningful under the new numbers
+		advice.sort((x, y) -> x.isAlreadyShared() != y.isAlreadyShared()
+			? Boolean.compare(x.isAlreadyShared(), y.isAlreadyShared())
+			: Double.compare(y.getSecondsSaved(), x.getSecondsSaved()));
+	}
+
+	/** Total feasible raid time when exactly {@code carriedIds} is brought. */
+	private double kitSeconds(
+		java.util.Set<CoxRoom> rooms,
+		java.util.Set<Integer> carriedIds,
+		Map<ItemSource, Map<Integer, Integer>> snapshot,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers)
+	{
+		Map<ItemSource, Map<Integer, Integer>> kit =
+			CoxGearPlannerPlugin.kitContents(carriedIds, snapshot);
+		return feasibleSeconds(estimator.estimate(
+			rooms, kit, includeGroupStorage, player, partySize, elitePrayers, null));
+	}
+
+	private static double feasibleSeconds(List<RoomTimeEstimator.RoomTime> times)
+	{
+		double total = 0;
+		for (RoomTimeEstimator.RoomTime time : times)
+		{
+			if (time.isFeasible())
+			{
+				total += time.getSeconds();
+			}
+		}
+		return total;
+	}
+
 	/** Whether the base style ends up wanting this slot back for real value. */
 	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot,
 		double thresholdSeconds)

@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.43";
+	static final String VERSION = "1.44";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -337,7 +337,8 @@ public class CoxGearPlannerPlugin extends Plugin
 				config.partySize(), config.assumeElitePrayers(), explanation);
 			// The advisor now picks the base outfit itself, by trying each style
 			// and keeping whichever gives the lowest total raid time.
-			SwitchAdvisor.Result switches = new SwitchAdvisor(estimator).advise(
+			SwitchAdvisor advisor = new SwitchAdvisor(estimator);
+			SwitchAdvisor.Result switches = advisor.advise(
 				times, snapshot, includeGroup, player,
 				config.partySize(), config.assumeElitePrayers(), config.minSwitchSeconds(),
 				config.maxSwitchItems(), config.totalSwapItems(), explanation);
@@ -387,6 +388,17 @@ public class CoxGearPlannerPlugin extends Plugin
 					kitContents(loadout.getCarriedIds(), snapshot);
 				realTimes = estimator.estimate(rooms, kit, includeGroup, player,
 					config.partySize(), config.assumeElitePrayers(), null);
+
+				// The advice numbers were the advisor's internal model — each
+				// style in isolation, rooms pinned to their first-pass weapons.
+				// The totals above come from re-timing the rooms against the
+				// kit, where a room missing its armour falls back to another
+				// carried style, so the advisor's figures can dwarf the real
+				// difference. Re-price every decision on the same model the
+				// totals use, or the advice contradicts the total beside it.
+				advisor.repriceAgainstKit(advice, rooms, loadout.getCarriedIds(),
+					snapshot, includeGroup, player, config.partySize(),
+					config.assumeElitePrayers(), realTimes);
 			}
 
 			PlanResult result = new PlanResult(sections, realTimes, advice, primary, loadout, explanation);

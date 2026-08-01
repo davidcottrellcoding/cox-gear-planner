@@ -129,8 +129,23 @@ public class BudgetPipelineTest
 		bank.put(ItemSource.BANK, pool);
 	}
 
-	/** Runs the exact pipeline computePlan runs, returning the re-timed total. */
-	private double totalWithBudget(int totalSwapItems)
+	/** Everything one full plan run produces that the assertions care about. */
+	private static class Run
+	{
+		final List<SwitchAdvisor.Advice> advice;
+		final double idealTotal;
+		final double realTotal;
+
+		Run(List<SwitchAdvisor.Advice> advice, double idealTotal, double realTotal)
+		{
+			this.advice = advice;
+			this.idealTotal = idealTotal;
+			this.realTotal = realTotal;
+		}
+	}
+
+	/** Runs the exact pipeline computePlan runs, including the re-pricing. */
+	private Run runPipeline(int totalSwapItems)
 	{
 		Set<CoxRoom> rooms = EnumSet.of(CoxRoom.TEKTON, CoxRoom.VESPULA);
 
@@ -139,7 +154,8 @@ public class BudgetPipelineTest
 
 		List<RoomTimeEstimator.RoomTime> times =
 			estimator.estimate(rooms, bank, true, player, 1, true, null);
-		SwitchAdvisor.Result switches = new SwitchAdvisor(estimator).advise(
+		SwitchAdvisor advisor = new SwitchAdvisor(estimator);
+		SwitchAdvisor.Result switches = advisor.advise(
 			times, bank, true, player, 1, true, 3, 0, totalSwapItems, null);
 
 		estimator.getResolver().pinResolved(switches.getPrimary(),
@@ -153,7 +169,14 @@ public class BudgetPipelineTest
 			CoxGearPlannerPlugin.kitContents(loadout.getCarriedIds(), bank);
 		List<RoomTimeEstimator.RoomTime> real =
 			estimator.estimate(rooms, kit, true, player, 1, true, null);
+		advisor.repriceAgainstKit(switches.getAdvice(), rooms, loadout.getCarriedIds(),
+			bank, true, player, 1, true, real);
 
+		double idealTotal = 0;
+		for (RoomTimeEstimator.RoomTime rt : times)
+		{
+			idealTotal += rt.getSeconds();
+		}
 		double total = 0;
 		for (RoomTimeEstimator.RoomTime rt : real)
 		{
@@ -161,7 +184,12 @@ public class BudgetPipelineTest
 				rt.isFeasible());
 			total += rt.getSeconds();
 		}
-		return total;
+		return new Run(switches.getAdvice(), idealTotal, total);
+	}
+
+	private double totalWithBudget(int totalSwapItems)
+	{
+		return runPipeline(totalSwapItems).realTotal;
 	}
 
 	@Test
@@ -174,6 +202,34 @@ public class BudgetPipelineTest
 			"a 1-swap kit (%.1fs) must be meaningfully slower than a 12-swap kit (%.1fs)",
 			oneSwap, twelveSwaps),
 			oneSwap > twelveSwaps * 1.10);
+	}
+
+	/**
+	 * The advice numbers must live in the same world as the totals beside
+	 * them. An uncarried switch cannot claim to be worth more than the entire
+	 * gap between this kit and the everything-carried ideal — with the old
+	 * per-style, fixed-weapon pricing it routinely did ("saves 101s" next to a
+	 * total only 24s off the ideal), because that model has no idea a room
+	 * missing its armour just falls back to another carried style.
+	 */
+	@Test
+	public void noSwitchClaimsMoreThanTheWholeBudgetGap()
+	{
+		Run run = runPipeline(1);
+		double gap = run.realTotal - run.idealTotal;
+		assertTrue("the tight budget must actually cost something", gap > 1);
+
+		for (SwitchAdvisor.Advice a : run.advice)
+		{
+			if (a.isAlreadyShared() || a.isWorthIt())
+			{
+				continue;
+			}
+			assertTrue(String.format(
+				"%s claims %.1fs but the whole budget only costs %.1fs",
+				a.getItemName(), a.getSecondsSaved(), gap),
+				a.getSecondsSaved() <= gap + 1e-6);
+		}
 	}
 
 	/** More budget can never cost time — the knob must be monotonic. */
