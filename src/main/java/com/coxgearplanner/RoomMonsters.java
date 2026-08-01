@@ -50,11 +50,31 @@ public final class RoomMonsters
 	{
 		// Tekton has NO magic or ranged defence bonus, but takes 80% reduced
 		// magic damage, which is what actually keeps you off magic here.
-		ENCOUNTERS.put(CoxRoom.TEKTON, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Tekton", 300, 205, 205, 155, 165, 105, 0, 0, true, false,
-			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
-			.magicDamage(0.20)
-			.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1)));
+		//
+		// He fights in two defence profiles. After returning from the anvil he
+		// is ENRAGED and much harder to hit: stab 280 / slash 290 / crush 180
+		// against 155 / 165 / 105 asleep. The community efficiency sheet puts
+		// the accuracy difference at 0.579 unenraged versus 0.384 enraged, so
+		// treating the whole fight as unenraged badly overrates him.
+		//
+		// The 300 HP is split evenly between the two. The real split depends on
+		// how much damage you land in the opening burst and how many anvil
+		// trips happen, which is not published — but an even split is far
+		// closer than pretending the whole fight happens asleep. Crush is the
+		// soft style in BOTH profiles, so the weapon choice is unaffected;
+		// what changes is how long he takes and therefore how much he pulls
+		// the base outfit toward melee.
+		ENCOUNTERS.put(CoxRoom.TEKTON, Arrays.asList(
+			new Encounter(new MonsterProfile(
+				"Tekton (unenraged)", 150, 205, 205, 155, 165, 105, 0, 0, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				.magicDamage(0.20)
+				.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1),
+			new Encounter(new MonsterProfile(
+				"Tekton (enraged)", 150, 205, 205, 280, 290, 180, 0, 0, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+				.magicDamage(0.20)
+				.prefers("enraged after the anvil — far harder to hit", GearNeed.MELEE), 1)));
 
 		// Two separate muttadiles with very different stats. The large one is
 		// submerged and unattackable only WHILE the small one is alive; once

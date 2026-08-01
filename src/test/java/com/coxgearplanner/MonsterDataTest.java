@@ -18,6 +18,26 @@ public class MonsterDataTest
 	}
 
 	@Test
+	public void tektonFightsInTwoDefenceProfiles()
+	{
+		java.util.List<RoomMonsters.Encounter> phases = RoomMonsters.getAll(CoxRoom.TEKTON);
+		assertEquals(2, phases.size());
+
+		MonsterProfile asleep = phases.get(0).getProfile();
+		MonsterProfile enraged = phases.get(1).getProfile();
+
+		// Enraged is far harder to hit in every melee style
+		assertTrue(enraged.getDStab() > asleep.getDStab());
+		assertTrue(enraged.getDSlash() > asleep.getDSlash());
+		assertTrue(enraged.getDCrush() > asleep.getDCrush());
+
+		// But crush stays the soft style in both, so the weapon does not change
+		assertTrue(asleep.getDCrush() < asleep.getDStab());
+		assertTrue(enraged.getDCrush() < enraged.getDStab());
+		assertTrue(enraged.getDCrush() < enraged.getDSlash());
+	}
+
+	@Test
 	public void tektonHasNoMagicDefenceButResistsMagicDamage()
 	{
 		MonsterProfile tekton = only(CoxRoom.TEKTON);
@@ -134,7 +154,13 @@ public class MonsterDataTest
 		assertEquals(3.0, RoomTimeEstimator.hpMultiplier(3), 1e-9);
 		assertEquals(1.0, RoomTimeEstimator.hpMultiplier(0), 1e-9);
 
-		assertEquals(300, only(CoxRoom.TEKTON).getHp());
+		// Tekton is split across his two defence profiles, 300 in total
+		int tektonHp = 0;
+		for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(CoxRoom.TEKTON))
+		{
+			tektonHp += encounter.getProfile().getHp();
+		}
+		assertEquals(300, tektonHp);
 		assertFalse(only(CoxRoom.TEKTON).isUndead());
 	}
 }

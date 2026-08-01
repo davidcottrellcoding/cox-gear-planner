@@ -193,6 +193,26 @@ The sheet also shows that some actions are worth doing *despite* costing time:
 downing Vespula is marked "worth it for points per hour" at an effective
 237,930, as is killing the tightrope NPCs.
 
+### Where the sheet independently agrees with this plugin
+
+The sheet's per-target inputs imply which style and weapon its author expects,
+and those match this plugin's conclusions on every case that can be checked:
+
+| Target | Sheet's max hit | Implies | This plugin picks |
+|---|---|---|---|
+| Ice demon | 61 at 4 ticks | Emberlight (34 base x 1.805 demonbane) | Emberlight |
+| Melee Vanguard | 75 | magic | magic (its magic defence is 20) |
+| Range Vanguard | 52 | melee | melee (its stab defence is 55) |
+| Olm melee hand | 52 | melee | melee |
+| Olm mage hand | 75 | magic | magic |
+| Olm head | 79 | ranged | ranged |
+| Vasa crystal | 52, its own weapon entry | a separate melee stab weapon | Blade of saeldor, stab style |
+| Guardians | 61 | pickaxe with the damage multiplier | pickaxe |
+
+That the Ice demon figure reproduces Emberlight's demonbane maths, and that
+both Vanguards land on opposite styles, is the closest thing to external
+validation this plugin has had.
+
 ### Techniques and mechanics not modelled here
 
 - **Tekton's enraged phase.** Accuracy drops from 0.579 to 0.384 — the plugin
