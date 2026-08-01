@@ -608,9 +608,10 @@ public class SwitchAdvisor
 	 * to. A per-style cap cannot trade slots between styles; this can, so it
 	 * may land on eight items for one style and two for another.
 	 *
-	 * Weapons and any ammo the base outfit isn't already wearing are mandatory
-	 * — you cannot use a style without them — and count against the budget.
-	 * An offhand rides free with its weapon.
+	 * Weapons and their ammo are not swaps. You cannot use a style without its
+	 * weapon, so it comes regardless of the budget — and charging the budget for
+	 * something that is never dropped only shrank the budget behind your back.
+	 * An offhand rides free with its weapon for the same reason.
 	 */
 	private Result adviseWithSharedBudget(
 		GearNeed primary,
@@ -626,7 +627,6 @@ public class SwitchAdvisor
 	{
 		double hpMult = RoomTimeEstimator.hpMultiplier(partySize);
 		List<StyleState> states = new ArrayList<>();
-		int mandatory = 0;
 
 		for (Map.Entry<GearNeed, List<RoomTimeEstimator.RoomTime>> entry : byStyle.entrySet())
 		{
@@ -663,24 +663,14 @@ public class SwitchAdvisor
 		// actually equipped. Counting one per secondary style undercounted
 		// badly: a style can win different rooms with different weapons, and
 		// the base style's other weapons are carried too.
-		mandatory = carriedWeaponCount(primary, byStyle, primaryPicks, items, includeGroupStorage);
-
-		int budget = Math.max(0, totalSwapItems - mandatory);
+		int budget = totalSwapItems;
 		if (explanation != null)
 		{
 			explanation.addSwitchChoice(String.format(
-				"shared budget: %d items total, %d taken by weapons/ammo, %d left for armour",
-				totalSwapItems, mandatory, budget));
-			if (mandatory > totalSwapItems)
-			{
-				// Known gap: the weapons are counted but never actually dropped,
-				// so every room is still timed with its ideal weapon even when
-				// the budget cannot possibly carry them all.
-				explanation.addSwitchChoice(String.format(
-					"  WARNING: %d weapon slots needed but only %d items allowed - "
-						+ "rooms are still timed with their best weapon, so these times are optimistic",
-					mandatory, totalSwapItems));
-			}
+				"shared budget: %d armour switches (weapons and ammo come free — "
+					+ "they are the style, not a swap, and %d of them are packed)",
+				budget,
+				carriedWeaponCount(primary, byStyle, primaryPicks, items, includeGroupStorage)));
 		}
 
 		while (budget > 0)
@@ -850,26 +840,12 @@ public class SwitchAdvisor
 		Map<GearSlot, SetupBuilder.Pick> picks =
 			estimator.getResolver().resolve(style, items, includeGroupStorage);
 
-		// The weapon always has to be swapped, and a bow you don't already have
-		// ammo for costs a second click — both count against the cap.
-		int armourBudget = Integer.MAX_VALUE;
-		if (maxSwitchItems > 0)
-		{
-			int mandatory = 1;
-			SetupBuilder.Pick mainWeapon = busiestWeapon(styleTimes);
-			if (style == GearNeed.RANGED && mainWeapon != null
-				&& RoomTimeEstimator.needsAmmo(mainWeapon.getItemId()))
-			{
-				SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(
-					mainWeapon.getItemId(), items, includeGroupStorage);
-				SetupBuilder.Pick wornAmmo = primaryPicks.get(GearSlot.AMMO);
-				if (ammo != null && (wornAmmo == null || wornAmmo.getItemId() != ammo.getItemId()))
-				{
-					mandatory++;
-				}
-			}
-			armourBudget = Math.max(0, maxSwitchItems - mandatory);
-		}
+		// A weapon is not a swap — it is the style itself, and it comes whether
+		// you budget for it or not. Charging the cap for something that is never
+		// dropped just silently shrank the cap: a 4-way switch spent one on the
+		// weapon and another on its ammo, leaving two for armour rather than
+		// four. The cap now means what its number says.
+		int armourBudget = maxSwitchItems > 0 ? maxSwitchItems : Integer.MAX_VALUE;
 
 		List<Advice> advices = new ArrayList<>();
 		// Slots still wearing the base outfit's item; removing an entry from

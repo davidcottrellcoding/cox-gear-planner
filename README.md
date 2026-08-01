@@ -58,8 +58,8 @@ cannot judge a loadout without knowing what constrained it.
 |---|---|
 | Party size | Scales monster HP. See the caveat below |
 | Minimum switch value | Seconds a switch must save to be worth a slot |
-| Max items per switch | Per-style cap. Weapon counts, offhand is free |
-| Total swap items | One shared budget across all styles; overrides the per-style cap |
+| Max items per switch | Per-style armour cap. Weapons, ammo and offhands are free |
+| Total swap items | One shared armour budget across all styles; overrides the per-style cap |
 | Force 4-tick weapons at Olm | Keeps melee and magic on one rhythm while learning |
 | Assume overload | Boosts your stats as a CoX overload (+) would |
 | Assume imbued heart | Competing magic boost. Does nothing while overloaded — see below |
@@ -152,12 +152,6 @@ body at once. And a room may become infeasible when the kit is too thin to
 fight it at all; that is honest, and it drops out of the total with the
 existing `(excl. red rooms)` note.
 
-**Still open:** the budget charges you for weapons but never makes you drop
-one. `carriedWeaponCount` subtracts every distinct weapon from the budget, yet
-`addWeapons` packs them all regardless, so the kit always contains every
-weapon. Times and inventory now agree with each other, but both are optimistic
-about what a very tight budget can really carry. The debug panel warns when the
-budget cannot afford the weapons it is being charged for.
 
 ## Still-unmodelled item effects
 
@@ -213,9 +207,17 @@ outside — advice promising an item the inventory never listed.
 
 ## What the swap budget counts
 
-**Total swap items** counts the gear switches competing for inventory space:
-weapons and armour pieces. It deliberately does **not** count:
+**Total swap items** counts **armour switches** — the pieces that are genuinely
+competing, where carrying one means not carrying another. It deliberately does
+**not** count:
 
+- **Weapons and their ammo.** A weapon is not a swap, it *is* the style: you
+  cannot range without a bow, so the bow comes whether you budgeted for it or
+  not, and the plan packs it either way. Charging the budget for something that
+  is never dropped only shrank the budget behind your back — a "4-way switch"
+  spent one slot on the weapon and one on its ammo and carried two armour
+  pieces, and a total budget of 1 against three weapons resolved to
+  `max(0, 1 - 3) = 0` and carried no armour at all.
 - **Offhands.** A dragon defender rides along with the weapon it pairs with,
   because putting both on is one swap, not two.
 - **Utilities.** A lockpick or a dragon warhammer is brought because a room
@@ -465,6 +467,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.41 | Weapons, ammo and offhands no longer consume the swap budget — they are the style, not a swap, and were shrinking the budget behind your back |
 | 1.40 | Room times are recomputed against the kit the plan actually packs, so the total finally responds to the switch budget |
 | 1.39.1 | Debug panel shows the budgeted-time working: pieces left behind per style, per-room before/after, and a warning when the budget cannot afford the weapons it is being charged for |
 | 1.39 | Room times and the total now reflect the switch budget; before this the headline time assumed every switch was carried and so never moved when the budget changed |

@@ -93,7 +93,7 @@ public interface CoxGearPlannerConfig extends Config
 	@ConfigItem(
 		keyName = "maxSwitchItems",
 		name = "Max items per switch",
-		description = "Hard cap on how many items you swap for each secondary style, counting the weapon and its ammo. Set 4 for a 4-way switch. Only the most valuable pieces are kept. 0 means no limit.",
+		description = "Hard cap on how many ARMOUR pieces you swap for each secondary style. Weapons and their ammo are not swaps and always come, so they do not count. Only the most valuable pieces are kept. 0 means no limit.",
 		position = 8
 	)
 	default int maxSwitchItems()
@@ -105,7 +105,7 @@ public interface CoxGearPlannerConfig extends Config
 	@ConfigItem(
 		keyName = "totalSwapItems",
 		name = "Total swap items (all styles)",
-		description = "Carry exactly this many swap items in total and let the planner spend them wherever they save the most time — it may end up 8 items on one style and 2 on another. Weapons and their ammo count; an offhand rides free with its weapon. 0 uses the per-style cap above instead.",
+		description = "Carry exactly this many ARMOUR swaps in total and let the planner spend them wherever they save the most time — it may end up 8 items on one style and 2 on another. Weapons, their ammo and offhands do not count: they always come. 0 uses the per-style cap above instead.",
 		position = 9
 	)
 	default int totalSwapItems()
