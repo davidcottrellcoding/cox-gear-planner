@@ -1,6 +1,8 @@
 package com.coxgearplanner;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /** Everything the panel renders for one "Suggest gear setup" press. */
 public class PlanResult
@@ -13,6 +15,12 @@ public class PlanResult
 	private final PlanExplanation explanation;
 	/** Plain-text rendering of this plan, for sharing. */
 	private String exportText = "";
+	/**
+	 * Room times once the switch budget is applied. Only rooms that lose
+	 * something appear; everything else is already correct in {@link #times}.
+	 */
+	private Map<RoomTimeEstimator.RoomTime, Double> budgetedSeconds =
+		Collections.emptyMap();
 
 	PlanResult(List<SetupBuilder.Section> sections,
 		List<RoomTimeEstimator.RoomTime> times,
@@ -27,6 +35,37 @@ public class PlanResult
 		this.primaryStyle = primaryStyle;
 		this.loadout = loadout;
 		this.explanation = explanation;
+	}
+
+	void setBudgetedSeconds(Map<RoomTimeEstimator.RoomTime, Double> budgetedSeconds)
+	{
+		this.budgetedSeconds = budgetedSeconds;
+	}
+
+	/**
+	 * How long this room really takes with the switches the plan carries. The
+	 * estimator's own figure assumes every switch is available, so a room that
+	 * gave one up has to be read from here or the plan quotes a time for gear
+	 * it just told you to leave in the bank.
+	 */
+	public double secondsFor(RoomTimeEstimator.RoomTime time)
+	{
+		Double budgeted = budgetedSeconds.get(time);
+		return budgeted != null ? budgeted : time.getSeconds();
+	}
+
+	/** Seconds lost across the raid to switches that did not fit the budget. */
+	public double secondsLostToBudget()
+	{
+		double lost = 0;
+		for (RoomTimeEstimator.RoomTime time : times)
+		{
+			if (time.isFeasible())
+			{
+				lost += secondsFor(time) - time.getSeconds();
+			}
+		}
+		return lost;
 	}
 
 	void setExportText(String exportText)

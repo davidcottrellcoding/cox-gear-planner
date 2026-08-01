@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.38.1";
+	static final String VERSION = "1.39";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -320,6 +320,11 @@ public class CoxGearPlannerPlugin extends Plugin
 
 			List<SwitchAdvisor.Advice> advice = switches.getAdvice();
 			GearNeed primary = switches.getPrimary();
+			// Before the pin, while resolve() still returns each style's own
+			// optimum: what the rooms cost once the switch budget is spent.
+			Map<RoomTimeEstimator.RoomTime, Double> budgeted = new SwitchAdvisor(estimator)
+				.adjustedTimes(switches, times, snapshot, includeGroup, player,
+					config.assumeElitePrayers());
 			// The advisor may have traded a base slot to remove a switch. Pin
 			// what it settled on, so the item list shows the outfit the times
 			// were actually computed against.
@@ -347,6 +352,7 @@ public class CoxGearPlannerPlugin extends Plugin
 			}
 
 			PlanResult result = new PlanResult(sections, times, advice, primary, loadout, explanation);
+			result.setBudgetedSeconds(budgeted);
 			result.setExportText(PlanExport.render(rooms, player, config, result));
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});

@@ -113,8 +113,9 @@ public final class PlanExport
 				sb.append("  ").append(pad(time.getDisplayName(), 42));
 				if (time.isFeasible())
 				{
-					total += time.getSeconds();
-					sb.append(formatSeconds(time.getSeconds())).append("  ").append(time.getDetail());
+					double seconds = result.secondsFor(time);
+					total += seconds;
+					sb.append(formatSeconds(seconds)).append("  ").append(time.getDetail());
 				}
 				else
 				{
@@ -123,6 +124,12 @@ public final class PlanExport
 				sb.append("\n");
 			}
 			sb.append("  ").append(pad("TOTAL COMBAT", 42)).append(formatSeconds(total)).append("\n");
+			double lost = result.secondsLostToBudget();
+			if (lost > 0.5)
+			{
+				sb.append("  ").append(pad("  of which lost to the switch budget", 42))
+					.append("+").append(formatSeconds(lost)).append("\n");
+			}
 		}
 
 		List<SwitchAdvisor.Advice> advice = result.getSwitchAdvice();

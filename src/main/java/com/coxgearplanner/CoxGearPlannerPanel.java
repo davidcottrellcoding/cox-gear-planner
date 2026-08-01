@@ -372,9 +372,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 				JLabel label;
 				if (time.isFeasible())
 				{
-					total += time.getSeconds();
+					double seconds = result.secondsFor(time);
+					total += seconds;
 					label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> ~"
-						+ formatSeconds(time.getSeconds()) + " — " + time.getDetail() + "</html>");
+						+ formatSeconds(seconds) + " — " + time.getDetail() + "</html>");
 					label.setForeground(COLOR_BANK);
 				}
 				else
@@ -395,6 +396,20 @@ public class CoxGearPlannerPanel extends PluginPanel
 			totalLabel.setForeground(COLOR_ON_HAND);
 			totalLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 			resultsPanel.add(totalLabel);
+
+			// Without this the switch settings look inert: the times above
+			// already assume the budget, so raising it just moves a number with
+			// nothing to say what moved it.
+			double lost = result.secondsLostToBudget();
+			if (lost > 0.5)
+			{
+				JLabel lostLabel = new JLabel("<html>+" + formatSeconds(lost)
+					+ " from switches left behind — raise the switch budget to recover it</html>");
+				lostLabel.setFont(FontManager.getRunescapeSmallFont());
+				lostLabel.setForeground(COLOR_MISSING);
+				lostLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+				resultsPanel.add(lostLabel);
+			}
 		}
 
 		renderSwitchAdvice(result);

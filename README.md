@@ -186,6 +186,34 @@ inventory list will read higher than the budget you set — a budget of 10 with 
 warhammer and a defender means 12 slots used. The settings line in an exported
 plan spells this out.
 
+## Room times are computed twice, and only the second one counts
+
+The estimator runs before the switch advisor, because the advisor needs to know
+what each room costs before it can decide which switches are worth carrying.
+That first pass hands every room the best gear you own for it, whether or not
+you will be carrying it — an unlimited-switches time.
+
+Those are the numbers everything used to display, which made the headline
+"total combat time" identical at a budget of one item and a budget of twelve.
+The setting a player tunes while watching that number was the one setting that
+could not move it.
+
+`SwitchAdvisor.adjustedTimes` closes the loop: for each room whose style gave
+something up, it re-prices the loadout with the pieces that were actually left
+behind and scales the estimator's time by the ratio. Scaling rather than
+recomputing is deliberate — the estimator applies overrides the advisor does not
+model, notably a salve amulet against undead and set bonuses, and a fresh
+calculation would silently drop them. A room that keeps all its switches is
+untouched.
+
+It must be called **before the base outfit is pinned**, while `resolve()` still
+returns each style's own optimum rather than the worn outfit. After the pin the
+primary style would price itself against what it is already wearing and report
+no loss at all.
+
+Anything new that reads a room time should go through `PlanResult.secondsFor`,
+not `RoomTime.getSeconds` — the latter is still the pre-budget figure.
+
 ## The imbued heart does nothing while overloaded
 
 OSRS boosts do not stack — each sets an absolute level and the highest wins. A
@@ -424,6 +452,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.39 | Room times and the total now reflect the switch budget; before this the headline time assumed every switch was carried and so never moved when the budget changed |
 | 1.38.1 | Already-worn slots name the item they are measured against, instead of just "next best" |
 | 1.38 | Confliction gauntlets' second accuracy roll is modelled; their value was previously only their raw stats |
 | 1.37 | Already-worn slots are priced against the next best item you own, not against an empty slot, which produced runaway figures like 3286s |
