@@ -459,9 +459,12 @@ public final class RaidLoadoutBuilder
 			}
 			if (slot == GearSlot.AMMO)
 			{
+				// A non-ranged base outfit still wears whatever sits in the
+				// ammo slot (a blessing, say), and the per-style sections say
+				// so — the equipped list has to agree.
 				SetupBuilder.Pick ammo = weapon != null && primary == GearNeed.RANGED
 					? RoomTimeEstimator.findAmmo(weapon.getItemId(), items, includeGroupStorage)
-					: null;
+					: picks.get(GearSlot.AMMO);
 				if (ammo != null)
 				{
 					lines.add(new SetupBuilder.Line(slot.getDisplayName(),
@@ -497,12 +500,17 @@ public final class RaidLoadoutBuilder
 		{
 			ids.add(weapon.getItemId());
 		}
-		for (SetupBuilder.Pick pick : picks.values())
+		for (Map.Entry<GearSlot, SetupBuilder.Pick> entry : picks.entrySet())
 		{
-			if (pick != null)
+			// The style's ideal WEAPON is not necessarily the one equipped —
+			// the equipped one comes from the busiest room and is passed in
+			// separately. Treating the ideal as worn made the real weapon look
+			// already-carried, so it was dropped from the inventory entirely.
+			if (entry.getKey() == GearSlot.WEAPON || entry.getValue() == null)
 			{
-				ids.add(pick.getItemId());
+				continue;
 			}
+			ids.add(entry.getValue().getItemId());
 		}
 		return ids;
 	}

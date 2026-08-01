@@ -48,8 +48,10 @@ public final class PlanExport
 			.append(" / mining ").append(player.getMining()).append("\n");
 		sb.append("SETTINGS    party ").append(config.partySize())
 			.append(", min switch ").append(config.minSwitchSeconds()).append("s")
-			.append(", max items/switch ")
-			.append(config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems())
+			.append(config.totalSwapItems() > 0
+				? ", total swap items " + config.totalSwapItems()
+				: ", max items/switch "
+					+ (config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems()))
 			.append(config.olmFourTick() ? ", Olm forced 4-tick" : "")
 			.append(config.assumeOverload() ? ", overload" : "")
 			.append(config.assumeElitePrayers() ? ", elite prayers" : "")

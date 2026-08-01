@@ -248,6 +248,55 @@ public class RaidLoadoutBuilderTest
 	}
 
 	@Test
+	public void aSecondWeaponOfTheBaseStyleIsStillCarried()
+	{
+		// Regression: with a magic base outfit, resolve(MAGIC) names the
+		// shadow as the style's ideal weapon while the EQUIPPED weapon comes
+		// from the busiest room (a trident). The shadow was then treated as
+		// "already worn" and dropped from the inventory, even though three
+		// rooms used it and it had its own section.
+		int SHADOW = 27275;
+		int TRIDENT = 12899;
+		Map<ItemSource, Map<Integer, Integer>> items = bankWith(SHADOW, TRIDENT);
+
+		SetupBuilder.Pick shadow = pick(items, ItemOption.twoHanded("Tumeken's shadow", SHADOW));
+		SetupBuilder.Pick trident = pick(items, ItemOption.of("Trident of the swamp", TRIDENT));
+
+		List<RoomTimeEstimator.RoomTime> times = new ArrayList<>(Arrays.asList(
+			// The trident room is the longest, so it becomes the worn weapon
+			new RoomTimeEstimator.RoomTime(CoxRoom.OLM, "trident", 220, true, GearNeed.MAGIC, trident),
+			new RoomTimeEstimator.RoomTime(CoxRoom.TIGHTROPE, "shadow", 24, true, GearNeed.MAGIC, shadow)));
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			EnumSet.of(CoxRoom.OLM, CoxRoom.TIGHTROPE), times, new ArrayList<>(),
+			GearNeed.MAGIC, items, true, null);
+
+		java.util.Set<String> available = new java.util.HashSet<>();
+		loadout.getEquipped().forEach(l -> available.add(strip(l.getItemName())));
+		loadout.getInventory().forEach(e -> available.add(strip(e.getName())));
+
+		assertTrue("the equipped weapon is the busiest room's",
+			available.contains("Trident of the swamp"));
+		assertTrue("the style's other weapon must still be carried",
+			available.contains("Tumeken's shadow"));
+
+		// And the invariant holds for every section, ammo slot included
+		for (SetupBuilder.Section section : loadout.getStyleSections())
+		{
+			for (SetupBuilder.Line line : section.getLines())
+			{
+				String item = strip(line.getItemName());
+				if (item.startsWith("(empty)") || item.startsWith("—"))
+				{
+					continue;
+				}
+				assertTrue("section names '" + item + "' which is not equipped or carried",
+					available.contains(item));
+			}
+		}
+	}
+
+	@Test
 	public void missingUtilityIsListedButTakesNoSlot()
 	{
 		Map<ItemSource, Map<Integer, Integer>> items = bankWith(SCYTHE);
