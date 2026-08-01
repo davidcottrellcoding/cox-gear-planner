@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.28.0";
+	static final String VERSION = "1.29.0";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -365,7 +365,22 @@ public class CoxGearPlannerPlugin extends Plugin
 		int real = client.getRealSkillLevel(skill);
 		int boosted = client.getBoostedSkillLevel(skill);
 		int assumed = config.assumeOverload() ? overloaded(real) : real;
+
+		// Boosts do not stack: each sets an absolute level, so the highest
+		// wins. A CoX overload beats an imbued heart at every level (+6 and
+		// 16% against +1 and 10%), which is why the heart only shows up when
+		// overloads are not assumed.
+		if (skill == Skill.MAGIC && config.assumeImbuedHeart())
+		{
+			assumed = Math.max(assumed, imbuedHeart(real));
+		}
 		return Math.max(boosted, assumed);
+	}
+
+	/** Imbued heart: +1 plus 10% of the Magic level, on a 7 minute cooldown. */
+	static int imbuedHeart(int magicLevel)
+	{
+		return magicLevel + 1 + magicLevel / 10;
 	}
 
 	/** Overload (+): +6 plus 16% of the base level. */

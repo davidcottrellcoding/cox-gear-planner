@@ -56,10 +56,21 @@ public interface CoxGearPlannerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "assumeImbuedHeart",
+		name = "Assume imbued heart",
+		description = "Assume an imbued heart boost (+1 and 10% of your Magic level). Note it does NOT stack with an overload and is weaker than one at every level, so this only changes anything when 'Assume overload' is off — for example the first rooms before you brew overloads.",
+		position = 5
+	)
+	default boolean assumeImbuedHeart()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "assumeElitePrayers",
 		name = "Assume Piety/Rigour/Augury",
 		description = "Assume elite offensive prayers are active when estimating room times",
-		position = 5
+		position = 6
 	)
 	default boolean assumeElitePrayers()
 	{
@@ -71,7 +82,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "minSwitchSeconds",
 		name = "Minimum switch value (seconds)",
 		description = "Gear switches that save less than this many seconds across the selected rooms are flagged as not worth the inventory slot. 0 shows every switch as worth carrying.",
-		position = 6
+		position = 7
 	)
 	default int minSwitchSeconds()
 	{
@@ -83,7 +94,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "maxSwitchItems",
 		name = "Max items per switch",
 		description = "Hard cap on how many items you swap for each secondary style, counting the weapon and its ammo. Set 4 for a 4-way switch. Only the most valuable pieces are kept. 0 means no limit.",
-		position = 7
+		position = 8
 	)
 	default int maxSwitchItems()
 	{
@@ -95,7 +106,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "totalSwapItems",
 		name = "Total swap items (all styles)",
 		description = "Carry exactly this many swap items in total and let the planner spend them wherever they save the most time — it may end up 8 items on one style and 2 on another. Weapons and their ammo count; an offhand rides free with its weapon. 0 uses the per-style cap above instead.",
-		position = 8
+		position = 9
 	)
 	default int totalSwapItems()
 	{
@@ -106,7 +117,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "olmFourTick",
 		name = "Force 4-tick weapons at Olm",
 		description = "Restricts the melee and magic weapon at Olm to 4-tick options, so both styles share one attack rhythm. Easier to learn than mixing a 5-tick scythe or shadow with a 4-tick swap. Falls back to your fastest option if you own no 4-tick weapon for a style.",
-		position = 9
+		position = 10
 	)
 	default boolean olmFourTick()
 	{
@@ -117,7 +128,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "hideMissing",
 		name = "Hide unowned recommendations",
 		description = "Only plan with gear you actually own — hide the red 'BiS to chase' lines for slots where you own nothing",
-		position = 10
+		position = 11
 	)
 	default boolean hideMissing()
 	{
@@ -128,7 +139,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "showDebug",
 		name = "Show debug panel",
 		description = "Adds a section explaining why each item, weapon and switch was chosen over the alternatives you own",
-		position = 11
+		position = 12
 	)
 	default boolean showDebug()
 	{

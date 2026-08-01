@@ -54,6 +54,7 @@ public final class PlanExport
 					+ (config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems()))
 			.append(config.olmFourTick() ? ", Olm forced 4-tick" : "")
 			.append(config.assumeOverload() ? ", overload" : "")
+			.append(config.assumeImbuedHeart() ? ", imbued heart" : "")
 			.append(config.assumeElitePrayers() ? ", elite prayers" : "")
 			.append(config.includeGroupStorage() ? ", group storage on" : ", group storage OFF")
 			.append("\n\n");
