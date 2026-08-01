@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.39.1";
+	static final String VERSION = "1.40";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -221,6 +221,30 @@ public class CoxGearPlannerPlugin extends Plugin
 	}
 
 	/**
+	 * The plan's own kit as an item pool, so the estimator can be pointed at it
+	 * the same way it is pointed at a bank. Quantities come from the real
+	 * snapshot because ammo counts matter and a loadout only records that a
+	 * stack is coming, not how big it is.
+	 */
+	static Map<ItemSource, Map<Integer, Integer>> kitContents(
+		Set<Integer> carriedIds, Map<ItemSource, Map<Integer, Integer>> snapshot)
+	{
+		Map<Integer, Integer> owned = new HashMap<>();
+		for (int id : carriedIds)
+		{
+			int quantity = 0;
+			for (Map<Integer, Integer> source : snapshot.values())
+			{
+				quantity += source.getOrDefault(id, 0);
+			}
+			owned.put(id, Math.max(1, quantity));
+		}
+		Map<ItemSource, Map<Integer, Integer>> kit = new EnumMap<>(ItemSource.class);
+		kit.put(ItemSource.BANK, owned);
+		return kit;
+	}
+
+	/**
 	 * Thread-safe-enough copy for the Swing side: the maps are replaced
 	 * wholesale on the client thread, never mutated in place.
 	 */
@@ -320,11 +344,6 @@ public class CoxGearPlannerPlugin extends Plugin
 
 			List<SwitchAdvisor.Advice> advice = switches.getAdvice();
 			GearNeed primary = switches.getPrimary();
-			// Before the pin, while resolve() still returns each style's own
-			// optimum: what the rooms cost once the switch budget is spent.
-			Map<RoomTimeEstimator.RoomTime, Double> budgeted = new SwitchAdvisor(estimator)
-				.adjustedTimes(switches, times, snapshot, includeGroup, player,
-					config.assumeElitePrayers(), explanation);
 			// The advisor may have traded a base slot to remove a switch. Pin
 			// what it settled on, so the item list shows the outfit the times
 			// were actually computed against.
@@ -351,8 +370,27 @@ public class CoxGearPlannerPlugin extends Plugin
 				}
 			}
 
-			PlanResult result = new PlanResult(sections, times, advice, primary, loadout, explanation);
-			result.setBudgetedSeconds(budgeted);
+			// The first pass gave every room the best gear you own, because the
+			// advisor needed those numbers before it could decide what was worth
+			// carrying. Now that the kit is settled, time the raid again against
+			// exactly what it packs — the damage in a room comes from the gear
+			// you can actually put on in that room, not from the best you own.
+			//
+			// Re-running the estimator rather than scaling the old numbers keeps
+			// everything it models and the advisor does not: salve amulets
+			// against the undead, crystal and set bonuses, per-monster weapon
+			// choice, party scaling.
+			List<RoomTimeEstimator.RoomTime> realTimes = times;
+			if (loadout != null)
+			{
+				Map<ItemSource, Map<Integer, Integer>> kit =
+					kitContents(loadout.getCarriedIds(), snapshot);
+				realTimes = estimator.estimate(rooms, kit, includeGroup, player,
+					config.partySize(), config.assumeElitePrayers(), null);
+			}
+
+			PlanResult result = new PlanResult(sections, realTimes, advice, primary, loadout, explanation);
+			result.setIdealTimes(times);
 			result.setExportText(PlanExport.render(rooms, player, config, result));
 			SwingUtilities.invokeLater(() -> callback.accept(result));
 		});

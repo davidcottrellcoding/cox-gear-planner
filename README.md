@@ -118,25 +118,46 @@ This only changes the outcome when a swap budget or per-style cap is set. With
 both left at 0 nothing is competing for slots, so every worthwhile switch is
 carried anyway and there is nothing to trade.
 
-## The budget charges you for weapons it never makes you drop
+## The times are computed from the kit, not from your bank
 
-`carriedWeaponCount` counts every distinct weapon the plan uses and subtracts
-it from the swap budget, so a tight budget starves armour. But nothing ever
-drops a weapon: `loadoutDps` takes the weapon from the room's own `RoomTime`
-and skips the weapon slot entirely, so every room is timed swinging its ideal
-weapon no matter what the budget says you can carry.
+The estimator has to run before the switch advisor, because the advisor needs
+each room's cost before it can decide what is worth carrying. That first pass
+hands every room the best gear you *own* for it, so its times quietly assume an
+unlimited budget.
 
-Weapon choice is the largest single term in the damage calculation — a scythe
-against Tekton versus a bow is not a few seconds — so this is the main reason a
-one-item budget and a twelve-item budget produce similar totals. The armour
-differences are real but small next to a weapon that never changes.
+Those were the only times anything displayed, which made the headline total
+identical at a one-item budget and a twelve-item one. The setting you tune
+while watching that number was the one setting that could not move it.
 
-Fixing it properly means letting weapons compete for the budget like everything
-else, and re-timing any room whose weapon was not bought against the weapon
-actually in hand. That also has to reach `RaidLoadoutBuilder`, or the inventory
-will pack weapons the times no longer assume — the disagreement this codebase
-has already had to fix several times. The debug panel warns when the budget
-cannot afford the weapons it is being charged for.
+So the raid is timed **twice**. Once to decide the kit, then again against the
+kit itself: `RaidLoadout` records every item id it brings, `kitContents` turns
+that set into an item pool, and the estimator is pointed at it exactly the way
+it is normally pointed at a bank. Each room then picks the best style, weapon
+and armour from what you can genuinely put on in that room.
+
+Re-running the estimator matters more than it sounds. The obvious shortcut is
+to scale the first pass by a DPS ratio, and that is wrong: the estimator models
+things the advisor does not — salve amulets against the undead above all — so a
+ratio taken from the advisor's model can come back *below one* and make a
+tighter budget look faster. Running the real thing keeps salve, crystal and set
+bonuses, per-monster weapon choice and party scaling intact by construction.
+
+The useful side effect is that the plan can no longer quote a time for gear it
+told you to leave behind. The numbers are derived from the item list printed
+directly above them.
+
+Two consequences worth knowing. A room can use any combination of what you
+packed, which is correct — you really can wear a carried helm and a carried
+body at once. And a room may become infeasible when the kit is too thin to
+fight it at all; that is honest, and it drops out of the total with the
+existing `(excl. red rooms)` note.
+
+**Still open:** the budget charges you for weapons but never makes you drop
+one. `carriedWeaponCount` subtracts every distinct weapon from the budget, yet
+`addWeapons` packs them all regardless, so the kit always contains every
+weapon. Times and inventory now agree with each other, but both are optimistic
+about what a very tight budget can really carry. The debug panel warns when the
+budget cannot afford the weapons it is being charged for.
 
 ## Still-unmodelled item effects
 
@@ -205,34 +226,6 @@ Both are still real inventory slots, so the gear total shown above the
 inventory list will read higher than the budget you set — a budget of 10 with a
 warhammer and a defender means 12 slots used. The settings line in an exported
 plan spells this out.
-
-## Room times are computed twice, and only the second one counts
-
-The estimator runs before the switch advisor, because the advisor needs to know
-what each room costs before it can decide which switches are worth carrying.
-That first pass hands every room the best gear you own for it, whether or not
-you will be carrying it — an unlimited-switches time.
-
-Those are the numbers everything used to display, which made the headline
-"total combat time" identical at a budget of one item and a budget of twelve.
-The setting a player tunes while watching that number was the one setting that
-could not move it.
-
-`SwitchAdvisor.adjustedTimes` closes the loop: for each room whose style gave
-something up, it re-prices the loadout with the pieces that were actually left
-behind and scales the estimator's time by the ratio. Scaling rather than
-recomputing is deliberate — the estimator applies overrides the advisor does not
-model, notably a salve amulet against undead and set bonuses, and a fresh
-calculation would silently drop them. A room that keeps all its switches is
-untouched.
-
-It must be called **before the base outfit is pinned**, while `resolve()` still
-returns each style's own optimum rather than the worn outfit. After the pin the
-primary style would price itself against what it is already wearing and report
-no loss at all.
-
-Anything new that reads a room time should go through `PlanResult.secondsFor`,
-not `RoomTime.getSeconds` — the latter is still the pre-budget figure.
 
 ## The imbued heart does nothing while overloaded
 
@@ -472,6 +465,7 @@ been replaced.
 
 | Version | Change |
 |---|---|
+| 1.40 | Room times are recomputed against the kit the plan actually packs, so the total finally responds to the switch budget |
 | 1.39.1 | Debug panel shows the budgeted-time working: pieces left behind per style, per-room before/after, and a warning when the budget cannot afford the weapons it is being charged for |
 | 1.39 | Room times and the total now reflect the switch budget; before this the headline time assumed every switch was carried and so never moved when the budget changed |
 | 1.38.1 | Already-worn slots name the item they are measured against, instead of just "next best" |

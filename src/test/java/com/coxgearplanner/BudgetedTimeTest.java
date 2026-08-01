@@ -1,115 +1,137 @@
 package com.coxgearplanner;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * The headline time has to answer the question the settings ask.
+ * The times have to be built from the gear the plan actually brings.
  *
- * Room times are computed before any switch decision exists, so every room
- * gets the best gear you own for it whether or not the plan tells you to
- * carry it. That is the unlimited-switches time, and it read the same at a
- * budget of one item as at twelve — the one number a player tunes the budget
- * to watch was the one number the budget could not move.
+ * The estimator runs before the switch advisor, because the advisor needs each
+ * room's cost before it can decide what is worth carrying. That first pass
+ * hands every room the best gear you own for it, so its times assume an
+ * unlimited budget — and they were the only times anything displayed. A
+ * one-item kit and a twelve-item kit therefore produced the same total, which
+ * is the one thing a switch budget must never do.
  *
- * The advisor knew the real figure all along; RoomTime.seconds is final, so
- * it had nowhere to put it.
+ * Scaling those numbers afterwards was not enough either. The estimator
+ * applies effects the advisor does not model — a salve amulet against the
+ * undead most of all — so a ratio taken from the advisor's own model could
+ * come back below one and make a *tighter* budget look faster. The fix is to
+ * stop deriving the number and re-run the estimator against the kit itself.
  */
 public class BudgetedTimeTest
 {
 	private static final int TBOW = 20997;
+	private static final int SCYTHE = 22325;
+	private static final int DRAGON_ARROW = 11212;
 
-	private static RoomTimeEstimator.RoomTime room(CoxRoom room, GearNeed style, double seconds)
+	private static RoomTimeEstimator.RoomTime room(CoxRoom where, double seconds, boolean feasible)
 	{
-		return new RoomTimeEstimator.RoomTime(room, "detail", seconds, true, style,
+		return new RoomTimeEstimator.RoomTime(where, "detail", seconds, feasible, GearNeed.RANGED,
 			new SetupBuilder.Pick(ItemOption.twoHanded("Twisted bow", TBOW),
 				ItemSource.BANK, TBOW, 1));
 	}
 
 	private static PlanResult planWith(
-		List<RoomTimeEstimator.RoomTime> times,
-		java.util.Map<RoomTimeEstimator.RoomTime, Double> budgeted)
+		List<RoomTimeEstimator.RoomTime> real, List<RoomTimeEstimator.RoomTime> ideal)
 	{
-		PlanResult result = new PlanResult(Collections.emptyList(), times,
+		PlanResult result = new PlanResult(Collections.emptyList(), real,
 			Collections.emptyList(), GearNeed.RANGED, null, null);
-		result.setBudgetedSeconds(budgeted);
+		result.setIdealTimes(ideal);
 		return result;
 	}
 
-	/** A room with every switch carried keeps the estimator's own number. */
+	/** A budget that was never binding costs nothing. */
 	@Test
-	public void aRoomThatGivesUpNothingIsUnchanged()
+	public void aKitThatCarriesEverythingLosesNoTime()
 	{
-		RoomTimeEstimator.RoomTime olm = room(CoxRoom.OLM, GearNeed.RANGED, 200);
-		PlanResult result = planWith(
-			new ArrayList<>(Arrays.asList(olm)), Collections.emptyMap());
+		List<RoomTimeEstimator.RoomTime> ideal =
+			Arrays.asList(room(CoxRoom.OLM, 200, true), room(CoxRoom.TEKTON, 100, true));
+		List<RoomTimeEstimator.RoomTime> real =
+			Arrays.asList(room(CoxRoom.OLM, 200, true), room(CoxRoom.TEKTON, 100, true));
 
-		assertEquals(200, result.secondsFor(olm), 1e-9);
-		assertEquals("nothing was given up", 0, result.secondsLostToBudget(), 1e-9);
+		assertEquals(0, planWith(real, ideal).secondsLostToBudget(), 1e-9);
 	}
 
-	/** A room that lost a switch reports the slower time, not the ideal one. */
+	/** A tighter kit is slower, and the gap is what the budget cost. */
 	@Test
-	public void aRoomThatLostASwitchReportsTheSlowerTime()
+	public void aTighterKitReportsTheTimeItCost()
 	{
-		RoomTimeEstimator.RoomTime tekton = room(CoxRoom.TEKTON, GearNeed.MELEE, 100);
-		java.util.Map<RoomTimeEstimator.RoomTime, Double> budgeted =
-			new java.util.IdentityHashMap<>();
-		budgeted.put(tekton, 118.0);
+		List<RoomTimeEstimator.RoomTime> ideal =
+			Arrays.asList(room(CoxRoom.OLM, 200, true), room(CoxRoom.TEKTON, 100, true));
+		List<RoomTimeEstimator.RoomTime> real =
+			Arrays.asList(room(CoxRoom.OLM, 214, true), room(CoxRoom.TEKTON, 160, true));
 
-		PlanResult result = planWith(new ArrayList<>(Arrays.asList(tekton)), budgeted);
+		PlanResult result = planWith(real, ideal);
 
-		assertEquals(118.0, result.secondsFor(tekton), 1e-9);
-		assertEquals(18.0, result.secondsLostToBudget(), 1e-9);
+		assertEquals(74.0, result.secondsLostToBudget(), 1e-9);
+		assertEquals("the displayed time is the one you will actually get",
+			214.0, result.secondsFor(real.get(0)), 1e-9);
 	}
 
-	/**
-	 * The loss is what the budget costs you, so it can only ever be positive.
-	 * A carried switch is one the plan chose because it saved time.
-	 */
+	/** Infeasible rooms are excluded from both sides, as the panel excludes them. */
 	@Test
-	public void theLossIsSummedAcrossEveryRoom()
+	public void anInfeasibleRoomIsNotCountedOnEitherSide()
 	{
-		RoomTimeEstimator.RoomTime olm = room(CoxRoom.OLM, GearNeed.RANGED, 200);
-		RoomTimeEstimator.RoomTime tekton = room(CoxRoom.TEKTON, GearNeed.MELEE, 100);
-		java.util.Map<RoomTimeEstimator.RoomTime, Double> budgeted =
-			new java.util.IdentityHashMap<>();
-		budgeted.put(olm, 214.0);
-		budgeted.put(tekton, 111.0);
+		List<RoomTimeEstimator.RoomTime> ideal =
+			Arrays.asList(room(CoxRoom.OLM, 200, true), room(CoxRoom.TEKTON, 100, false));
+		List<RoomTimeEstimator.RoomTime> real =
+			Arrays.asList(room(CoxRoom.OLM, 200, true), room(CoxRoom.TEKTON, 999, false));
 
-		PlanResult result = planWith(
-			new ArrayList<>(Arrays.asList(olm, tekton)), budgeted);
-
-		assertEquals(25.0, result.secondsLostToBudget(), 1e-9);
-		assertTrue("a tighter budget can only make the raid longer",
-			result.secondsFor(olm) > olm.getSeconds());
+		assertEquals(0, planWith(real, ideal).secondsLostToBudget(), 1e-9);
 	}
 
 	/**
-	 * Two rooms of the same style are keyed separately. A map keyed on value
-	 * rather than identity would collapse rooms that happen to tie on time,
-	 * and Olm arrives as three entries that share a style.
+	 * The kit is what the estimator is re-pointed at, so it has to contain
+	 * every id the loadout brings and nothing else — an item left in the bank
+	 * must not be able to contribute damage.
 	 */
 	@Test
-	public void roomsThatTieOnTimeAreStillDistinct()
+	public void theKitHoldsExactlyWhatTheLoadoutBrings()
 	{
-		RoomTimeEstimator.RoomTime first = room(CoxRoom.OLM, GearNeed.RANGED, 150);
-		RoomTimeEstimator.RoomTime second = room(CoxRoom.OLM, GearNeed.RANGED, 150);
-		java.util.Map<RoomTimeEstimator.RoomTime, Double> budgeted =
-			new java.util.IdentityHashMap<>();
-		budgeted.put(first, 170.0);
+		Map<Integer, Integer> bank = new HashMap<>();
+		bank.put(TBOW, 1);
+		bank.put(SCYTHE, 1);
+		bank.put(DRAGON_ARROW, 500);
+		Map<ItemSource, Map<Integer, Integer>> snapshot = new EnumMap<>(ItemSource.class);
+		snapshot.put(ItemSource.BANK, bank);
 
-		PlanResult result = planWith(
-			new ArrayList<>(Arrays.asList(first, second)), budgeted);
+		Set<Integer> carried = new HashSet<>(Arrays.asList(TBOW, DRAGON_ARROW));
+		Map<ItemSource, Map<Integer, Integer>> kit =
+			CoxGearPlannerPlugin.kitContents(carried, snapshot);
 
-		assertEquals(170.0, result.secondsFor(first), 1e-9);
-		assertEquals("the second room kept its own time", 150.0,
-			result.secondsFor(second), 1e-9);
+		Map<Integer, Integer> owned = kit.get(ItemSource.BANK);
+		assertTrue("the bow is coming", owned.containsKey(TBOW));
+		assertEquals("ammo keeps its real stack size", 500, (int) owned.get(DRAGON_ARROW));
+		assertTrue("a scythe left in the bank cannot do damage",
+			!owned.containsKey(SCYTHE));
+	}
+
+	/** Quantities are summed across sources, so group storage still counts. */
+	@Test
+	public void theKitSumsQuantitiesAcrossSources()
+	{
+		Map<Integer, Integer> bank = new HashMap<>();
+		bank.put(DRAGON_ARROW, 200);
+		Map<Integer, Integer> group = new HashMap<>();
+		group.put(DRAGON_ARROW, 300);
+		Map<ItemSource, Map<Integer, Integer>> snapshot = new EnumMap<>(ItemSource.class);
+		snapshot.put(ItemSource.BANK, bank);
+		snapshot.put(ItemSource.GROUP_STORAGE, group);
+
+		Map<ItemSource, Map<Integer, Integer>> kit = CoxGearPlannerPlugin.kitContents(
+			new HashSet<>(Collections.singletonList(DRAGON_ARROW)), snapshot);
+
+		assertEquals(500, (int) kit.get(ItemSource.BANK).get(DRAGON_ARROW));
 	}
 }

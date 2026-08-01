@@ -3,7 +3,7 @@ package com.coxgearplanner;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.IdentityHashMap;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -987,124 +987,6 @@ public class SwitchAdvisor
 		}
 		return best;
 	}
-
-	/**
-	 * Per-room kill time with only the switches the plan actually carries.
-	 *
-	 * The room times come from the estimator, which runs before any switch
-	 * decision exists and so gives every room the best gear you own for it.
-	 * That is the unlimited-switches time, and nothing in the switch settings
-	 * can move it — which is why the headline total read the same at a budget
-	 * of one item as at twelve. The advisor already knows the real number, it
-	 * just had nowhere to put it: RoomTime.seconds is final.
-	 *
-	 * What comes back is a scaled version of the estimator's own time rather
-	 * than a fresh calculation. The estimator applies overrides the advisor
-	 * does not model — a salve amulet against the undead, set bonuses — so
-	 * recomputing from scratch would quietly drop them. Taking the ratio of
-	 * two DPS figures from the same model and applying it to the authoritative
-	 * time keeps those intact, and leaves a room whose switches all fit
-	 * reading exactly as it did before.
-	 *
-	 * Must be called before the base outfit is pinned, so that resolve()
-	 * still returns each style's own optimum — the same picks the advice was
-	 * priced against.
-	 */
-	public Map<RoomTimeEstimator.RoomTime, Double> adjustedTimes(
-		Result result,
-		List<RoomTimeEstimator.RoomTime> times,
-		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage,
-		PlayerSnapshot player,
-		boolean elitePrayers,
-		PlanExplanation explanation)
-	{
-		Map<RoomTimeEstimator.RoomTime, Double> adjusted = new IdentityHashMap<>();
-		if (result == null || result.getBasePicks() == null)
-		{
-			if (explanation != null)
-			{
-				explanation.addSwitchChoice("budgeted times: SKIPPED - "
-					+ (result == null ? "no advice at all" : "no base outfit was settled")
-					+ ", so every room keeps its unlimited-switches time");
-			}
-			return adjusted;
-		}
-		Map<GearSlot, SetupBuilder.Pick> base = result.getBasePicks();
-
-		// A slot the advice does not carry stays in whatever the base outfit
-		// wears there, which is exactly how the advisor priced it.
-		Map<GearNeed, Map<GearSlot, SetupBuilder.Pick>> leftBehind =
-			new EnumMap<>(GearNeed.class);
-		for (Advice advice : result.getAdvice())
-		{
-			if (advice.isWorthIt() || advice.isAlreadyShared())
-			{
-				continue;
-			}
-			leftBehind.computeIfAbsent(advice.getStyle(), k -> new LinkedHashMap<>())
-				.put(advice.getSlot(), base.get(advice.getSlot()));
-		}
-
-		if (explanation != null)
-		{
-			int dropped = 0;
-			for (Map<GearSlot, SetupBuilder.Pick> slots : leftBehind.values())
-			{
-				dropped += slots.size();
-			}
-			explanation.addSwitchChoice(String.format(
-				"budgeted times: %d advice entries, %d pieces left behind across %d styles",
-				result.getAdvice().size(), dropped, leftBehind.size()));
-		}
-
-		for (RoomTimeEstimator.RoomTime rt : times)
-		{
-			if (!rt.isFeasible() || rt.getStyle() == null || rt.getMonster() == null)
-			{
-				continue;
-			}
-			Map<GearSlot, SetupBuilder.Pick> missing = leftBehind.get(rt.getStyle());
-			if (missing == null || missing.isEmpty())
-			{
-				if (explanation != null)
-				{
-					explanation.addSwitchChoice(String.format(
-						"  %s: unchanged, %s carries every switch it wants",
-						rt.getDisplayName(), rt.getStyle().getDisplayName().toLowerCase()));
-				}
-				continue;
-			}
-
-			Map<GearSlot, SetupBuilder.Pick> picks =
-				estimator.getResolver().resolve(rt.getStyle(), items, includeGroupStorage);
-			double ideal = estimator.loadoutDps(rt.getStyle(), rt.getWeapon(), picks,
-				Collections.emptyMap(), items, includeGroupStorage, player,
-				rt.getMonster(), elitePrayers);
-			double actual = estimator.loadoutDps(rt.getStyle(), rt.getWeapon(), picks,
-				missing, items, includeGroupStorage, player, rt.getMonster(), elitePrayers);
-			if (ideal <= 0 || actual <= 0)
-			{
-				if (explanation != null)
-				{
-					explanation.addSwitchChoice(String.format(
-						"  %s: SKIPPED, dps came back %.3f ideal / %.3f actual",
-						rt.getDisplayName(), ideal, actual));
-				}
-				continue;
-			}
-			double seconds = rt.getSeconds() * (ideal / actual);
-			adjusted.put(rt, seconds);
-			if (explanation != null)
-			{
-				explanation.addSwitchChoice(String.format(
-					"  %s: %.0fs -> %.0fs without %d piece(s)",
-					rt.getDisplayName(), rt.getSeconds(), seconds, missing.size()));
-			}
-		}
-		return adjusted;
-	}
-
 	/** Total expected kill time across a style's rooms with the given slots not switched. */
 	private double totalSeconds(
 		GearNeed style,

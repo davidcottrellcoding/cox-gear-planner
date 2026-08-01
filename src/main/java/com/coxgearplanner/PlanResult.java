@@ -16,11 +16,11 @@ public class PlanResult
 	/** Plain-text rendering of this plan, for sharing. */
 	private String exportText = "";
 	/**
-	 * Room times once the switch budget is applied. Only rooms that lose
-	 * something appear; everything else is already correct in {@link #times}.
+	 * What the raid would take with every switch carried. {@link #times} is the
+	 * real figure — computed against the kit this plan actually packs — and the
+	 * gap between the two is what the switch budget costs you.
 	 */
-	private Map<RoomTimeEstimator.RoomTime, Double> budgetedSeconds =
-		Collections.emptyMap();
+	private List<RoomTimeEstimator.RoomTime> idealTimes = Collections.emptyList();
 
 	PlanResult(List<SetupBuilder.Section> sections,
 		List<RoomTimeEstimator.RoomTime> times,
@@ -37,35 +37,37 @@ public class PlanResult
 		this.explanation = explanation;
 	}
 
-	void setBudgetedSeconds(Map<RoomTimeEstimator.RoomTime, Double> budgetedSeconds)
+	void setIdealTimes(List<RoomTimeEstimator.RoomTime> idealTimes)
 	{
-		this.budgetedSeconds = budgetedSeconds;
+		this.idealTimes = idealTimes;
+	}
+
+	/** How long this room takes with the gear this plan actually brings. */
+	public double secondsFor(RoomTimeEstimator.RoomTime time)
+	{
+		return time.getSeconds();
 	}
 
 	/**
-	 * How long this room really takes with the switches the plan carries. The
-	 * estimator's own figure assumes every switch is available, so a room that
-	 * gave one up has to be read from here or the plan quotes a time for gear
-	 * it just told you to leave in the bank.
+	 * Seconds the switch budget costs you: the gap between this plan's kit and
+	 * carrying every switch you own. Zero when the budget was never binding.
 	 */
-	public double secondsFor(RoomTimeEstimator.RoomTime time)
-	{
-		Double budgeted = budgetedSeconds.get(time);
-		return budgeted != null ? budgeted : time.getSeconds();
-	}
-
-	/** Seconds lost across the raid to switches that did not fit the budget. */
 	public double secondsLostToBudget()
 	{
-		double lost = 0;
-		for (RoomTimeEstimator.RoomTime time : times)
+		return feasibleTotal(times) - feasibleTotal(idealTimes);
+	}
+
+	private static double feasibleTotal(List<RoomTimeEstimator.RoomTime> list)
+	{
+		double total = 0;
+		for (RoomTimeEstimator.RoomTime time : list)
 		{
 			if (time.isFeasible())
 			{
-				lost += secondsFor(time) - time.getSeconds();
+				total += time.getSeconds();
 			}
 		}
-		return lost;
+		return total;
 	}
 
 	void setExportText(String exportText)

@@ -69,12 +69,26 @@ public final class RaidLoadoutBuilder
 		private final List<SetupBuilder.Line> equipped;
 		private final List<Entry> inventory;
 		private final List<SetupBuilder.Section> styleSections = new ArrayList<>();
+		/**
+		 * Every item this plan brings, worn or packed, by id. The room times are
+		 * recomputed against exactly this set, so what the plan tells you to take
+		 * and what it claims that takes are the same thing by construction.
+		 */
+		private final Set<Integer> carriedIds;
 
-		RaidLoadout(GearNeed primaryStyle, List<SetupBuilder.Line> equipped, List<Entry> inventory)
+		RaidLoadout(GearNeed primaryStyle, List<SetupBuilder.Line> equipped, List<Entry> inventory,
+			Set<Integer> carriedIds)
 		{
 			this.primaryStyle = primaryStyle;
 			this.equipped = equipped;
 			this.inventory = inventory;
+			this.carriedIds = carriedIds;
+		}
+
+		/** Item ids of everything worn or packed. */
+		public Set<Integer> getCarriedIds()
+		{
+			return carriedIds;
 		}
 
 		/**
@@ -291,7 +305,19 @@ public final class RaidLoadoutBuilder
 			}
 		}
 
-		RaidLoadout loadout = new RaidLoadout(primary, equipped, new ArrayList<>(inventory.values()));
+		// Real ids only: missing entries are keyed by a negative counter, and a
+		// piece you do not own cannot contribute damage.
+		Set<Integer> carriedIds = new java.util.HashSet<>(worn);
+		for (Map.Entry<Integer, Entry> packed : inventory.entrySet())
+		{
+			if (packed.getKey() > 0 && !packed.getValue().isMissing())
+			{
+				carriedIds.add(packed.getKey());
+			}
+		}
+
+		RaidLoadout loadout = new RaidLoadout(primary, equipped,
+			new ArrayList<>(inventory.values()), carriedIds);
 
 		// Per-style sections describing the *actual* result of swapping, so
 		// they never name gear that isn't in the equipped or inventory lists.
