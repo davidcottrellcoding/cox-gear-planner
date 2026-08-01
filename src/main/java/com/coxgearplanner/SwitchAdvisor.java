@@ -33,6 +33,8 @@ public class SwitchAdvisor
 		private final double secondsSaved;
 		private final boolean worthIt;
 		private final boolean alreadyShared;
+		/** Dropped because of the max-items-per-switch cap, not its value. */
+		private boolean overLimit;
 
 		Advice(GearNeed style, GearSlot slot, String itemName, String wearInstead,
 			double secondsSaved, boolean worthIt, boolean alreadyShared)
@@ -80,6 +82,12 @@ public class SwitchAdvisor
 		{
 			return alreadyShared;
 		}
+
+		/** True when this piece was worth carrying but exceeded the switch cap. */
+		public boolean isOverLimit()
+		{
+			return overLimit;
+		}
 	}
 
 	private final RoomTimeEstimator estimator;
@@ -103,6 +111,27 @@ public class SwitchAdvisor
 		int partySize,
 		boolean elitePrayers,
 		double thresholdSeconds,
+		PlanExplanation explanation)
+	{
+		return advise(times, items, includeGroupStorage, player, partySize, elitePrayers,
+			thresholdSeconds, 0, explanation);
+	}
+
+	/**
+	 * @param maxSwitchItems hard cap on how many items are swapped per
+	 * secondary style, counting the weapon and its ammo; 0 means no limit.
+	 * Applied after the value ordering, so the pieces kept are the most
+	 * valuable ones that fit.
+	 */
+	public List<Advice> advise(
+		List<RoomTimeEstimator.RoomTime> times,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		boolean elitePrayers,
+		double thresholdSeconds,
+		int maxSwitchItems,
 		PlanExplanation explanation)
 	{
 		Map<GearNeed, List<RoomTimeEstimator.RoomTime>> byStyle = new EnumMap<>(GearNeed.class);
@@ -142,7 +171,7 @@ public class SwitchAdvisor
 			}
 			advices.addAll(adviseStyle(entry.getKey(), entry.getValue(), primaryPicks,
 				items, includeGroupStorage, player, partySize, elitePrayers,
-				thresholdSeconds, explanation));
+				thresholdSeconds, maxSwitchItems, explanation));
 		}
 
 		// Most valuable switches first; shared/zero-value entries last
@@ -171,10 +200,32 @@ public class SwitchAdvisor
 		int partySize,
 		boolean elitePrayers,
 		double thresholdSeconds,
+		int maxSwitchItems,
 		PlanExplanation explanation)
 	{
 		Map<GearSlot, SetupBuilder.Pick> picks =
 			estimator.getResolver().resolve(style, items, includeGroupStorage);
+
+		// The weapon always has to be swapped, and a bow you don't already have
+		// ammo for costs a second click — both count against the cap.
+		int armourBudget = Integer.MAX_VALUE;
+		if (maxSwitchItems > 0)
+		{
+			int mandatory = 1;
+			SetupBuilder.Pick mainWeapon = busiestWeapon(styleTimes);
+			if (style == GearNeed.RANGED && mainWeapon != null
+				&& RoomTimeEstimator.needsAmmo(mainWeapon.getItemId()))
+			{
+				SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(
+					mainWeapon.getItemId(), items, includeGroupStorage);
+				SetupBuilder.Pick wornAmmo = primaryPicks.get(GearSlot.AMMO);
+				if (ammo != null && (wornAmmo == null || wornAmmo.getItemId() != ammo.getItemId()))
+				{
+					mandatory++;
+				}
+			}
+			armourBudget = Math.max(0, maxSwitchItems - mandatory);
+		}
 
 		List<Advice> advices = new ArrayList<>();
 		// Slots still wearing the base outfit's item; removing an entry from
@@ -200,7 +251,8 @@ public class SwitchAdvisor
 		double currentSeconds = totalSeconds(style, styleTimes, picks, notCarried,
 			items, includeGroupStorage, player, elitePrayers);
 
-		while (!notCarried.isEmpty())
+		int carried = 0;
+		while (!notCarried.isEmpty() && carried < armourBudget)
 		{
 			GearSlot bestSlot = null;
 			double bestGain = 0;
@@ -226,6 +278,7 @@ public class SwitchAdvisor
 
 			SetupBuilder.Pick instead = notCarried.remove(bestSlot);
 			currentSeconds -= bestGain;
+			carried++;
 			advices.add(new Advice(style, bestSlot, picks.get(bestSlot).getOption().getName(),
 				instead != null ? instead.getOption().getName() : null, bestGain, true, false));
 
@@ -248,19 +301,39 @@ public class SwitchAdvisor
 				items, includeGroupStorage, player, elitePrayers);
 
 			SetupBuilder.Pick instead = left.getValue();
-			advices.add(new Advice(style, slot, picks.get(slot).getOption().getName(),
-				instead != null ? instead.getOption().getName() : null, gain, false, false));
+			Advice advice = new Advice(style, slot, picks.get(slot).getOption().getName(),
+				instead != null ? instead.getOption().getName() : null, gain, false, false);
+			// Distinguish "not worth it" from "would have been worth it, but
+			// the switch cap was already full"
+			advice.overLimit = carried >= armourBudget && gain >= thresholdSeconds;
+			advices.add(advice);
 
 			if (explanation != null)
 			{
 				explanation.addSwitchChoice(String.format(
-					"SKIP %s %s: %s would only save %.1fs (threshold %.0fs) — keep %s on",
+					(advice.overLimit ? "CAPPED" : "SKIP") + " %s %s: %s saves %.1fs (threshold %.0fs) — keep %s on",
 					style.getDisplayName().toLowerCase(), slot.getDisplayName().toLowerCase(),
 					picks.get(slot).getOption().getName(), gain, thresholdSeconds,
 					instead != null ? instead.getOption().getName() : "nothing"));
 			}
 		}
 		return advices;
+	}
+
+	/** The weapon this style spends the most time using. */
+	private static SetupBuilder.Pick busiestWeapon(List<RoomTimeEstimator.RoomTime> styleTimes)
+	{
+		SetupBuilder.Pick best = null;
+		double most = -1;
+		for (RoomTimeEstimator.RoomTime rt : styleTimes)
+		{
+			if (rt.getSeconds() > most && rt.getWeapon() != null)
+			{
+				most = rt.getSeconds();
+				best = rt.getWeapon();
+			}
+		}
+		return best;
 	}
 
 	/** Total expected kill time across a style's rooms with the given slots not switched. */

@@ -85,6 +85,26 @@ wear), not a packing list. v1.3 also refreshes the item database with
 Avernic treads, Confliction gauntlets, Dizana's quiver, Soulreaper axe,
 Noxious halberd and Amulet of blood fury.
 
+## Max items per switch (v1.13)
+
+**Minimum switch value** answers "is this piece worth carrying?" one item at a
+time, which can still leave you with an awkward 7- or 8-item swap. The new
+**Max items per switch** setting is a hard cap on the size of every swap:
+set it to 4 and each secondary style is a 4-way switch, no more.
+
+- The **weapon counts** toward the total, as does ammo the base outfit isn't
+  already wearing — a "4-way switch" is four clicks, so a bow plus its arrows
+  leaves room for two armour pieces.
+- Pieces are still chosen by greedy value order, so the ones kept are the
+  most valuable that fit — the cap trims the tail, not the head.
+- Pieces cut by the cap (rather than by low value) are listed separately as
+  **"Over limit"** with what they were worth, so you can see the cost of the
+  constraint and raise it if a piece was worth more than you thought.
+- **0 means no limit** (the default), leaving the value threshold in charge.
+
+Both settings apply together: a piece must clear the **minimum switch value**
+*and* fit within the **max items per switch** to be carried.
+
 ## Set bonuses, effects and interactions (v1.10 / v1.11)
 
 Anything whose value is a *multiplier* rather than an equipment stat is

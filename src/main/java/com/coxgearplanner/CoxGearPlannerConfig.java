@@ -78,11 +78,23 @@ public interface CoxGearPlannerConfig extends Config
 		return 3;
 	}
 
+	@Range(min = 0, max = 11)
+	@ConfigItem(
+		keyName = "maxSwitchItems",
+		name = "Max items per switch",
+		description = "Hard cap on how many items you swap for each secondary style, counting the weapon and its ammo. Set 4 for a 4-way switch. Only the most valuable pieces are kept. 0 means no limit.",
+		position = 7
+	)
+	default int maxSwitchItems()
+	{
+		return 0;
+	}
+
 	@ConfigItem(
 		keyName = "hideMissing",
 		name = "Hide unowned recommendations",
 		description = "Only plan with gear you actually own — hide the red 'BiS to chase' lines for slots where you own nothing",
-		position = 7
+		position = 8
 	)
 	default boolean hideMissing()
 	{
@@ -93,7 +105,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "showDebug",
 		name = "Show debug panel",
 		description = "Adds a section explaining why each item, weapon and switch was chosen over the alternatives you own",
-		position = 8
+		position = 9
 	)
 	default boolean showDebug()
 	{

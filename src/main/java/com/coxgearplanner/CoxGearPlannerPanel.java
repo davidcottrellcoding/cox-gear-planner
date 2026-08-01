@@ -500,8 +500,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 			return;
 		}
 
+		int cap = plugin.getConfig().maxSwitchItems();
 		JLabel header = new JLabel("Switch advice (base outfit: "
-			+ result.getPrimaryStyle().getDisplayName() + ")");
+			+ result.getPrimaryStyle().getDisplayName()
+			+ (cap > 0 ? ", max " + cap + " items per switch" : "") + ")");
 		header.setFont(FontManager.getRunescapeBoldFont());
 		header.setForeground(ColorScheme.BRAND_ORANGE);
 		header.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -534,10 +536,23 @@ public class CoxGearPlannerPanel extends PluginPanel
 				String instead = advice.getWearInstead() != null
 					? " — keep " + advice.getWearInstead() + " on"
 					: "";
-				label = new JLabel("<html><b>Skip</b> " + advice.getItemName()
-					+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
-					+ "): only ~" + formatSaved(advice.getSecondsSaved()) + instead + "</html>");
-				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				if (advice.isOverLimit())
+				{
+					// Worth carrying on value, but the switch cap was full
+					label = new JLabel("<html><b>Over limit</b> " + advice.getItemName()
+						+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
+						+ "): worth ~" + formatSaved(advice.getSecondsSaved())
+						+ " but exceeds your " + plugin.getConfig().maxSwitchItems()
+						+ "-item switch" + instead + "</html>");
+					label.setForeground(COLOR_GROUP);
+				}
+				else
+				{
+					label = new JLabel("<html><b>Skip</b> " + advice.getItemName()
+						+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
+						+ "): only ~" + formatSaved(advice.getSecondsSaved()) + instead + "</html>");
+					label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				}
 			}
 			label.setFont(FontManager.getRunescapeSmallFont());
 			label.setAlignmentX(Component.LEFT_ALIGNMENT);
