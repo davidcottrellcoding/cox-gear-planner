@@ -59,14 +59,17 @@ public class IceDemonTest
 	}
 
 	@Test
-	public void theRoomDoesNotRequireAFireStaff()
+	public void theRoomProvidesItsOwnTinderboxAndAxe()
 	{
 		// A tinderbox and bronze axe spawn in the room; the ice is cleared by
 		// burning kindling, so no fire spell is needed to progress.
 		assertFalse("fire spells are a damage choice, not a room requirement",
 			CoxRoom.ICE_DEMON.getNeeds().contains(GearNeed.FIRE_SPELLS));
-		// An axe is still worth bringing — more kindling per chop
-		assertTrue(CoxRoom.ICE_DEMON.getNeeds().contains(GearNeed.AXE));
+		// No axe either: the room spawns a bronze one, and kindling per chop
+		// scales with Woodcutting level rather than axe tier, so a better axe
+		// only buys chopping speed — not worth an inventory slot.
+		assertFalse("the room provides an axe",
+			CoxRoom.ICE_DEMON.getNeeds().contains(GearNeed.AXE));
 		// Melee is now a real option there thanks to demonbane
 		assertTrue(CoxRoom.ICE_DEMON.getNeeds().contains(GearNeed.MELEE));
 	}

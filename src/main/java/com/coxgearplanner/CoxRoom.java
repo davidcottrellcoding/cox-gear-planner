@@ -28,12 +28,17 @@ public enum CoxRoom
 		GearNeed.RANGED, GearNeed.MELEE),
 	VANGUARDS("Vanguards", true, new String[]{"vanguard", "vangs"},
 		GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC),
-	// The room supplies its own tinderbox and bronze axe, and the ice is
+	// The room supplies its own tinderbox AND bronze axe, and the ice is
 	// cleared by burning kindling — no fire spell is required to progress.
-	// A better axe is still worth bringing: it yields more kindling per chop.
+	//
+	// No axe is listed either: kindling per chop scales with Woodcutting
+	// level, not axe tier, so a better axe only buys chopping speed on the
+	// ~54 kindling needed. That is not worth a permanent inventory slot when
+	// the room hands you an axe for free.
+	//
 	// Fire spells and demonbane weapons matter for damage, not for entry.
 	ICE_DEMON("Ice Demon", false, new String[]{"ice demon", "ice"},
-		GearNeed.MAGIC, GearNeed.MELEE, GearNeed.AXE),
+		GearNeed.MAGIC, GearNeed.MELEE),
 	THIEVING("Thieving", false, new String[]{"thieving", "thiev"},
 		GearNeed.LOCKPICK),
 	TIGHTROPE("Tightrope", false, new String[]{"tightrope", "rope"},
