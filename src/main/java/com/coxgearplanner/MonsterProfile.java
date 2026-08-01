@@ -25,6 +25,16 @@ public class MonsterProfile
 	private final Set<GearNeed> usableStyles;
 	/** Undead monsters take the salve amulet's damage/accuracy bonus. */
 	private boolean undead;
+	/** Demons take the demonbane weapons' bonus (arclight, emberlight). */
+	private boolean demon;
+	/** Tekton takes 80% reduced magic damage despite having no magic defence. */
+	private double magicDamageMult = 1.0;
+	/** The ice demon reduces all non-fire damage by 67%. */
+	private double nonFireDamageMult = 1.0;
+	/** ...and takes 150% extra from standard-spellbook fire spells. */
+	private double fireSpellDamageMult = 1.0;
+	/** The ice demon rolls magic defence off its Defence level, not Magic. */
+	private boolean magicDefenceFromDefence;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -54,6 +64,62 @@ public class MonsterProfile
 	public boolean isUndead()
 	{
 		return undead;
+	}
+
+	MonsterProfile demon()
+	{
+		this.demon = true;
+		return this;
+	}
+
+	MonsterProfile magicDamage(double multiplier)
+	{
+		this.magicDamageMult = multiplier;
+		return this;
+	}
+
+	MonsterProfile nonFireDamage(double multiplier)
+	{
+		this.nonFireDamageMult = multiplier;
+		return this;
+	}
+
+	MonsterProfile fireSpellDamage(double multiplier)
+	{
+		this.fireSpellDamageMult = multiplier;
+		return this;
+	}
+
+	MonsterProfile magicDefenceFromDefenceLevel()
+	{
+		this.magicDefenceFromDefence = true;
+		return this;
+	}
+
+	public boolean isDemon()
+	{
+		return demon;
+	}
+
+	public double getMagicDamageMult()
+	{
+		return magicDamageMult;
+	}
+
+	public double getNonFireDamageMult()
+	{
+		return nonFireDamageMult;
+	}
+
+	public double getFireSpellDamageMult()
+	{
+		return fireSpellDamageMult;
+	}
+
+	/** The level a magic defence roll is computed from. */
+	public int getMagicDefenceLevel()
+	{
+		return magicDefenceFromDefence ? defenceLevel : magicLevel;
 	}
 
 	public String getName()

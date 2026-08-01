@@ -20,11 +20,13 @@ public class SalveAmuletTest
 		RoomTimeEstimator.addSalveBonus(ei, RoomTimeEstimator.SALVE_EI);
 		assertEquals(1.20, ei.salveMeleeMult, 1e-9);
 		assertEquals(1.20, ei.salveRangedMagicMult, 1e-9);
+		assertEquals(1.20, ei.salveMagicMult, 1e-9);
 
 		EquipmentTotals i = new EquipmentTotals();
 		RoomTimeEstimator.addSalveBonus(i, RoomTimeEstimator.SALVE_I);
-		assertEquals(1.15, i.salveMeleeMult, 1e-9);
-		assertEquals(1.15, i.salveRangedMagicMult, 1e-9);
+		assertEquals(1.1667, i.salveMeleeMult, 1e-4);
+		assertEquals(1.1667, i.salveRangedMagicMult, 1e-4);
+		assertEquals("the (i) gives magic only 15%", 1.15, i.salveMagicMult, 1e-9);
 
 		// Non-imbued: melee only, ranged/magic untouched
 		EquipmentTotals e = new EquipmentTotals();
@@ -34,7 +36,7 @@ public class SalveAmuletTest
 
 		EquipmentTotals plain = new EquipmentTotals();
 		RoomTimeEstimator.addSalveBonus(plain, RoomTimeEstimator.SALVE);
-		assertEquals(1.15, plain.salveMeleeMult, 1e-9);
+		assertEquals(1.1667, plain.salveMeleeMult, 1e-4);
 		assertEquals(1.0, plain.salveRangedMagicMult, 1e-9);
 
 		// An unrelated amulet leaves both multipliers neutral

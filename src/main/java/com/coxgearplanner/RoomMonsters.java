@@ -7,9 +7,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Representative monster (and how many of them) per combat room. HP is the
- * base value; party scaling is applied by the estimator. Stats are
- * approximate wiki values — edit freely.
+ * Monster stats per combat room, taken from the OSRS Wiki infoboxes.
+ *
+ * Every CoX infobox carries the note that its stats "are scaled for a player
+ * with maxed combat stats" — so these are the **solo, maxed-player** baseline
+ * and the estimator scales HP from there.
+ *
+ * Order: name, hp, defence, magic, dStab, dSlash, dCrush, dMagic, dRange,
+ * large, draconic, styles...
  */
 public final class RoomMonsters
 {
@@ -43,52 +48,84 @@ public final class RoomMonsters
 
 	static
 	{
-		// name, hp, def, magic, dStab, dSlash, dCrush, dMagic, dRange, large, draconic, styles
+		// Tekton has NO magic or ranged defence bonus, but takes 80% reduced
+		// magic damage, which is what actually keeps you off magic here.
 		ENCOUNTERS.put(CoxRoom.TEKTON, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Tekton", 300, 205, 205, 155, 165, 105, 600, 600, true, false,
-			GearNeed.MELEE), 1)));
-		ENCOUNTERS.put(CoxRoom.MUTTADILES, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Muttadile", 225, 128, 200, 80, 90, 75, 55, 65, true, false,
-			GearNeed.MELEE, GearNeed.RANGED), 2)));
+			"Tekton", 300, 205, 205, 155, 165, 105, 0, 0, true, false,
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).magicDamage(0.20), 1)));
+
+		// Two separate muttadiles with very different stats
+		ENCOUNTERS.put(CoxRoom.MUTTADILES, Arrays.asList(
+			new Encounter(new MonsterProfile(
+				"Muttadile (small)", 250, 138, 1, -5, 72, 50, 60, 0, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+			new Encounter(new MonsterProfile(
+				"Muttadile (large)", 250, 220, 250, -5, 82, 60, 75, 0, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+
+		// Guardians can only be harmed with a pickaxe — the room's real
+		// requirement is the pickaxe utility item, not a combat weapon.
 		ENCOUNTERS.put(CoxRoom.GUARDIANS, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Guardian", 250, 100, 1, 90, 90, 80, 600, 600, true, false,
+			"Guardian", 250, 100, 1, 80, 180, -10, 0, 0, true, false,
 			GearNeed.MELEE), 2)));
+
 		ENCOUNTERS.put(CoxRoom.VESPULA, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Vespula", 200, 88, 150, 60, 60, 60, 40, 30, true, false,
-			GearNeed.RANGED, GearNeed.MAGIC), 1)));
+			"Vespula", 200, 88, 88, 0, 0, 0, 70, 60, true, false,
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+
 		ENCOUNTERS.put(CoxRoom.SHAMANS, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Lizardman shaman", 150, 130, 130, 70, 70, 70, 60, 40, true, false,
-			GearNeed.MELEE, GearNeed.RANGED), 3)));
-		ENCOUNTERS.put(CoxRoom.VASA, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Vasa Nistirio", 300, 175, 230, 170, 170, 170, 230, 60, true, false,
-			GearNeed.RANGED), 1)));
-		// Skeletal mystics are undead, so the salve amulet applies here — the
-		// only CoX room where it does. Add .undead() to others if that changes.
-		ENCOUNTERS.put(CoxRoom.MYSTICS, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Skeletal mystic", 160, 187, 140, 70, 70, 70, 80, 50, false, false,
-			GearNeed.MELEE, GearNeed.RANGED).undead(), 3)));
-		ENCOUNTERS.put(CoxRoom.VANGUARDS, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Vanguard", 180, 110, 150, 50, 50, 50, 50, 50, false, false,
+			"Lizardman shaman", 190, 210, 130, 102, 160, 150, 160, 0, true, false,
 			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 3)));
-		ENCOUNTERS.put(CoxRoom.TIGHTROPE, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Deathly ranger/mage", 80, 80, 100, 60, 60, 60, 40, 40, false, false,
-			GearNeed.RANGED, GearNeed.MAGIC), 4)));
+
+		ENCOUNTERS.put(CoxRoom.VASA, Collections.singletonList(new Encounter(new MonsterProfile(
+			"Vasa Nistirio", 300, 175, 230, 170, 190, 40, 400, 40, true, false,
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+
+		// Skeletal mystics are undead → the salve amulet applies here.
+		// 2x2, so the scythe hits twice rather than three times.
+		ENCOUNTERS.put(CoxRoom.MYSTICS, Collections.singletonList(new Encounter(new MonsterProfile(
+			"Skeletal mystic", 160, 187, 140, 155, 155, 75, 140, 115, false, false,
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).undead(), 3)));
+
+		// The three vanguards share levels but have deliberately opposite
+		// defences: each is soft to exactly one style.
+		ENCOUNTERS.put(CoxRoom.VANGUARDS, Arrays.asList(
+			new Encounter(new MonsterProfile(
+				"Vanguard (melee) — weak to magic", 180, 160, 150, 150, 150, 150, 20, 400, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+			new Encounter(new MonsterProfile(
+				"Vanguard (ranged) — weak to melee", 180, 160, 150, 55, 60, 100, 400, 300, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1),
+			new Encounter(new MonsterProfile(
+				"Vanguard (magic) — weak to ranged", 180, 160, 150, 315, 340, 400, 110, 50, true, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 1)));
+
+		ENCOUNTERS.put(CoxRoom.TIGHTROPE, Arrays.asList(
+			new Encounter(new MonsterProfile(
+				"Deathly ranger", 120, 155, 155, 0, 0, 0, 0, 0, false, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 2),
+			new Encounter(new MonsterProfile(
+				"Deathly mage", 120, 155, 210, 0, 0, 0, 0, 0, false, false,
+				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC), 2)));
+
+		// The ice demon reduces ALL non-fire damage by 67% and takes 150% extra
+		// from fire spells — which is why the room is a fire-spell check rather
+		// than a gear check. Its magic defence rolls off its Defence level.
 		ENCOUNTERS.put(CoxRoom.ICE_DEMON, Collections.singletonList(new Encounter(new MonsterProfile(
-			"Ice demon", 175, 160, 140, 200, 200, 200, 60, 200, false, false,
-			GearNeed.MAGIC), 1)));
-		// The Great Olm is three separate targets with deliberately opposite
-		// defensive profiles, which is why it demands all three styles:
-		//
+			"Ice demon", 140, 160, 390, 70, 70, 110, 40, 140, false, false,
+			GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC)
+			.demon().nonFireDamage(0.33).fireSpellDamage(2.50).magicDefenceFromDefenceLevel(), 1)));
+
+		// The Great Olm is three targets with deliberately opposite defensive
+		// profiles, which is why it demands all three styles:
 		//   left claw  ("melee hand") — melee def 50, magic/range def 200
-		//   right claw ("mage hand")  — magic def 50 and magic level 87,
-		//                               stab/slash/crush and range def 200
+		//   right claw ("mage hand")  — magic def 50 and magic level 87
 		//   head                      — range def 50, everything else 200
 		//
-		// Wiki values. The head also has 66% mitigation against non-ranged
-		// damage and heals if hit outside the final phase, so in practice its
-		// 800 HP is taken down during the final phase where the mitigation is
-		// off — hence it is not applied here. Its range defence of 50 already
-		// makes ranged the correct answer by a wide margin.
+		// The head also has 66% mitigation against non-ranged damage and heals
+		// if hit outside the final phase, so its 800 HP comes down during the
+		// final phase where the mitigation is off — hence not applied. Its
+		// range defence of 50 already makes ranged correct by a wide margin.
 		ENCOUNTERS.put(CoxRoom.OLM, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Olm left claw (melee hand)", 600, 175, 175, 50, 50, 50, 200, 200, true, true,
@@ -110,10 +147,7 @@ public final class RoomMonsters
 		return 4 + Math.max(1, partySize) / 8;
 	}
 
-	/**
-	 * How many times each claw is fought: every phase except the final head
-	 * phase — three in a standard raid.
-	 */
+	/** How many times each claw is fought — every phase except the head phase. */
 	public static int olmClawPhases(int partySize)
 	{
 		return olmPhases(partySize) - 1;
@@ -126,7 +160,7 @@ public final class RoomMonsters
 		return encounters == null || encounters.isEmpty() ? null : encounters.get(0);
 	}
 
-	/** Every target in a room — Olm is three, everything else is one. */
+	/** Every target in a room — Olm, the vanguards and the muttadiles are several. */
 	public static List<Encounter> getAll(CoxRoom room)
 	{
 		List<Encounter> encounters = ENCOUNTERS.get(room);

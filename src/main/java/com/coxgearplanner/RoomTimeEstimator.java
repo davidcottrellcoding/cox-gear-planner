@@ -69,7 +69,7 @@ public class RoomTimeEstimator
 	static final int SALVE_E = 10588;
 	static final int SALVE_I = 12017;
 	static final int SALVE_EI = 12018;
-	/** Best-first: (ei) and (e) give 20%, (i) and plain give 15%. */
+	/** Best-first: (ei)/(e) give 20%, (i)/plain give 16.67% (magic 15% on the (i)). */
 	static final int[] SALVE_IDS = {SALVE_EI, SALVE_I, SALVE_E, SALVE};
 
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
@@ -181,10 +181,15 @@ public class RoomTimeEstimator
 		return resolver;
 	}
 
-	/** Approximate CoX HP scaling with party size. */
+	/**
+	 * CoX HP scaling. The wiki publishes no formula; the documented community
+	 * figure is that each additional maxed party member adds the monster's
+	 * base HP again, i.e. the multiplier is the party size (Tekton 300 solo,
+	 * 600 duo). Listed stats are the solo maxed-player baseline.
+	 */
 	public static double hpMultiplier(int partySize)
 	{
-		return 1.0 + 0.5 * (Math.max(1, partySize) - 1);
+		return Math.max(1, partySize);
 	}
 
 	public List<RoomTime> estimate(
@@ -573,16 +578,19 @@ public class RoomTimeEstimator
 			case SALVE_EI:
 				totals.salveMeleeMult = 1.20;
 				totals.salveRangedMagicMult = 1.20;
+				totals.salveMagicMult = 1.20;
 				break;
 			case SALVE_I:
-				totals.salveMeleeMult = 1.15;
-				totals.salveRangedMagicMult = 1.15;
+				// Melee and ranged 16.67%, but magic only 15%
+				totals.salveMeleeMult = 1.1667;
+				totals.salveRangedMagicMult = 1.1667;
+				totals.salveMagicMult = 1.15;
 				break;
 			case SALVE_E:
 				totals.salveMeleeMult = 1.20;
 				break;
 			case SALVE:
-				totals.salveMeleeMult = 1.15;
+				totals.salveMeleeMult = 1.1667;
 				break;
 			default:
 				break;
@@ -753,7 +761,7 @@ public class RoomTimeEstimator
 		double salve = m.isUndead() ? eq.salveMeleeMult : 1.0;
 		// Dragon hunter lance: 20% accuracy and damage vs draconic targets
 		double bane = weaponId == DRAGON_HUNTER_LANCE && m.isDraconic() ? 1.20 : 1.0;
-		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult);
+		maxHit = (int) Math.floor(maxHit * salve * bane * eq.setDmgMult * m.getNonFireDamageMult());
 
 		double best = 0;
 		for (int i = 0; i < styles.length; i++)
@@ -793,7 +801,7 @@ public class RoomTimeEstimator
 
 		double atkRoll = CombatFormulas.attackRoll(effAtk, eq.rangedAtk) * eq.setAccMult;
 		double defRoll = CombatFormulas.defenceRoll(m.getDefenceLevel(), m.getDRange());
-		maxHit = (int) Math.floor(maxHit * eq.setDmgMult);
+		maxHit = (int) Math.floor(maxHit * eq.setDmgMult * m.getNonFireDamageMult());
 		double avgMax = maxHit;
 
 		if (m.isUndead() && eq.salveRangedMagicMult > 1.0)
@@ -852,7 +860,7 @@ public class RoomTimeEstimator
 		}
 		else if (SANG.contains(weaponId))
 		{
-			baseHit = magic / 3 - 1;
+			baseHit = magic / 3; // buffed 22 Jul 2026, was magic/3 - 1
 			speed = 4;
 		}
 		else if (weaponId == TRIDENT_SWAMP)
@@ -886,16 +894,25 @@ public class RoomTimeEstimator
 			maxHit = (int) Math.floor(maxHit * eq.fireSpellMult);
 		}
 		// Augury boosts accuracy only
-		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 9;
+		int effMagic = (int) (magic * (elite ? 1.25 : 1.0)) + 8;
+		if (elite)
+		{
+			dmgPercent += 4; // Augury also grants +4% magic damage
+		}
 		double atkRoll = effMagic * (magicAtkBonus + 64) * eq.setAccMult;
 		maxHit = (int) Math.floor(maxHit * eq.setDmgMult);
 
-		double salve = m.isUndead() ? eq.salveRangedMagicMult : 1.0;
+		double salve = m.isUndead() ? eq.salveMagicMult : 1.0;
 		atkRoll *= salve;
 		maxHit = (int) Math.floor(maxHit * salve);
 
+		// Tekton takes 80% reduced magic damage; the ice demon reduces all
+		// non-fire damage but takes 150% extra from fire spells.
+		maxHit = (int) Math.floor(maxHit * m.getMagicDamageMult()
+			* (castsFireSpell ? m.getFireSpellDamageMult() : m.getNonFireDamageMult()));
+
 		double acc = CombatFormulas.accuracy(atkRoll,
-			CombatFormulas.defenceRoll(m.getMagicLevel(), m.getDMagic()));
+			CombatFormulas.defenceRoll(m.getMagicDefenceLevel(), m.getDMagic()));
 		return CombatFormulas.dps(acc, maxHit, speed);
 	}
 }
