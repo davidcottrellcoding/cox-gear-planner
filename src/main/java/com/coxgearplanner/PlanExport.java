@@ -54,6 +54,7 @@ public final class PlanExport
 				: ", max items/switch "
 					+ (config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems()))
 			.append(config.olmFourTick() ? ", Olm forced 4-tick" : "")
+			.append(config.forceThrall() ? ", thralls (Arceuus — powered staves only)" : "")
 			.append(config.assumeOverload() ? ", overload" : "")
 			.append(config.assumeImbuedHeart() ? ", imbued heart" : "")
 			.append(config.assumeElitePrayers() ? ", elite prayers" : "")

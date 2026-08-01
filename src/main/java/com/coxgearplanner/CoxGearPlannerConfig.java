@@ -125,10 +125,21 @@ public interface CoxGearPlannerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "forceThrall",
+		name = "Force thralls (Arceuus)",
+		description = "Plan around resummoning thralls: you stay on the Arceuus spellbook, so standard-spellbook casting is unavailable — no fire spells and no autocast staves (harmonised, staff of the dead, kodai). Magic weapons are limited to powered staves with built-in spells: tridents, sanguinesti, Tumeken's shadow, eye of ayak. The thralls' own damage is not modelled.",
+		position = 11
+	)
+	default boolean forceThrall()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "hideMissing",
 		name = "Hide unowned recommendations",
 		description = "Only plan with gear you actually own — hide the red 'BiS to chase' lines for slots where you own nothing",
-		position = 11
+		position = 12
 	)
 	default boolean hideMissing()
 	{
@@ -139,7 +150,7 @@ public interface CoxGearPlannerConfig extends Config
 		keyName = "showDebug",
 		name = "Show debug panel",
 		description = "Adds a section explaining why each item, weapon and switch was chosen over the alternatives you own",
-		position = 12
+		position = 13
 	)
 	default boolean showDebug()
 	{

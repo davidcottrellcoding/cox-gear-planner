@@ -288,6 +288,8 @@ public class RoomTimeEstimator
 	private final GearResolver resolver;
 	/** Restrict Olm's melee and magic weapons to 4-tick options. */
 	private boolean olmFourTick;
+	/** Stay on the Arceuus spellbook for thralls: powered staves only. */
+	private boolean forceThrall;
 
 	public RoomTimeEstimator(ItemManager itemManager)
 	{
@@ -309,6 +311,30 @@ public class RoomTimeEstimator
 	public void setOlmFourTick(boolean olmFourTick)
 	{
 		this.olmFourTick = olmFourTick;
+	}
+
+	/**
+	 * When set, the plan assumes you stay on the Arceuus spellbook to
+	 * resummon thralls — required kit for efficient solo raids. That makes
+	 * standard-spellbook casting unavailable, so fire spells and autocast
+	 * staves (harmonised, staff of the dead, kodai) are off the table and
+	 * only powered staves with built-in spells compete for magic.
+	 */
+	public void setForceThrall(boolean forceThrall)
+	{
+		this.forceThrall = forceThrall;
+	}
+
+	/**
+	 * Weapons with their own built-in spell, castable from any spellbook.
+	 * Everything else the magic model prices as a standard-spellbook cast
+	 * (Fire Surge), which you cannot do while staying on Arceuus.
+	 */
+	static boolean usableOnArceuus(int weaponId)
+	{
+		return weaponId == SHADOW || weaponId == EYE_OF_AYAK
+			|| SANG.contains(weaponId)
+			|| weaponId == TRIDENT_SWAMP || weaponId == TRIDENT_SEAS;
 	}
 
 	/**
@@ -729,6 +755,24 @@ public class RoomTimeEstimator
 			{
 				candidates.add(pick);
 			}
+		}
+
+		// Thralls keep you on Arceuus, so anything that casts from the
+		// standard spellbook cannot be brought at all. A hard filter with no
+		// fallback: if you own no powered staff, magic is genuinely
+		// unavailable to you, and pretending otherwise would plan a raid you
+		// cannot perform.
+		if (forceThrall && style == GearNeed.MAGIC)
+		{
+			List<SetupBuilder.Pick> powered = new ArrayList<>();
+			for (SetupBuilder.Pick pick : candidates)
+			{
+				if (usableOnArceuus(pick.getItemId()))
+				{
+					powered.add(pick);
+				}
+			}
+			candidates = powered;
 		}
 
 		if (monster != null && monster.getMinReach() > 0)
