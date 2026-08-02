@@ -112,6 +112,20 @@ public class RoomStyleConstraintTest
 		}
 	}
 
+	/**
+	 * Both muttadiles heal off the meat tree, and the room times assume the
+	 * healing is prevented — so the plan has to bring the preventer. An axe
+	 * chops the tree; the ZGS-freeze alternative spends spec energy the model
+	 * allocates elsewhere and is not what the plan packs for.
+	 */
+	@Test
+	public void theMuttadilesRoomPacksAnAxeForTheMeatTree()
+	{
+		assertTrue(CoxRoom.MUTTADILES.getNeeds().contains(GearNeed.AXE));
+		assertFalse("the axe must resolve to real items",
+			GearDatabase.utility(GearNeed.AXE).isEmpty());
+	}
+
 	@Test
 	public void aRestrictedWeaponClassIsAKnownUtility()
 	{

@@ -13,8 +13,12 @@ public enum CoxRoom
 {
 	TEKTON("Tekton", true, new String[]{"tekton", "tek"},
 		GearNeed.MELEE, GearNeed.DEF_REDUCTION),
+	// Both muttadiles heal off the meat tree at half health, up to three
+	// times each — the room times assume you prevent it. An axe to chop the
+	// tree is the guaranteed answer; a ZGS freeze also works but spends the
+	// special energy this model allocates to defence-lowering specs.
 	MUTTADILES("Muttadiles", true, new String[]{"muttadile", "mutta", "mutt"},
-		GearNeed.RANGED, GearNeed.MELEE),
+		GearNeed.RANGED, GearNeed.MELEE, GearNeed.AXE),
 	GUARDIANS("Guardians", true, new String[]{"guardians", "guards"},
 		GearNeed.MELEE, GearNeed.PICKAXE),
 	// The abyssal portal is the kill target, and it needs 7+ tile reach
