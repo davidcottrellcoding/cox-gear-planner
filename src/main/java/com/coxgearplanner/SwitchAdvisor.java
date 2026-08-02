@@ -635,6 +635,19 @@ public class SwitchAdvisor
 		// the settled base pinned for whatever resolves after us.
 		estimator.getResolver().pinResolved(primary, basePicks,
 			snapshot, includeGroupStorage);
+
+		// The loadout was built at the TOP of the final pass, from the
+		// previous pass's rooms — so a room extra vetoed by the final budget
+		// charge could still sit packed in the inventory while its advice
+		// line says over limit. One more build from the final re-timed rooms
+		// makes the inventory agree with the verdicts; the times stay valid
+		// because a vetoed extra's benefit was already absent from them.
+		if (loadout != null)
+		{
+			loadout = RaidLoadoutBuilder.build(rooms, real, advice, primary,
+				snapshot, includeGroupStorage, estimator.getResolver(),
+				needsCharging, estimator.isForceThrall());
+		}
 		return new SettledPlan(loadout, real);
 	}
 

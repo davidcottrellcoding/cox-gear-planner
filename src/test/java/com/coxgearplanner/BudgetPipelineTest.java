@@ -178,6 +178,23 @@ public class BudgetPipelineTest
 					switches.getBasePicks()));
 		}
 
+		// A room extra the verdicts rejected must not be packed anyway — the
+		// loadout was once built a pass before the final budget veto landed,
+		// leaving "over limit" advice beside an inventory that carried it.
+		for (RoomTimeEstimator.RoomTime rt : real)
+		{
+			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : rt.getExtraSwitches())
+			{
+				if (!extra.isBrought())
+				{
+					assertTrue(extra.getPick().getOption().getName()
+						+ " is rejected but packed",
+						!settled.getLoadout().getCarriedIds()
+							.contains(extra.getPick().getItemId()));
+				}
+			}
+		}
+
 		double idealTotal = 0;
 		for (RoomTimeEstimator.RoomTime rt : times)
 		{
