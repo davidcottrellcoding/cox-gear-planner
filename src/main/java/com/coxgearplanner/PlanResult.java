@@ -42,6 +42,12 @@ public class PlanResult
 		this.idealTimes = idealTimes;
 	}
 
+	/** The first-pass times, computed against your whole bank. */
+	public List<RoomTimeEstimator.RoomTime> getIdealTimes()
+	{
+		return idealTimes;
+	}
+
 	/** How long this room takes with the gear this plan actually brings. */
 	public double secondsFor(RoomTimeEstimator.RoomTime time)
 	{

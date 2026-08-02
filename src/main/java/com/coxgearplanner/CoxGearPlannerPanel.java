@@ -765,16 +765,38 @@ public class CoxGearPlannerPanel extends PluginPanel
 				// Name the exact comparison — "slower" against WHAT decides
 				// whether this matches what a DPS calculator says, and the
 				// verdict is measured in the gear the plan packs, which is
-				// not necessarily the best gear the bank could dress.
+				// not necessarily the best gear the bank could dress. When the
+				// bank-best kit flips the verdict, say so: a shadow with thin
+				// magic-damage gear favours the occult's tripled 10%, while
+				// the same shadow in a full kit favours the salve — both are
+				// right, and the difference is which switches got carried.
 				String weapon = time.getWeapon() != null
 					? " on " + time.getWeapon().getOption().getName() : "";
+				String hint = "";
+				for (RoomTimeEstimator.RoomTime ideal : result.getIdealTimes())
+				{
+					if (!ideal.getDisplayName().equals(time.getDisplayName()))
+					{
+						continue;
+					}
+					for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : ideal.getExtraSwitches())
+					{
+						if (extra.getPick().getItemId() == time.getSalveTried().getItemId())
+						{
+							hint = " — but it WINS by ~" + formatSaved(extra.getSecondsSaved())
+								+ " in your full bank magic kit; carry more magic"
+								+ " damage switches to flip it";
+						}
+					}
+				}
 				JLabel label = new JLabel("<html><b>Skip</b> "
 					+ time.getSalveTried().getOption().getName()
 					+ " for " + time.getDisplayName() + ": ~"
 					+ formatSaved(time.getSalveLostSeconds())
 					+ " slower than " + escape(time.getSalveComparedTo())
-					+ escape(weapon) + " there</html>");
-				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+					+ escape(weapon) + " in the packed kit" + hint + "</html>");
+				label.setForeground(hint.isEmpty()
+					? ColorScheme.LIGHT_GRAY_COLOR : COLOR_GROUP);
 				label.setFont(FontManager.getRunescapeSmallFont());
 				label.setAlignmentX(Component.LEFT_ALIGNMENT);
 				resultsPanel.add(label);
