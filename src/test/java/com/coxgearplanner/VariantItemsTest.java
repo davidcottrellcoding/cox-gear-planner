@@ -106,6 +106,34 @@ public class VariantItemsTest
 		}
 	}
 
+	/**
+	 * Dizana's quiver stores its ammo in varplayers, not in any item
+	 * container — a maxed stack of dragon arrows in the quiver was invisible
+	 * and the planner told the user to take rune arrows from the bank.
+	 */
+	@Test
+	public void quiveredArrowsCountAsWornAmmo()
+	{
+		Map<Integer, Integer> bank = new HashMap<>();
+		bank.put(20997, 1); // twisted bow
+		bank.put(892, 500); // rune arrows in the bank
+		Map<ItemSource, Map<Integer, Integer>> snapshot = new EnumMap<>(ItemSource.class);
+		snapshot.put(ItemSource.BANK, bank);
+
+		// Dragon arrows live only in the quiver
+		snapshot = CoxGearPlannerPlugin.withQuiverAmmo(snapshot, 11212, 2000);
+
+		SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(20997, snapshot, true);
+		assertNotNull(ammo);
+		assertEquals("the quivered dragon arrows beat the banked rune arrows",
+			11212, ammo.getItemId());
+		assertEquals(2000, ammo.getQuantity());
+
+		// No quiver ammo leaves the snapshot untouched
+		Map<ItemSource, Map<Integer, Integer>> empty = new EnumMap<>(ItemSource.class);
+		assertTrue(CoxGearPlannerPlugin.withQuiverAmmo(empty, 0, 0).isEmpty());
+	}
+
 	@Test
 	public void seekingArrowsFeedTheArrowWeapons()
 	{

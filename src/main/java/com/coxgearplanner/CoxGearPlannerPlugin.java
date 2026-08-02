@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.68";
+	static final String VERSION = "1.69";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -223,6 +223,30 @@ public class CoxGearPlannerPlugin extends Plugin
 		return result;
 	}
 
+	// Dizana's quiver stores its ammo in varplayers, not in any item container
+	private static final int VARP_QUIVER_AMMO_ID = 4142;
+	private static final int VARP_QUIVER_AMMO_COUNT = 4141;
+
+	/**
+	 * Merges ammo stored inside Dizana's quiver into the worn-equipment pool.
+	 * The quiver's contents live in varplayers rather than an item container,
+	 * so a maxed stack of dragon arrows in the quiver was invisible and the
+	 * planner suggested rune arrows from the bank instead.
+	 */
+	static Map<ItemSource, Map<Integer, Integer>> withQuiverAmmo(
+		Map<ItemSource, Map<Integer, Integer>> snapshot, int ammoId, int count)
+	{
+		if (ammoId <= 0 || count <= 0)
+		{
+			return snapshot;
+		}
+		Map<Integer, Integer> worn = new HashMap<>(
+			snapshot.getOrDefault(ItemSource.EQUIPMENT, Collections.emptyMap()));
+		worn.merge(ChargedVariants.sameStats(ammoId), count, Integer::sum);
+		snapshot.put(ItemSource.EQUIPMENT, worn);
+		return snapshot;
+	}
+
 	/**
 	 * The plan's own kit as an item pool, so the estimator can be pointed at it
 	 * the same way it is pointed at a bank. Quantities come from the real
@@ -323,7 +347,10 @@ public class CoxGearPlannerPlugin extends Plugin
 		clientThread.invokeLater(() ->
 		{
 			PlayerSnapshot player = snapshotPlayer();
-			Map<ItemSource, Map<Integer, Integer>> snapshot = getItemsSnapshot();
+			Map<ItemSource, Map<Integer, Integer>> snapshot = withQuiverAmmo(
+				getItemsSnapshot(),
+				client.getVarpValue(VARP_QUIVER_AMMO_ID),
+				client.getVarpValue(VARP_QUIVER_AMMO_COUNT));
 			boolean includeGroup = config.includeGroupStorage();
 
 			PlanExplanation explanation = config.showDebug() ? new PlanExplanation() : null;
