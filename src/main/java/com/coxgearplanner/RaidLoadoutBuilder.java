@@ -19,6 +19,9 @@ public final class RaidLoadoutBuilder
 	/** An OSRS inventory is 28 slots; the worn set is the 11 GearSlot values. */
 	public static final int INVENTORY_SIZE = 28;
 
+	/** Required in hand to cast the Arceuus resurrection spells. */
+	static final int BOOK_OF_THE_DEAD = 25818;
+
 	/** One inventory slot. */
 	public static class Entry
 	{
@@ -170,6 +173,26 @@ public final class RaidLoadoutBuilder
 		GearResolver resolver,
 		Set<Integer> needsCharging)
 	{
+		return build(rooms, times, advice, primary, items, includeGroupStorage,
+			resolver, needsCharging, false);
+	}
+
+	/**
+	 * @param forceThrall thralls are resummoned from the Arceuus book, and the
+	 * resurrection spells require the Book of the Dead in hand — so it comes
+	 * as required kit, like a pickaxe for the Guardians.
+	 */
+	public static RaidLoadout build(
+		Set<CoxRoom> rooms,
+		List<RoomTimeEstimator.RoomTime> times,
+		List<SwitchAdvisor.Advice> advice,
+		GearNeed primary,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		GearResolver resolver,
+		Set<Integer> needsCharging,
+		boolean forceThrall)
+	{
 		if (primary == null)
 		{
 			return null;
@@ -306,6 +329,33 @@ public final class RaidLoadoutBuilder
 				inventory.put(missingKey--, new Entry(
 					"nothing you own — BiS to chase: " + best, null,
 					need.getDisplayName().toLowerCase() + " — " + forRooms, true));
+			}
+		}
+
+		// 5. Thralls are resummoned from the Arceuus book, and the resurrection
+		// spells need the Book of the Dead in hand — it is required kit, not a
+		// switch, so it rides outside the swap budget like a pickaxe. Once
+		// carried it also competes for the shield slot on its own +6 magic
+		// attack, which honestly deflates what a mage's book is worth: that
+		// switch is then priced against the book of the dead, not a bare slot.
+		if (forceThrall)
+		{
+			SetupBuilder.Pick book = SetupBuilder.findOwned(
+				ItemOption.of("Book of the dead", BOOK_OF_THE_DEAD), items, includeGroupStorage);
+			if (book != null)
+			{
+				if (!worn.contains(book.getItemId()))
+				{
+					inventory.putIfAbsent(book.getItemId(), new Entry(
+						book.getOption().getName(), book.getSource(),
+						"required to resummon thralls", false));
+				}
+			}
+			else
+			{
+				inventory.put(missingKey--, new Entry(
+					"nothing you own — BiS to chase: Book of the dead", null,
+					"required to resummon thralls", true));
 			}
 		}
 

@@ -437,6 +437,12 @@ public class RoomTimeEstimator
 		this.forceThrall = forceThrall;
 	}
 
+	/** Whether the plan assumes thralls (Arceuus spellbook). */
+	public boolean isForceThrall()
+	{
+		return forceThrall;
+	}
+
 	/**
 	 * Weapons with their own built-in spell, castable from any spellbook.
 	 * Everything else the magic model prices as a standard-spellbook cast

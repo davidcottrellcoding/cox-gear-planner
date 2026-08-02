@@ -572,7 +572,8 @@ public class SwitchAdvisor
 			estimator.getResolver().pinResolved(primary, basePicks,
 				snapshot, includeGroupStorage);
 			loadout = RaidLoadoutBuilder.build(rooms, buildTimes, advice, primary,
-				snapshot, includeGroupStorage, estimator.getResolver(), needsCharging);
+				snapshot, includeGroupStorage, estimator.getResolver(), needsCharging,
+				estimator.isForceThrall());
 			if (loadout == null)
 			{
 				return new SettledPlan(null, times);

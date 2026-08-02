@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.runelite.api.ItemComposition;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
@@ -111,5 +112,61 @@ public class ForceThrallTest
 			times.get(0).isFeasible());
 		assertTrue("the plan must name the powered staff",
 			times.get(0).getDetail().contains("Trident"));
+	}
+
+	private static final int BOOK_OF_THE_DEAD = 25818;
+
+	/**
+	 * The resurrection spells need the Book of the Dead in hand, so the thrall
+	 * toggle packs it as required kit — and once carried, its +6 magic attack
+	 * competes for the shield slot through the ordinary kit re-timing.
+	 */
+	@Test
+	public void thrallsPackTheBookOfTheDead()
+	{
+		bank.get(ItemSource.BANK).put(TRIDENT_SWAMP, 1);
+		bank.get(ItemSource.BANK).put(BOOK_OF_THE_DEAD, 1);
+		statsById.put(BOOK_OF_THE_DEAD, new ItemStats(true, 1.0, 0,
+			ItemEquipmentStats.builder().slot(5).amagic(6).prayer(3).build()));
+
+		Set<CoxRoom> rooms = EnumSet.of(CoxRoom.VESPULA);
+		RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
+		estimator.getResolver().setDpsContext(estimator, player, rooms, true);
+		estimator.setForceThrall(true);
+		List<RoomTimeEstimator.RoomTime> times =
+			estimator.estimate(rooms, bank, true, player, 1, true, null);
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			rooms, times, java.util.Collections.emptyList(), GearNeed.MAGIC,
+			bank, true, estimator.getResolver(), java.util.Collections.emptySet(), true);
+		assertTrue("the book of the dead is required kit",
+			loadout.getCarriedIds().contains(BOOK_OF_THE_DEAD));
+	}
+
+	@Test
+	public void aMissingBookOfTheDeadIsFlagged()
+	{
+		bank.get(ItemSource.BANK).put(TRIDENT_SWAMP, 1);
+
+		Set<CoxRoom> rooms = EnumSet.of(CoxRoom.VESPULA);
+		RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
+		estimator.getResolver().setDpsContext(estimator, player, rooms, true);
+		estimator.setForceThrall(true);
+		List<RoomTimeEstimator.RoomTime> times =
+			estimator.estimate(rooms, bank, true, player, 1, true, null);
+
+		RaidLoadoutBuilder.RaidLoadout loadout = RaidLoadoutBuilder.build(
+			rooms, times, java.util.Collections.emptyList(), GearNeed.MAGIC,
+			bank, true, estimator.getResolver(), java.util.Collections.emptySet(), true);
+
+		boolean flagged = false;
+		for (RaidLoadoutBuilder.Entry entry : loadout.getInventory())
+		{
+			if (entry.isMissing() && entry.getName().contains("Book of the dead"))
+			{
+				flagged = true;
+			}
+		}
+		assertTrue("owning no book of the dead must be called out", flagged);
 	}
 }
