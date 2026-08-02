@@ -99,6 +99,15 @@ utility grey) with a separate tag for where they currently are.
 - **Which attack style to use** — a fang left on slash hits the Vasa crystal's
   +180 defence instead of its -5.
 
+## Dizana's quiver
+
+Ammo stored inside the quiver counts as owned — the status line shows what
+the planner can see as `quiver: N`. The client only broadcasts the quiver's
+contents lazily, so if that number reads 0 with arrows quivered since before
+you logged in, interact with the quiver once (remove an arrow and put it
+back, or re-equip the ammo) — the plugin remembers it for the rest of the
+session.
+
 ## Sharing a plan
 
 **Copy plan for a friend** puts the whole plan on your clipboard as plain text

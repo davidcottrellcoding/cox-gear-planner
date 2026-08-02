@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.71";
+	static final String VERSION = "1.72";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -248,6 +248,9 @@ public class CoxGearPlannerPlugin extends Plugin
 	// The quiver's stored ammo also appears in these varplayers
 	private static final int VARP_QUIVER_AMMO_ID = 4142;
 	private static final int VARP_QUIVER_AMMO_COUNT = 4141;
+	// ...and these varbits, which unlike the container are synced at login
+	private static final int VARBIT_QUIVER_AMMO_SAVE = 9803;
+	private static final int VARBIT_QUIVER_QUANTITY = 16127;
 
 	/**
 	 * The quiver's contents, from whichever source the client will admit to:
@@ -268,6 +271,17 @@ public class CoxGearPlannerPlugin extends Plugin
 		{
 			int id = client.getVarpValue(VARP_QUIVER_AMMO_ID);
 			int count = client.getVarpValue(VARP_QUIVER_AMMO_COUNT);
+			if (id > 0 && count > 0)
+			{
+				quiver.put(ChargedVariants.sameStats(itemManager.canonicalize(id)), count);
+			}
+		}
+		if (quiver.isEmpty())
+		{
+			// Varbits sync at login, unlike the container — a last resort for
+			// arrows resting in the quiver since before the session started
+			int id = client.getVarbitValue(VARBIT_QUIVER_AMMO_SAVE);
+			int count = client.getVarbitValue(VARBIT_QUIVER_QUANTITY);
 			if (id > 0 && count > 0)
 			{
 				quiver.put(ChargedVariants.sameStats(itemManager.canonicalize(id)), count);
