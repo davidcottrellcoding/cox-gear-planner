@@ -6,6 +6,7 @@ import java.awt.Component;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -680,18 +681,13 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		int skippable = 0;
 		double skippedCost = 0;
-		// The advice list sorts shared (no-decision) entries last; the room
-		// extras are decisions too, so they go BEFORE that wall of "already
-		// worn" lines — burying "Bring the salve" under fifteen informational
-		// entries reads as the salve not being offered at all.
-		boolean extrasShown = false;
+		// One ranked list: per-style switches and room extras (the salve above
+		// all) are the same kind of decision, so they sort together by the
+		// seconds they save. Shared (no-decision) entries stay at the bottom.
+		List<AdviceRow> rows = new ArrayList<>();
+		List<JLabel> sharedRows = new ArrayList<>();
 		for (SwitchAdvisor.Advice advice : advices)
 		{
-			if (advice.isAlreadyShared() && !extrasShown)
-			{
-				renderRoomExtras(result);
-				extrasShown = true;
-			}
 			String styleName = advice.getStyle().getDisplayName().toLowerCase();
 			JLabel label;
 			if (advice.isAlreadyShared())
@@ -705,6 +701,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 					+ (advice.getWearInstead() == null
 						? "an empty slot" : escape(advice.getWearInstead())) + "</html>");
 				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				sharedRows.add(label);
 			}
 			else if (advice.isWorthIt())
 			{
@@ -712,6 +709,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 					+ " (" + styleName + " " + advice.getSlot().getDisplayName().toLowerCase()
 					+ "): saves ~" + formatSaved(advice.getSecondsSaved()) + "</html>");
 				label.setForeground(COLOR_ON_HAND);
+				rows.add(new AdviceRow(advice.getSecondsSaved(), label));
 			}
 			else
 			{
@@ -736,38 +734,10 @@ public class CoxGearPlannerPanel extends PluginPanel
 						+ "): only ~" + formatSaved(advice.getSecondsSaved()) + instead + "</html>");
 					label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 				}
+				rows.add(new AdviceRow(advice.getSecondsSaved(), label));
 			}
-			label.setFont(FontManager.getRunescapeSmallFont());
-			label.setAlignmentX(Component.LEFT_ALIGNMENT);
-			resultsPanel.add(label);
 		}
 
-		if (!extrasShown)
-		{
-			renderRoomExtras(result);
-		}
-
-		if (skippable > 0)
-		{
-			JLabel summary = new JLabel("<html><b>" + skippable + " switch(es) not worth it</b> — frees "
-				+ skippable + " inventory slot(s) for ~" + formatSaved(skippedCost) + " slower</html>");
-			summary.setFont(FontManager.getRunescapeSmallFont());
-			summary.setForeground(COLOR_GROUP);
-			summary.setAlignmentX(Component.LEFT_ALIGNMENT);
-			summary.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
-			resultsPanel.add(summary);
-		}
-	}
-
-	/**
-	 * Room-specific extras and near-misses — the salve amulet above all. They
-	 * are not style switches, so they would never appear among the advice
-	 * entries, and that reads as "never considered" when the truth is "tried,
-	 * and here is the number". Rendered with the decisions, above the wall of
-	 * already-worn entries.
-	 */
-	private void renderRoomExtras(PlanResult result)
-	{
 		for (RoomTimeEstimator.RoomTime time : result.getTimes())
 		{
 			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
@@ -777,9 +747,7 @@ public class CoxGearPlannerPanel extends PluginPanel
 					+ " for " + time.getDisplayName() + " only: saves ~"
 					+ formatSaved(extra.getSecondsSaved()) + " there</html>");
 				label.setForeground(COLOR_ON_HAND);
-				label.setFont(FontManager.getRunescapeSmallFont());
-				label.setAlignmentX(Component.LEFT_ALIGNMENT);
-				resultsPanel.add(label);
+				rows.add(new AdviceRow(extra.getSecondsSaved(), label));
 			}
 			if (time.getSalveTried() != null)
 			{
@@ -818,10 +786,47 @@ public class CoxGearPlannerPanel extends PluginPanel
 					+ escape(weapon) + " in the packed kit" + hint + "</html>");
 				label.setForeground(hint.isEmpty()
 					? ColorScheme.LIGHT_GRAY_COLOR : COLOR_GROUP);
-				label.setFont(FontManager.getRunescapeSmallFont());
-				label.setAlignmentX(Component.LEFT_ALIGNMENT);
-				resultsPanel.add(label);
+				// A loss sorts below every save, however small
+				rows.add(new AdviceRow(-time.getSalveLostSeconds(), label));
 			}
+		}
+
+		rows.sort((a, b) -> Double.compare(b.value, a.value));
+		for (AdviceRow row : rows)
+		{
+			row.label.setFont(FontManager.getRunescapeSmallFont());
+			row.label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(row.label);
+		}
+		for (JLabel label : sharedRows)
+		{
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
+		}
+
+		if (skippable > 0)
+		{
+			JLabel summary = new JLabel("<html><b>" + skippable + " switch(es) not worth it</b> — frees "
+				+ skippable + " inventory slot(s) for ~" + formatSaved(skippedCost) + " slower</html>");
+			summary.setFont(FontManager.getRunescapeSmallFont());
+			summary.setForeground(COLOR_GROUP);
+			summary.setAlignmentX(Component.LEFT_ALIGNMENT);
+			summary.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+			resultsPanel.add(summary);
+		}
+	}
+
+	/** One line of the ranked switch list and the seconds it sorts by. */
+	private static final class AdviceRow
+	{
+		private final double value;
+		private final JLabel label;
+
+		AdviceRow(double value, JLabel label)
+		{
+			this.value = value;
+			this.label = label;
 		}
 	}
 
