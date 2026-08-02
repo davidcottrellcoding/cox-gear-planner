@@ -53,7 +53,7 @@ public final class PlanExport
 					+ " (offhands and utilities not counted)"
 				: ", max items/switch "
 					+ (config.maxSwitchItems() == 0 ? "no limit" : config.maxSwitchItems()))
-			.append(config.olmFourTick() ? ", Olm forced 4-tick" : "")
+			.append(config.olmFourTick() ? ", Olm forced 4-tick (learning aid — slower than scythe/shadow)" : "")
 			.append(config.forceThrall() ? ", thralls (Arceuus — powered staves only)" : "")
 			.append(config.assumeOverload() ? ", overload" : "")
 			.append(config.assumeImbuedHeart() ? ", imbued heart" : "")

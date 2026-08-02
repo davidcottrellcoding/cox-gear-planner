@@ -115,8 +115,8 @@ public interface CoxGearPlannerConfig extends Config
 
 	@ConfigItem(
 		keyName = "olmFourTick",
-		name = "Force 4-tick weapons at Olm",
-		description = "Restricts the melee and magic weapon at Olm to 4-tick options, so both styles share one attack rhythm. Easier to learn than mixing a 5-tick scythe or shadow with a 4-tick swap. Falls back to your fastest option if you own no 4-tick weapon for a style.",
+		name = "Force 4-tick at Olm (LEARNING)",
+		description = "A LEARNING setting — not recommended once you know the fight. In a solo raid, mixing attack speeds at Olm makes avoiding damage between attacks much harder, so this restricts the melee and magic weapon to 4-tick options that share one rhythm. In groups or efficiency raids leave it OFF: a 5-tick scythe or Tumeken's shadow simply does more damage. Falls back to your fastest option if you own no 4-tick weapon for a style.",
 		position = 10
 	)
 	default boolean olmFourTick()

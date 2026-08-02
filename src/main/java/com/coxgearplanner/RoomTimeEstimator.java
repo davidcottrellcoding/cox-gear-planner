@@ -446,9 +446,11 @@ public class RoomTimeEstimator
 
 	/**
 	 * When set, Olm's melee and magic weapons are restricted to 4-tick
-	 * options so both styles share one attack rhythm — much easier to learn
-	 * than mixing a 5-tick scythe or shadow with a 4-tick swap. Ranged is
-	 * left alone; it is on its own rhythm regardless.
+	 * options so both styles share one attack rhythm. A LEARNING aid for solo
+	 * raids, where mixing attack speeds makes dodging between attacks much
+	 * harder — in groups or efficiency raids a 5-tick scythe or shadow does
+	 * more damage and this should stay off. Ranged is left alone; it is on
+	 * its own rhythm regardless.
 	 */
 	public void setOlmFourTick(boolean olmFourTick)
 	{

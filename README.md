@@ -123,7 +123,7 @@ cannot judge a loadout without knowing what constrained it.
 | Minimum switch value | Seconds a switch must save to be worth a slot |
 | Max items per switch | Per-style armour cap. Weapons, ammo and offhands are free |
 | Total swap items | One shared armour budget across all styles; overrides the per-style cap |
-| Force 4-tick weapons at Olm | Keeps melee and magic on one rhythm while learning |
+| Force 4-tick at Olm (LEARNING) | Solo learning aid: one shared attack rhythm makes dodging between attacks far easier. Leave OFF in groups or efficiency raids — a 5-tick scythe or shadow does more damage |
 | Assume overload | Boosts your stats as a CoX overload (+) would |
 | Assume imbued heart | Competing magic boost. Does nothing while overloaded — see below |
 | Show debug panel | Explains every weapon, switch and slot decision, and what each slot is worth in seconds |
