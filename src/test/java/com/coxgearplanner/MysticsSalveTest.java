@@ -69,6 +69,43 @@ public class MysticsSalveTest
 	}
 
 	/**
+	 * The formula itself must prefer the salve (ei) over the occult on a
+	 * Tumeken's shadow against the mystics, in a realistic magic kit. This is
+	 * the head-to-head GearScape shows winning for the salve (8.43 dps and
+	 * 81.6% accuracy with occult, 8.91 and 83.5% with salve), and our maths
+	 * agrees — pinning it proves any losing verdict shown in the client comes
+	 * from the comparison's CONTEXT (a different weapon or a thinner kit), not
+	 * from the salve modelling.
+	 */
+	@Test
+	public void theFormulaPrefersSalveOverOccultOnTheShadow()
+	{
+		int shadow = 27275;
+		MonsterProfile mystic = RoomMonsters.get(CoxRoom.MYSTICS).getProfile();
+
+		// A realistic kit: ~160 magic attack and 16% magic damage from gear,
+		// occult adding 12 and 10 on top when worn instead of the salve
+		EquipmentTotals occult = new EquipmentTotals();
+		occult.magicAtk = 172;
+		occult.magicDmgPercent = 26;
+
+		EquipmentTotals salveEq = new EquipmentTotals();
+		salveEq.magicAtk = 160;
+		salveEq.magicDmgPercent = 16;
+		RoomTimeEstimator.addSalveBonus(salveEq, SALVE_EI);
+
+		double withOccult = RoomTimeEstimator.magicDps(shadow, occult, MAXED, mystic, true);
+		double withSalve = RoomTimeEstimator.magicDps(shadow, salveEq, MAXED, mystic, true);
+
+		assertTrue(String.format(
+			"salve (%.2f dps) must beat occult (%.2f dps) on the shadow here",
+			withSalve, withOccult),
+			withSalve > withOccult);
+	}
+
+	private static final PlayerSnapshot MAXED = new PlayerSnapshot(99, 99, 99, 99, 99);
+
+	/**
 	 * When the salve genuinely loses, the plan must say so with a number —
 	 * "not suggested" and "never considered" are indistinguishable otherwise.
 	 */
