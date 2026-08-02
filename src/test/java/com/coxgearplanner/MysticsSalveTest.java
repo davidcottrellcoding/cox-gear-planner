@@ -163,8 +163,8 @@ public class MysticsSalveTest
 		estimator.getResolver().pinResolved(switches.getPrimary(),
 			switches.getBasePicks(), bank, true);
 		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
-			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
-			true, java.util.Collections.emptySet(), 3, 0);
+			switches.getAdvice(), switches.getPrimary(), switches.getBasePicks(),
+			bank, true, player, 1, true, java.util.Collections.emptySet(), 3, 0);
 
 		RoomTimeEstimator.RoomTime settledMystics = settled.getRealTimes().get(0);
 		assertNotNull("the losing verdict survives the kit re-time",
@@ -206,8 +206,8 @@ public class MysticsSalveTest
 		estimator.getResolver().pinResolved(switches.getPrimary(),
 			switches.getBasePicks(), bank, true);
 		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
-			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
-			true, java.util.Collections.emptySet(), 3, 1);
+			switches.getAdvice(), switches.getPrimary(), switches.getBasePicks(),
+			bank, true, player, 1, true, java.util.Collections.emptySet(), 3, 1);
 
 		assertNotNull(settled.getLoadout());
 		assertTrue("the salve is in the kit",

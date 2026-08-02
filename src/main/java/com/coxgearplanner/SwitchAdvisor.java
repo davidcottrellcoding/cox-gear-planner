@@ -541,6 +541,7 @@ public class SwitchAdvisor
 		List<RoomTimeEstimator.RoomTime> times,
 		List<Advice> advice,
 		GearNeed primary,
+		Map<GearSlot, SetupBuilder.Pick> basePicks,
 		Map<ItemSource, Map<Integer, Integer>> snapshot,
 		boolean includeGroupStorage,
 		PlayerSnapshot player,
@@ -563,6 +564,13 @@ public class SwitchAdvisor
 
 		for (int pass = 0; pass < MAX_SETTLE_PASSES; pass++)
 		{
+			// Each kit estimate clears the resolver's caches — including the
+			// pinned base outfit. Without re-pinning, every rebuild after the
+			// first showed the style's un-traded optimum in the equipped list
+			// while the advice referenced the traded base: a ring of shadows
+			// worn beside advice saying to keep the berserker ring on.
+			estimator.getResolver().pinResolved(primary, basePicks,
+				snapshot, includeGroupStorage);
 			loadout = RaidLoadoutBuilder.build(rooms, buildTimes, advice, primary,
 				snapshot, includeGroupStorage, estimator.getResolver(), needsCharging);
 			if (loadout == null)
@@ -621,6 +629,11 @@ public class SwitchAdvisor
 				}
 			}
 		}
+
+		// The last kit estimate cleared the resolver's caches again, so leave
+		// the settled base pinned for whatever resolves after us.
+		estimator.getResolver().pinResolved(primary, basePicks,
+			snapshot, includeGroupStorage);
 		return new SettledPlan(loadout, real);
 	}
 

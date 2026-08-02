@@ -161,10 +161,22 @@ public class BudgetPipelineTest
 		estimator.getResolver().pinResolved(switches.getPrimary(),
 			switches.getBasePicks(), bank, true);
 		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
-			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
-			true, java.util.Collections.emptySet(), 3, totalSwapItems);
+			switches.getAdvice(), switches.getPrimary(), switches.getBasePicks(),
+			bank, true, player, 1, true, java.util.Collections.emptySet(), 3, totalSwapItems);
 		assertTrue("both rooms must be feasible", settled.getLoadout() != null);
 		List<RoomTimeEstimator.RoomTime> real = settled.getRealTimes();
+
+		// The traded base outfit must survive the settle: kit estimates clear
+		// the resolver's caches, and without re-pinning the equipped list
+		// drifts back to the un-traded optimum while the advice keeps
+		// referencing the base the times were computed against.
+		if (switches.getBasePicks() != null)
+		{
+			assertTrue("the pinned base outfit survives the settle",
+				SwitchAdvisor.sameLoadout(
+					estimator.getResolver().resolve(switches.getPrimary(), bank, true),
+					switches.getBasePicks()));
+		}
 
 		double idealTotal = 0;
 		for (RoomTimeEstimator.RoomTime rt : times)

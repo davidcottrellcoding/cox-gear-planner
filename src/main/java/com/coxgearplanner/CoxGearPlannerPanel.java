@@ -320,6 +320,11 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		renderLoadout(result.getLoadout());
 
+		// Times and switch decisions come before the per-style walkthroughs:
+		// they are what you act on, the sections below are the reference.
+		renderRoomTimes(result);
+		renderSwitchAdvice(result);
+
 		// Per-style sections are derived from the loadout above, so they only
 		// ever name gear that is actually equipped or in the inventory list.
 		// The standalone SetupBuilder sections are the fallback for when no
@@ -356,64 +361,6 @@ public class CoxGearPlannerPanel extends PluginPanel
 			}
 		}
 
-		if (!times.isEmpty())
-		{
-			JLabel header = new JLabel("Estimated room times (party of "
-				+ plugin.getConfig().partySize() + ")");
-			header.setFont(FontManager.getRunescapeBoldFont());
-			header.setForeground(ColorScheme.BRAND_ORANGE);
-			header.setAlignmentX(Component.LEFT_ALIGNMENT);
-			header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
-			resultsPanel.add(header);
-
-			double total = 0;
-			boolean anyInfeasible = false;
-			for (RoomTimeEstimator.RoomTime time : times)
-			{
-				JLabel label;
-				if (time.isFeasible())
-				{
-					double seconds = result.secondsFor(time);
-					total += seconds;
-					label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> ~"
-						+ formatSeconds(seconds) + " — " + time.getDetail() + "</html>");
-					label.setForeground(COLOR_BANK);
-				}
-				else
-				{
-					anyInfeasible = true;
-					label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> "
-						+ time.getDetail() + "</html>");
-					label.setForeground(COLOR_MISSING);
-				}
-				label.setFont(FontManager.getRunescapeSmallFont());
-				label.setAlignmentX(Component.LEFT_ALIGNMENT);
-				resultsPanel.add(label);
-			}
-
-			JLabel totalLabel = new JLabel("<html><b>Total combat time:</b> ~"
-				+ formatSeconds(total) + (anyInfeasible ? " (excl. red rooms)" : "") + "</html>");
-			totalLabel.setFont(FontManager.getRunescapeSmallFont());
-			totalLabel.setForeground(COLOR_ON_HAND);
-			totalLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-			resultsPanel.add(totalLabel);
-
-			// Without this the switch settings look inert: the times above
-			// already assume the budget, so raising it just moves a number with
-			// nothing to say what moved it.
-			double lost = result.secondsLostToBudget();
-			if (lost > 0.5)
-			{
-				JLabel lostLabel = new JLabel("<html>+" + formatSeconds(lost)
-					+ " from switches left behind — raise the switch budget to recover it</html>");
-				lostLabel.setFont(FontManager.getRunescapeSmallFont());
-				lostLabel.setForeground(COLOR_MISSING);
-				lostLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-				resultsPanel.add(lostLabel);
-			}
-		}
-
-		renderSwitchAdvice(result);
 		renderDebug(result);
 
 		JLabel legend = new JLabel("<html><br><b>Item is for:</b> "
@@ -656,6 +603,69 @@ public class CoxGearPlannerPanel extends PluginPanel
 		}
 		int cap = plugin.getConfig().maxSwitchItems();
 		return cap > 0 ? cap + "-item switch" : "switch limit";
+	}
+
+	private void renderRoomTimes(PlanResult result)
+	{
+		List<RoomTimeEstimator.RoomTime> times = result.getTimes();
+		if (times.isEmpty())
+		{
+			return;
+		}
+
+		JLabel header = new JLabel("Estimated room times (party of "
+			+ plugin.getConfig().partySize() + ")");
+		header.setFont(FontManager.getRunescapeBoldFont());
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setAlignmentX(Component.LEFT_ALIGNMENT);
+		header.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+		resultsPanel.add(header);
+
+		double total = 0;
+		boolean anyInfeasible = false;
+		for (RoomTimeEstimator.RoomTime time : times)
+		{
+			JLabel label;
+			if (time.isFeasible())
+			{
+				double seconds = result.secondsFor(time);
+				total += seconds;
+				label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> ~"
+					+ formatSeconds(seconds) + " — " + time.getDetail() + "</html>");
+				label.setForeground(COLOR_BANK);
+			}
+			else
+			{
+				anyInfeasible = true;
+				label = new JLabel("<html><b>" + time.getDisplayName() + ":</b> "
+					+ time.getDetail() + "</html>");
+				label.setForeground(COLOR_MISSING);
+			}
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(label);
+		}
+
+		JLabel totalLabel = new JLabel("<html><b>Total combat time:</b> ~"
+			+ formatSeconds(total) + (anyInfeasible ? " (excl. red rooms)" : "") + "</html>");
+		totalLabel.setFont(FontManager.getRunescapeSmallFont());
+		totalLabel.setForeground(COLOR_ON_HAND);
+		totalLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		resultsPanel.add(totalLabel);
+
+		// Without this the switch settings look inert: the times above
+		// already assume the budget, so raising it just moves a number with
+		// nothing to say what moved it.
+		double lost = result.secondsLostToBudget();
+		if (lost > 0.5)
+		{
+			JLabel lostLabel = new JLabel("<html>+" + formatSeconds(lost)
+				+ " from switches left behind — raise the switch budget to recover it</html>");
+			lostLabel.setFont(FontManager.getRunescapeSmallFont());
+			lostLabel.setForeground(COLOR_MISSING);
+			lostLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+			resultsPanel.add(lostLabel);
+		}
 	}
 
 	private void renderSwitchAdvice(PlanResult result)

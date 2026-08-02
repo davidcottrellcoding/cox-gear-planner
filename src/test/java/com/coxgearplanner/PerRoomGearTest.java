@@ -99,8 +99,8 @@ public class PerRoomGearTest
 		estimator.getResolver().pinResolved(switches.getPrimary(),
 			switches.getBasePicks(), bank, true);
 		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
-			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
-			true, java.util.Collections.emptySet(), 3, 0);
+			switches.getAdvice(), switches.getPrimary(), switches.getBasePicks(),
+			bank, true, player, 1, true, java.util.Collections.emptySet(), 3, 0);
 
 		assertTrue(settled.getLoadout() != null);
 		Set<Integer> carried = settled.getLoadout().getCarriedIds();
