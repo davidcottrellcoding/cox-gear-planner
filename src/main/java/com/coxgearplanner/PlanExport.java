@@ -173,16 +173,18 @@ public final class PlanExport
 					String verdict = extra.isBrought() ? "BRING"
 						: extra.isOverBudget() ? "over limit" : "skip";
 					sb.append("  ").append(pad(verdict, 11))
-						.append(pad("for " + time.getDisplayName(), 18))
+						.append(pad("room extra", 18))
 						.append(pad(extra.getPick().getOption().getName(), 26))
-						.append(String.format("%.1fs there%n", extra.getSecondsSaved()));
+						.append(String.format("%.1fs at %s%n",
+							extra.getSecondsSaved(), time.getDisplayName()));
 				}
 				if (time.getSalveTried() != null)
 				{
 					sb.append("  ").append(pad("skip", 11))
-						.append(pad("for " + time.getDisplayName(), 18))
+						.append(pad("room extra", 18))
 						.append(pad(time.getSalveTried().getOption().getName(), 26))
-						.append(String.format("%.1fs slower there%n", time.getSalveLostSeconds()));
+						.append(String.format("%.1fs slower at %s%n",
+							time.getSalveLostSeconds(), time.getDisplayName()));
 				}
 			}
 		}

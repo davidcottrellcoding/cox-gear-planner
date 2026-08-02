@@ -385,21 +385,22 @@ public final class RaidLoadoutBuilder
 		boolean wornWeapon = weapon != null && primaryWeapon != null
 			&& weapon.getItemId() == primaryWeapon.getItemId();
 
-		// Only switches that are actually carried change anything
+		// Only switches that are actually carried change anything. The base
+		// style gets them too: its own carried switches are not redundant —
+		// the base shield is emptied when the style's ideal weapon is
+		// two-handed, so a mage's book carried for the one-handed rooms
+		// otherwise never appeared as worn anywhere.
 		Map<GearSlot, SetupBuilder.Pick> swapped = new LinkedHashMap<>();
-		if (style != primary)
+		Map<GearSlot, SetupBuilder.Pick> stylePicks =
+			ownPicksFor(resolver, style, items, includeGroupStorage);
+		for (SwitchAdvisor.Advice a : advice)
 		{
-			Map<GearSlot, SetupBuilder.Pick> stylePicks =
-				ownPicksFor(resolver, style, items, includeGroupStorage);
-			for (SwitchAdvisor.Advice a : advice)
+			if (a.getStyle() == style && a.isWorthIt() && !a.isAlreadyShared())
 			{
-				if (a.getStyle() == style && a.isWorthIt() && !a.isAlreadyShared())
+				SetupBuilder.Pick pick = stylePicks.get(a.getSlot());
+				if (pick != null)
 				{
-					SetupBuilder.Pick pick = stylePicks.get(a.getSlot());
-					if (pick != null)
-					{
-						swapped.put(a.getSlot(), pick);
-					}
+					swapped.put(a.getSlot(), pick);
 				}
 			}
 		}
