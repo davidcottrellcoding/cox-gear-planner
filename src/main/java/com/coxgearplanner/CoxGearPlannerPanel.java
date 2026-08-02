@@ -316,7 +316,6 @@ public class CoxGearPlannerPanel extends PluginPanel
 		shareButton.setEnabled(true);
 		resultsPanel.removeAll();
 		List<SetupBuilder.Section> sections = result.getSections();
-		List<RoomTimeEstimator.RoomTime> times = result.getTimes();
 
 		renderLoadout(result.getLoadout());
 

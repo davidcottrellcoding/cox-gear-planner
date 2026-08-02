@@ -516,343 +516,341 @@ public class RoomTimeEstimator
 		boolean elitePrayers,
 		PlanExplanation explanation)
 	{
+		MonsterProfile monster = encounter.getProfile();
+		boolean multiPart = RoomMonsters.getAll(room).size() > 1;
+		double bestDps = 0;
+		GearNeed bestStyle = null;
+		SetupBuilder.Pick bestWeapon = null;
+		SetupBuilder.Pick bestSalve = null;
+		// The winner's context, kept for per-room extras and the debug
+		// numbers: its armour picks, its dps without the salve, and what
+		// the salve trial produced even when it lost.
+		Map<GearSlot, SetupBuilder.Pick> bestPicks = null;
+		double bestPlainDps = 0;
+		double bestSalveDps = 0;
+		// Every candidate and its dps, so the debug panel can show the full
+		// ranking rather than just the winner — "why wasn't X considered?"
+		// is only answerable if the panel distinguishes "lost" from
+		// "never evaluated".
+		List<String> ranking = new ArrayList<>();
+
+		// The globally-best amulet is anguish/torture/occult, but against
+		// undead a salve amulet usually beats all of them. Its bonus isn't
+		// in the item's stats, so it has to be tried explicitly.
+		SetupBuilder.Pick salve = monster.isUndead()
+			? findSalve(items, includeGroupStorage)
+			: null;
+
+		// Prefer the styles the fight actually favours — safespotting, a
+		// target melee can't reach, a mechanic that demands one style.
+		// DPS can't see any of that. Fall back to whatever is usable only
+		// when you own no weapon for the preferred styles.
+		Set<GearNeed> styles = monster.getUsableStyles();
+		if (!monster.getPreferredStyles().isEmpty())
 		{
-			MonsterProfile monster = encounter.getProfile();
-			boolean multiPart = RoomMonsters.getAll(room).size() > 1;
-			double bestDps = 0;
-			GearNeed bestStyle = null;
-			SetupBuilder.Pick bestWeapon = null;
-			SetupBuilder.Pick bestSalve = null;
-			// The winner's context, kept for per-room extras and the debug
-			// numbers: its armour picks, its dps without the salve, and what
-			// the salve trial produced even when it lost.
-			Map<GearSlot, SetupBuilder.Pick> bestPicks = null;
-			double bestPlainDps = 0;
-			double bestSalveDps = 0;
-			// Every candidate and its dps, so the debug panel can show the full
-			// ranking rather than just the winner — "why wasn't X considered?"
-			// is only answerable if the panel distinguishes "lost" from
-			// "never evaluated".
-			List<String> ranking = new ArrayList<>();
-
-			// The globally-best amulet is anguish/torture/occult, but against
-			// undead a salve amulet usually beats all of them. Its bonus isn't
-			// in the item's stats, so it has to be tried explicitly.
-			SetupBuilder.Pick salve = monster.isUndead()
-				? findSalve(items, includeGroupStorage)
-				: null;
-
-			// Prefer the styles the fight actually favours — safespotting, a
-			// target melee can't reach, a mechanic that demands one style.
-			// DPS can't see any of that. Fall back to whatever is usable only
-			// when you own no weapon for the preferred styles.
-			Set<GearNeed> styles = monster.getUsableStyles();
-			if (!monster.getPreferredStyles().isEmpty())
+			Set<GearNeed> preferred = new java.util.LinkedHashSet<>();
+			for (GearNeed style : monster.getPreferredStyles())
 			{
-				Set<GearNeed> preferred = new java.util.LinkedHashSet<>();
-				for (GearNeed style : monster.getPreferredStyles())
+				if (styles.contains(style)
+					&& !weaponCandidates(style, items, includeGroupStorage, monster,
+						room == CoxRoom.OLM).isEmpty())
 				{
-					if (styles.contains(style)
-						&& !weaponCandidates(style, items, includeGroupStorage, monster,
-							room == CoxRoom.OLM).isEmpty())
-					{
-						preferred.add(style);
-					}
+					preferred.add(style);
 				}
-				if (!preferred.isEmpty())
+			}
+			if (!preferred.isEmpty())
+			{
+				styles = preferred;
+			}
+		}
+
+		for (GearNeed style : styles)
+		{
+			Map<GearSlot, SetupBuilder.Pick> picks = resolver.resolve(style, items, includeGroupStorage);
+
+			Map<GearSlot, SetupBuilder.Pick> salveOverride = Collections.emptyMap();
+			if (salve != null)
+			{
+				SetupBuilder.Pick neck = picks.get(GearSlot.NECK);
+				if (neck == null || neck.getItemId() != salve.getItemId())
 				{
-					styles = preferred;
+					salveOverride = Collections.singletonMap(GearSlot.NECK, salve);
 				}
 			}
 
-			for (GearNeed style : styles)
+			// Complete sets (void, obsidian) only pay out when every piece
+			// is worn, so they have to be tried as whole alternatives —
+			// the per-slot picker would never assemble one on its own.
+			List<Map<GearSlot, SetupBuilder.Pick>> setOverrides =
+				setOverrides(style, items, includeGroupStorage);
+
+			for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage,
+				monster, room == CoxRoom.OLM))
 			{
-				Map<GearSlot, SetupBuilder.Pick> picks = resolver.resolve(style, items, includeGroupStorage);
+				double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
+					items, includeGroupStorage, player, monster, elitePrayers);
+				SetupBuilder.Pick usedSalve = null;
 
-				Map<GearSlot, SetupBuilder.Pick> salveOverride = Collections.emptyMap();
-				if (salve != null)
+				for (Map<GearSlot, SetupBuilder.Pick> setOverride : setOverrides)
 				{
-					SetupBuilder.Pick neck = picks.get(GearSlot.NECK);
-					if (neck == null || neck.getItemId() != salve.getItemId())
-					{
-						salveOverride = Collections.singletonMap(GearSlot.NECK, salve);
-					}
-				}
-
-				// Complete sets (void, obsidian) only pay out when every piece
-				// is worn, so they have to be tried as whole alternatives —
-				// the per-slot picker would never assemble one on its own.
-				List<Map<GearSlot, SetupBuilder.Pick>> setOverrides =
-					setOverrides(style, items, includeGroupStorage);
-
-				for (SetupBuilder.Pick weapon : weaponCandidates(style, items, includeGroupStorage,
-					monster, room == CoxRoom.OLM))
-				{
-					double dps = loadoutDps(style, weapon, picks, Collections.emptyMap(),
+					double setDps = loadoutDps(style, weapon, picks, setOverride,
 						items, includeGroupStorage, player, monster, elitePrayers);
-					SetupBuilder.Pick usedSalve = null;
-
-					for (Map<GearSlot, SetupBuilder.Pick> setOverride : setOverrides)
+					if (setDps > dps)
 					{
-						double setDps = loadoutDps(style, weapon, picks, setOverride,
-							items, includeGroupStorage, player, monster, elitePrayers);
-						if (setDps > dps)
-						{
-							dps = setDps;
-						}
-					}
-
-					double plainDps = dps;
-					double salveDps = 0;
-					if (!salveOverride.isEmpty())
-					{
-						salveDps = loadoutDps(style, weapon, picks, salveOverride,
-							items, includeGroupStorage, player, monster, elitePrayers);
-						if (salveDps > dps)
-						{
-							dps = salveDps;
-							usedSalve = salve;
-						}
-					}
-
-					if (explanation != null)
-					{
-						ranking.add(String.format("%.2f|%s (%s)", dps,
-							weapon.getOption().getName(), style.getDisplayName().toLowerCase()));
-					}
-
-					if (dps > bestDps)
-					{
-						bestDps = dps;
-						bestStyle = style;
-						bestWeapon = weapon;
-						bestSalve = usedSalve;
-						bestPicks = picks;
-						bestPlainDps = plainDps;
-						bestSalveDps = salveDps;
+						dps = setDps;
 					}
 				}
-			}
 
-			String part = multiPart ? monster.getName() : null;
-
-			if (bestDps <= 0)
-			{
-				RoomTime infeasible = new RoomTime(room, "no usable weapon owned", 0, false, null, null);
-				infeasible.partName = part;
-				return infeasible;
-			}
-
-			// Each claw is fought once per phase except the final head phase —
-			// three times in a standard raid. The head is killed once.
-			double phases = room == CoxRoom.OLM && monster.getName().contains("claw")
-				? RoomMonsters.olmClawPhases(partySize)
-				: 1;
-
-			// The Guardians carry their own team-size term, so the generic
-			// party scaling must not be applied on top of it.
-			double totalHp = monster.getRequiredWeapon() == GearNeed.PICKAXE
-				? guardianHp(partySize, player.getMining()) * encounter.getCount()
-				: monster.getHp() * hpMult * encounter.getCount() * phases;
-
-			// CoX scales monster HP with party size, and the party splits the
-			// damage — so what matters is YOUR share, not the whole pool.
-			// Without this the estimate is roughly party-size times too long.
-			double yourShare = totalHp / Math.max(1, partySize);
-
-			// The salve trial's verdict at the point the winner was decided,
-			// for the debug panel — before extras move the goalposts.
-			double salveLostSeconds = bestSalve == null && salve != null && bestSalveDps > 0
-				? yourShare / bestSalveDps - yourShare / bestDps
-				: 0;
-
-			// Per-room extras: a style is not limited to one item per slot.
-			// If a different owned piece beats the style's usual pick in THIS
-			// room by at least the minimum switch value, it comes along just
-			// for this room — the salve amulet is simply the first of them.
-			List<RoomTime.ExtraSwitch> extras = new ArrayList<>();
-			Map<GearSlot, SetupBuilder.Pick> accepted = new java.util.LinkedHashMap<>();
-			if (bestSalve != null)
-			{
-				// The salve is a switch like any other: it has to clear the
-				// minimum switch value, and the swap budget can veto it. A
-				// salve that fails either test is recorded (so the panel can
-				// price the decision) but the room fights without it.
-				double saved = yourShare / bestPlainDps - yourShare / bestDps;
-				boolean vetoed = vetoedExtras.contains(bestSalve.getItemId());
-				if (!vetoed && saved >= Math.max(perRoomSwitchSeconds, 0.1))
+				double plainDps = dps;
+				double salveDps = 0;
+				if (!salveOverride.isEmpty())
 				{
-					accepted.put(GearSlot.NECK, bestSalve);
-					extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
-						saved, true, false));
+					salveDps = loadoutDps(style, weapon, picks, salveOverride,
+						items, includeGroupStorage, player, monster, elitePrayers);
+					if (salveDps > dps)
+					{
+						dps = salveDps;
+						usedSalve = salve;
+					}
 				}
-				else
+
+				if (explanation != null)
 				{
-					extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
-						saved, false, vetoed));
-					bestDps = bestPlainDps;
-					bestSalve = null;
+					ranking.add(String.format("%.2f|%s (%s)", dps,
+						weapon.getOption().getName(), style.getDisplayName().toLowerCase()));
+				}
+
+				if (dps > bestDps)
+				{
+					bestDps = dps;
+					bestStyle = style;
+					bestWeapon = weapon;
+					bestSalve = usedSalve;
+					bestPicks = picks;
+					bestPlainDps = plainDps;
+					bestSalveDps = salveDps;
 				}
 			}
-			boolean twoHanded = bestWeapon.getOption().isTwoHanded();
-			for (GearSlot slot : GearSlot.values())
+		}
+
+		String part = multiPart ? monster.getName() : null;
+
+		if (bestDps <= 0)
+		{
+			RoomTime infeasible = new RoomTime(room, "no usable weapon owned", 0, false, null, null);
+			infeasible.partName = part;
+			return infeasible;
+		}
+
+		// Each claw is fought once per phase except the final head phase —
+		// three times in a standard raid. The head is killed once.
+		double phases = room == CoxRoom.OLM && monster.getName().contains("claw")
+			? RoomMonsters.olmClawPhases(partySize)
+			: 1;
+
+		// The Guardians carry their own team-size term, so the generic
+		// party scaling must not be applied on top of it.
+		double totalHp = monster.getRequiredWeapon() == GearNeed.PICKAXE
+			? guardianHp(partySize, player.getMining()) * encounter.getCount()
+			: monster.getHp() * hpMult * encounter.getCount() * phases;
+
+		// CoX scales monster HP with party size, and the party splits the
+		// damage — so what matters is YOUR share, not the whole pool.
+		// Without this the estimate is roughly party-size times too long.
+		double yourShare = totalHp / Math.max(1, partySize);
+
+		// The salve trial's verdict at the point the winner was decided,
+		// for the debug panel — before extras move the goalposts.
+		double salveLostSeconds = bestSalve == null && salve != null && bestSalveDps > 0
+			? yourShare / bestSalveDps - yourShare / bestDps
+			: 0;
+
+		// Per-room extras: a style is not limited to one item per slot.
+		// If a different owned piece beats the style's usual pick in THIS
+		// room by at least the minimum switch value, it comes along just
+		// for this room — the salve amulet is simply the first of them.
+		List<RoomTime.ExtraSwitch> extras = new ArrayList<>();
+		Map<GearSlot, SetupBuilder.Pick> accepted = new java.util.LinkedHashMap<>();
+		if (bestSalve != null)
+		{
+			// The salve is a switch like any other: it has to clear the
+			// minimum switch value, and the swap budget can veto it. A
+			// salve that fails either test is recorded (so the panel can
+			// price the decision) but the room fights without it.
+			double saved = yourShare / bestPlainDps - yourShare / bestDps;
+			boolean vetoed = vetoedExtras.contains(bestSalve.getItemId());
+			if (!vetoed && saved >= Math.max(perRoomSwitchSeconds, 0.1))
 			{
-				if (slot == GearSlot.WEAPON || slot == GearSlot.AMMO
-					|| (slot == GearSlot.SHIELD && twoHanded)
-					|| accepted.containsKey(slot))
+				accepted.put(GearSlot.NECK, bestSalve);
+				extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
+					saved, true, false));
+			}
+			else
+			{
+				extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
+					saved, false, vetoed));
+				bestDps = bestPlainDps;
+				bestSalve = null;
+			}
+		}
+		boolean twoHanded = bestWeapon.getOption().isTwoHanded();
+		for (GearSlot slot : GearSlot.values())
+		{
+			if (slot == GearSlot.WEAPON || slot == GearSlot.AMMO
+				|| (slot == GearSlot.SHIELD && twoHanded)
+				|| accepted.containsKey(slot))
+			{
+				continue;
+			}
+			SetupBuilder.Pick current = bestPicks.get(slot);
+			SetupBuilder.Pick bestAlt = null;
+			double bestAltDps = bestDps;
+			for (SetupBuilder.Pick candidate
+				: resolver.shortlistFor(slot, bestStyle, items, includeGroupStorage))
+			{
+				if (current != null && candidate.getItemId() == current.getItemId())
 				{
 					continue;
 				}
-				SetupBuilder.Pick current = bestPicks.get(slot);
-				SetupBuilder.Pick bestAlt = null;
-				double bestAltDps = bestDps;
-				for (SetupBuilder.Pick candidate
-					: resolver.shortlistFor(slot, bestStyle, items, includeGroupStorage))
+				Map<GearSlot, SetupBuilder.Pick> trial = new java.util.LinkedHashMap<>(accepted);
+				trial.put(slot, candidate);
+				double altDps = loadoutDps(bestStyle, bestWeapon, bestPicks, trial,
+					items, includeGroupStorage, player, monster, elitePrayers);
+				if (altDps > bestAltDps)
 				{
-					if (current != null && candidate.getItemId() == current.getItemId())
-					{
-						continue;
-					}
-					Map<GearSlot, SetupBuilder.Pick> trial = new java.util.LinkedHashMap<>(accepted);
-					trial.put(slot, candidate);
-					double altDps = loadoutDps(bestStyle, bestWeapon, bestPicks, trial,
-						items, includeGroupStorage, player, monster, elitePrayers);
-					if (altDps > bestAltDps)
-					{
-						bestAltDps = altDps;
-						bestAlt = candidate;
-					}
-				}
-				if (bestAlt != null)
-				{
-					double saved = yourShare / bestDps - yourShare / bestAltDps;
-					if (saved >= Math.max(perRoomSwitchSeconds, 0.1))
-					{
-						if (vetoedExtras.contains(bestAlt.getItemId()))
-						{
-							// Qualified on time, lost its slot to the budget
-							extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
-								saved, false, true));
-						}
-						else
-						{
-							accepted.put(slot, bestAlt);
-							extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
-								saved, true, false));
-							bestDps = bestAltDps;
-						}
-					}
+					bestAltDps = altDps;
+					bestAlt = candidate;
 				}
 			}
-
-			// Each kill wastes damage past the corpse: the killing hit lands
-			// its full roll on whatever sliver of health remains, which over
-			// hit sizes and remaining health averages close to a third of the
-			// max hit. Checked against GearScape's exact per-kill TTK — 160hp
-			// mystic, max 63, 8.75 dps: 20.64s there, (160+63/3)/8.75 = 20.7
-			// here. Without it a 3-mystic room read 52s when the per-kill sum
-			// is over a minute. Tekton's two defence profiles are one monster,
-			// so he is charged one kill too many — a small, known error.
-			loadoutDps(bestStyle, bestWeapon, bestPicks, accepted,
-				items, includeGroupStorage, player, monster, elitePrayers);
-			Double lastMax = lastMaxHit.get();
-			double kills = encounter.getCount() * phases;
-			double overheadHp = lastMax == null ? 0
-				: kills * (lastMax / 3.0) / Math.max(1, partySize);
-			yourShare += overheadHp;
-
-			String label = bestWeapon.getOption().getName()
-				+ " (" + bestStyle.getDisplayName().toLowerCase();
-			// For melee, name the attack style too — "use a fang" is only half
-			// the instruction if the target wants stab specifically.
-			String meleeStyle = bestMeleeStyle(bestStyle, bestWeapon.getItemId(),
-				resolver.resolve(bestStyle, items, includeGroupStorage),
-				items, includeGroupStorage, player, monster, elitePrayers);
-			if (meleeStyle != null)
+			if (bestAlt != null)
 			{
-				label += ", " + meleeStyle + " style";
+				double saved = yourShare / bestDps - yourShare / bestAltDps;
+				if (saved >= Math.max(perRoomSwitchSeconds, 0.1))
+				{
+					if (vetoedExtras.contains(bestAlt.getItemId()))
+					{
+						// Qualified on time, lost its slot to the budget
+						extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
+							saved, false, true));
+					}
+					else
+					{
+						accepted.put(slot, bestAlt);
+						extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
+							saved, true, false));
+						bestDps = bestAltDps;
+					}
+				}
 			}
-			label += ")";
+		}
+
+		// Each kill wastes damage past the corpse: the killing hit lands
+		// its full roll on whatever sliver of health remains, which over
+		// hit sizes and remaining health averages close to a third of the
+		// max hit. Checked against GearScape's exact per-kill TTK — 160hp
+		// mystic, max 63, 8.75 dps: 20.64s there, (160+63/3)/8.75 = 20.7
+		// here. Without it a 3-mystic room read 52s when the per-kill sum
+		// is over a minute. Tekton's two defence profiles are one monster,
+		// so he is charged one kill too many — a small, known error.
+		loadoutDps(bestStyle, bestWeapon, bestPicks, accepted,
+			items, includeGroupStorage, player, monster, elitePrayers);
+		Double lastMax = lastMaxHit.get();
+		double kills = encounter.getCount() * phases;
+		double overheadHp = lastMax == null ? 0
+			: kills * (lastMax / 3.0) / Math.max(1, partySize);
+		yourShare += overheadHp;
+
+		String label = bestWeapon.getOption().getName()
+			+ " (" + bestStyle.getDisplayName().toLowerCase();
+		// For melee, name the attack style too — "use a fang" is only half
+		// the instruction if the target wants stab specifically.
+		String meleeStyle = bestMeleeStyle(bestStyle, bestWeapon.getItemId(),
+			resolver.resolve(bestStyle, items, includeGroupStorage),
+			items, includeGroupStorage, player, monster, elitePrayers);
+		if (meleeStyle != null)
+		{
+			label += ", " + meleeStyle + " style";
+		}
+		label += ")";
+		for (RoomTime.ExtraSwitch extra : extras)
+		{
+			if (extra.isBrought())
+			{
+				label += " + " + extra.getPick().getOption().getName();
+			}
+		}
+		if (phases > 1)
+		{
+			label += String.format(" ×%.0f phases", phases);
+		}
+		if (monster.getStyleNote() != null)
+		{
+			label += " [" + monster.getStyleNote() + "]";
+		}
+		if (room == CoxRoom.OLM && olmFourTick && bestStyle != GearNeed.RANGED
+			&& effectiveSpeedTicks(bestStyle, bestWeapon.getItemId()) == 4)
+		{
+			label += " [4-tick]";
+		}
+
+		RoomTime roomTime = new RoomTime(room, label, yourShare / bestDps, true, bestStyle, bestWeapon);
+		roomTime.extraSwitches.addAll(extras);
+		roomTime.monster = monster;
+		roomTime.totalHp = yourShare;
+		roomTime.partName = part;
+		if (salveLostSeconds > 0)
+		{
+			roomTime.salveTried = salve;
+			roomTime.salveLostSeconds = salveLostSeconds;
+			SetupBuilder.Pick neck = bestPicks.get(GearSlot.NECK);
+			roomTime.salveComparedTo = neck != null
+				? neck.getOption().getName() : "an empty neck";
+		}
+
+		if (explanation != null)
+		{
+			explanation.addWeaponChoice(String.format(
+				"%s (%s, your share %.0f of %.0f hp, incl. %.0f kill overhead) — %d weapons evaluated:",
+				roomTime.getDisplayName(), monster.getName(), yourShare, totalHp,
+				overheadHp, ranking.size()));
+
+			// Highest dps first; the split key is the numeric dps prefix
+			ranking.sort((a, b) -> Double.compare(
+				Double.parseDouble(b.substring(0, b.indexOf('|'))),
+				Double.parseDouble(a.substring(0, a.indexOf('|')))));
+			int shown = 0;
+			for (String entry : ranking)
+			{
+				int bar = entry.indexOf('|');
+				explanation.addWeaponChoice(String.format("    %s%s — %s dps",
+					shown == 0 ? "> " : "  ", entry.substring(bar + 1), entry.substring(0, bar)));
+				if (++shown >= 8)
+				{
+					explanation.addWeaponChoice("    … " + (ranking.size() - shown) + " more");
+					break;
+				}
+			}
+
 			for (RoomTime.ExtraSwitch extra : extras)
 			{
-				if (extra.isBrought())
-				{
-					label += " + " + extra.getPick().getOption().getName();
-				}
+				String verdict = extra.isBrought() ? "bring for this room"
+					: extra.isOverBudget() ? "qualified but lost to the swap budget"
+					: "below the minimum switch value";
+				explanation.addWeaponChoice(String.format(
+					"    %s: %s (%s) — saves %.1fs here",
+					verdict,
+					extra.getPick().getOption().getName(),
+					extra.getSlot().getDisplayName().toLowerCase(),
+					extra.getSecondsSaved()));
 			}
-			if (phases > 1)
-			{
-				label += String.format(" ×%.0f phases", phases);
-			}
-			if (monster.getStyleNote() != null)
-			{
-				label += " [" + monster.getStyleNote() + "]";
-			}
-			if (room == CoxRoom.OLM && olmFourTick && bestStyle != GearNeed.RANGED
-				&& effectiveSpeedTicks(bestStyle, bestWeapon.getItemId()) == 4)
-			{
-				label += " [4-tick]";
-			}
-
-			RoomTime roomTime = new RoomTime(room, label, yourShare / bestDps, true, bestStyle, bestWeapon);
-			roomTime.extraSwitches.addAll(extras);
-			roomTime.monster = monster;
-			roomTime.totalHp = yourShare;
-			roomTime.partName = part;
 			if (salveLostSeconds > 0)
 			{
-				roomTime.salveTried = salve;
-				roomTime.salveLostSeconds = salveLostSeconds;
-				SetupBuilder.Pick neck = bestPicks.get(GearSlot.NECK);
-				roomTime.salveComparedTo = neck != null
-					? neck.getOption().getName() : "an empty neck";
-			}
-
-			if (explanation != null)
-			{
 				explanation.addWeaponChoice(String.format(
-					"%s (%s, your share %.0f of %.0f hp, incl. %.0f kill overhead) — %d weapons evaluated:",
-					roomTime.getDisplayName(), monster.getName(), yourShare, totalHp,
-					overheadHp, ranking.size()));
-
-				// Highest dps first; the split key is the numeric dps prefix
-				ranking.sort((a, b) -> Double.compare(
-					Double.parseDouble(b.substring(0, b.indexOf('|'))),
-					Double.parseDouble(a.substring(0, a.indexOf('|')))));
-				int shown = 0;
-				for (String entry : ranking)
-				{
-					int bar = entry.indexOf('|');
-					explanation.addWeaponChoice(String.format("    %s%s — %s dps",
-						shown == 0 ? "> " : "  ", entry.substring(bar + 1), entry.substring(0, bar)));
-					if (++shown >= 8)
-					{
-						explanation.addWeaponChoice("    … " + (ranking.size() - shown) + " more");
-						break;
-					}
-				}
-
-				for (RoomTime.ExtraSwitch extra : extras)
-				{
-					String verdict = extra.isBrought() ? "bring for this room"
-						: extra.isOverBudget() ? "qualified but lost to the swap budget"
-						: "below the minimum switch value";
-					explanation.addWeaponChoice(String.format(
-						"    %s: %s (%s) — saves %.1fs here",
-						verdict,
-						extra.getPick().getOption().getName(),
-						extra.getSlot().getDisplayName().toLowerCase(),
-						extra.getSecondsSaved()));
-				}
-				if (salveLostSeconds > 0)
-				{
-					explanation.addWeaponChoice(String.format(
-						"    %s tried: %.1fs SLOWER than the worn neck here — not brought",
-						salve.getOption().getName(), salveLostSeconds));
-				}
+					"    %s tried: %.1fs SLOWER than the worn neck here — not brought",
+					salve.getOption().getName(), salveLostSeconds));
 			}
-			return roomTime;
 		}
+		return roomTime;
 	}
 
 	/**
@@ -936,16 +934,7 @@ public class RoomTimeEstimator
 	 * Weapons to try for a style: the curated tier list (which carries the
 	 * special-case knowledge) plus any other owned weapon with a relevant
 	 * offensive bonus, so a weapon missing from the list still competes.
-	 */
-	private List<SetupBuilder.Pick> weaponCandidates(
-		GearNeed style,
-		Map<ItemSource, Map<Integer, Integer>> items,
-		boolean includeGroupStorage)
-	{
-		return weaponCandidates(style, items, includeGroupStorage, null, false);
-	}
-
-	/**
+	 *
 	 * @param monster when it restricts damage to one weapon class (the
 	 * Guardians take damage only from pickaxes), the candidate list is that
 	 * class alone — otherwise the planner would happily suggest a bludgeon

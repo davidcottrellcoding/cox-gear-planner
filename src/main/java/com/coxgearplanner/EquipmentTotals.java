@@ -58,27 +58,4 @@ public class EquipmentTotals
 		magicDmgPercent += eq.getMdmg();
 	}
 
-	EquipmentTotals copy()
-	{
-		EquipmentTotals c = new EquipmentTotals();
-		c.stabAtk = stabAtk;
-		c.slashAtk = slashAtk;
-		c.crushAtk = crushAtk;
-		c.rangedAtk = rangedAtk;
-		c.magicAtk = magicAtk;
-		c.meleeStr = meleeStr;
-		c.rangedStr = rangedStr;
-		c.magicDmgPercent = magicDmgPercent;
-		c.speedTicks = speedTicks;
-		c.crystalAcc = crystalAcc;
-		c.crystalDmg = crystalDmg;
-		c.salveMeleeMult = salveMeleeMult;
-		c.salveRangedMagicMult = salveRangedMagicMult;
-		c.salveMagicMult = salveMagicMult;
-		c.inquisitorCrush = inquisitorCrush;
-		c.fireSpellMult = fireSpellMult;
-		c.setAccMult = setAccMult;
-		c.setDmgMult = setDmgMult;
-		return c;
-	}
 }
