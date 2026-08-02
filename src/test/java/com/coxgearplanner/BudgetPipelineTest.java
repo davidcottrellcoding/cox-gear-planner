@@ -329,6 +329,41 @@ public class BudgetPipelineTest
 		}
 	}
 
+	/**
+	 * The budget must be fully spent while qualifying items remain. The
+	 * initial spend uses the internal model's gains, which can score a piece
+	 * at nothing that the kit-priced numbers value at 8s — leaving slots
+	 * empty while an "over limit" label blames a budget that was never full.
+	 */
+	@Test
+	public void theBudgetIsFullySpentWhileCandidatesRemain()
+	{
+		Run run = runPipeline(2);
+		int spent = 0;
+		boolean qualifyingLeftBehind = false;
+		for (SwitchAdvisor.Advice a : run.advice)
+		{
+			if (a.isAlreadyShared() || a.getSlot() == GearSlot.SHIELD)
+			{
+				continue;
+			}
+			if (a.isWorthIt())
+			{
+				spent++;
+			}
+			else if (a.getSecondsSaved() >= 3)
+			{
+				qualifyingLeftBehind = true;
+			}
+		}
+		if (qualifyingLeftBehind)
+		{
+			assertTrue(String.format(
+				"%d of 2 budget slots spent while a 3s+ switch sits over limit", spent),
+				spent >= 2);
+		}
+	}
+
 	/** More budget can never cost time — the knob must be monotonic. */
 	@Test
 	public void theBudgetIsMonotonic()

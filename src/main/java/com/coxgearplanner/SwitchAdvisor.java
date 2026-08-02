@@ -597,7 +597,7 @@ public class SwitchAdvisor
 				break;
 			}
 			boolean changed = improveAllocation(advice, totalSwapItems, thresholdSeconds);
-			changed |= chargeExtrasToBudget(real, advice, totalSwapItems, vetoedExtras);
+			changed |= chargeExtrasToBudget(real, advice, totalSwapItems, thresholdSeconds, vetoedExtras);
 			if (kitStable && !changed)
 			{
 				break;
@@ -636,6 +636,7 @@ public class SwitchAdvisor
 		List<RoomTimeEstimator.RoomTime> real,
 		List<Advice> advice,
 		int totalSwapItems,
+		double thresholdSeconds,
 		java.util.Set<Integer> vetoedExtras)
 	{
 		if (totalSwapItems <= 0)
@@ -700,6 +701,34 @@ public class SwitchAdvisor
 			{
 				break; // nothing left to cut
 			}
+			changed = true;
+		}
+
+		// The other direction matters just as much: the initial spend used the
+		// internal model's gains, which can score a piece at nothing that the
+		// kit-priced numbers later value at 8s — and a swap-only rebalance
+		// never fills the slots that underspend left empty. Spend every spare
+		// slot on the most valuable leftover that clears the minimum switch
+		// value, so "over limit" is only ever said by a budget that is full.
+		while (carried.size() + extras.size() < totalSwapItems)
+		{
+			Advice best = null;
+			for (Advice a : advice)
+			{
+				if (!a.isAlreadyShared() && !a.isWorthIt() && a.getSlot() != GearSlot.SHIELD
+					&& a.getSecondsSaved() >= Math.max(thresholdSeconds, REBALANCE_MARGIN)
+					&& (best == null || a.getSecondsSaved() > best.getSecondsSaved()))
+				{
+					best = a;
+				}
+			}
+			if (best == null)
+			{
+				break; // nothing left worth a slot
+			}
+			best.worthIt = true;
+			best.overLimit = false;
+			carried.add(best);
 			changed = true;
 		}
 		return changed;
