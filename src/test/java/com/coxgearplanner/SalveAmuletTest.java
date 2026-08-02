@@ -66,16 +66,27 @@ public class SalveAmuletTest
 		assertEquals(1.1667, i.salveRangedMagicMult, 1e-4);
 		assertEquals(1.15, i.salveMagicMult, 1e-9);
 
-		// A Soul Wars (ei) outranks an old (e) sitting in the same bank
-		Map<Integer, Integer> bank = new HashMap<>();
-		bank.put(RoomTimeEstimator.SALVE_E, 1);
-		bank.put(RoomTimeEstimator.SALVE_EI_SW, 1);
-		Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
-		items.put(ItemSource.BANK, bank);
+		// The PvP Arena imbues are a third pair of ids, same effects again
+		EquipmentTotals pvpa = new EquipmentTotals();
+		RoomTimeEstimator.addSalveBonus(pvpa, RoomTimeEstimator.SALVE_EI_PVPA);
+		assertEquals(1.20, pvpa.salveMagicMult, 1e-9);
+		EquipmentTotals pvpaI = new EquipmentTotals();
+		RoomTimeEstimator.addSalveBonus(pvpaI, RoomTimeEstimator.SALVE_I_PVPA);
+		assertEquals(1.15, pvpaI.salveMagicMult, 1e-9);
 
-		SetupBuilder.Pick pick = RoomTimeEstimator.findSalve(items, true);
-		assertEquals(RoomTimeEstimator.SALVE_EI_SW, pick.getItemId());
-		assertEquals("Salve amulet (ei)", pick.getOption().getName());
+		// Any imbued (ei) outranks an old (e) sitting in the same bank
+		for (int imbuedId : new int[]{RoomTimeEstimator.SALVE_EI_SW, RoomTimeEstimator.SALVE_EI_PVPA})
+		{
+			Map<Integer, Integer> bank = new HashMap<>();
+			bank.put(RoomTimeEstimator.SALVE_E, 1);
+			bank.put(imbuedId, 1);
+			Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
+			items.put(ItemSource.BANK, bank);
+
+			SetupBuilder.Pick pick = RoomTimeEstimator.findSalve(items, true);
+			assertEquals(imbuedId, pick.getItemId());
+			assertEquals("Salve amulet (ei)", pick.getOption().getName());
+		}
 	}
 
 	@Test

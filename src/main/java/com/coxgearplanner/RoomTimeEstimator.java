@@ -70,15 +70,22 @@ public class RoomTimeEstimator
 	static final int SALVE_I = 12017;
 	static final int SALVE_EI = 12018;
 	/**
-	 * The Soul Wars imbues are DISTINCT item ids with identical effects.
-	 * Missing them meant an (ei) imbued at Soul Wars was invisible, so the
-	 * search fell through to an old melee-only (e) in the bank — which then
-	 * "lost 6.8s" on a magic loadout it never claimed to help.
+	 * Every imbue source mints a DISTINCT item id with identical effects:
+	 * Nightmare Zone (12017/12018), Soul Wars (25250/25278) and the PvP Arena
+	 * (26763/26782) — RuneLite's ItemID constants NZONE_/SW_/PVPA_SALVE_AMULET
+	 * are the authority. Missing any of them meant that (ei) was invisible, so
+	 * the search fell through to an old melee-only (e) in the bank — which
+	 * then "lost 6.8s" on a magic loadout it never claimed to help.
 	 */
 	static final int SALVE_I_SW = 25250;
 	static final int SALVE_EI_SW = 25278;
+	static final int SALVE_I_PVPA = 26763;
+	static final int SALVE_EI_PVPA = 26782;
 	/** Best-first: (ei)/(e) give 20%, (i)/plain give 16.67% (magic 15% on the (i)). */
-	static final int[] SALVE_IDS = {SALVE_EI, SALVE_EI_SW, SALVE_I, SALVE_I_SW, SALVE_E, SALVE};
+	static final int[] SALVE_IDS = {
+		SALVE_EI, SALVE_EI_SW, SALVE_EI_PVPA,
+		SALVE_I, SALVE_I_SW, SALVE_I_PVPA,
+		SALVE_E, SALVE};
 
 	/**
 	 * Demonbane weapons and their own accuracy/damage bonus vs demons. The
@@ -1061,12 +1068,14 @@ public class RoomTimeEstimator
 		{
 			case SALVE_EI:
 			case SALVE_EI_SW:
+			case SALVE_EI_PVPA:
 				totals.salveMeleeMult = 1.20;
 				totals.salveRangedMagicMult = 1.20;
 				totals.salveMagicMult = 1.20;
 				break;
 			case SALVE_I:
 			case SALVE_I_SW:
+			case SALVE_I_PVPA:
 				// Melee and ranged 16.67%, but magic only 15%
 				totals.salveMeleeMult = 1.1667;
 				totals.salveRangedMagicMult = 1.1667;
@@ -1202,8 +1211,10 @@ public class RoomTimeEstimator
 	{
 		for (int id : SALVE_IDS)
 		{
-			String name = id == SALVE_EI || id == SALVE_EI_SW ? "Salve amulet (ei)"
-				: id == SALVE_I || id == SALVE_I_SW ? "Salve amulet (i)"
+			String name = id == SALVE_EI || id == SALVE_EI_SW || id == SALVE_EI_PVPA
+				? "Salve amulet (ei)"
+				: id == SALVE_I || id == SALVE_I_SW || id == SALVE_I_PVPA
+				? "Salve amulet (i)"
 				: id == SALVE_E ? "Salve amulet (e)"
 				: "Salve amulet";
 			SetupBuilder.Pick pick = SetupBuilder.findOwned(
