@@ -231,6 +231,9 @@ public class CoxGearPlannerPanel extends PluginPanel
 			sb.append(source.getDisplayName()).append(": ").append(size);
 			any = true;
 		}
+		// Whether the planner can see inside Dizana's quiver — when this
+		// reads 0 with arrows quivered, the client has not synced them yet
+		sb.append(" · quiver: ").append(plugin.getQuiverAmmoCount());
 		Map<Integer, Integer> group = items.get(ItemSource.GROUP_STORAGE);
 		if (group == null || group.isEmpty())
 		{

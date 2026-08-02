@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.70";
+	static final String VERSION = "1.71";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -90,6 +90,8 @@ public class CoxGearPlannerPlugin extends Plugin
 	private final Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
 	/** Charged ids that were only seen in uncharged form, per source. */
 	private final Map<ItemSource, Set<Integer>> needsCharging = new EnumMap<>(ItemSource.class);
+	/** Last known contents of Dizana's quiver, from events or direct reads. */
+	private Map<Integer, Integer> quiverAmmo = new HashMap<>();
 
 	private CoxGearPlannerPanel panel;
 	private NavigationButton navButton;
@@ -131,6 +133,18 @@ public class CoxGearPlannerPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
+		if (event.getContainerId() == CONTAINER_QUIVER_AMMO)
+		{
+			// The quiver's container syncs lazily; remember every sighting so
+			// a plan computed later still knows what is inside.
+			quiverAmmo = snapshot(event.getItemContainer(), new HashSet<>());
+			if (panel != null)
+			{
+				SwingUtilities.invokeLater(panel::refreshStatus);
+			}
+			return;
+		}
+
 		ItemSource source;
 		switch (event.getContainerId())
 		{
@@ -230,6 +244,49 @@ public class CoxGearPlannerPlugin extends Plugin
 	 * temporary swap slot and stay empty while arrows rest in the quiver.
 	 */
 	private static final int CONTAINER_QUIVER_AMMO = 879;
+
+	// The quiver's stored ammo also appears in these varplayers
+	private static final int VARP_QUIVER_AMMO_ID = 4142;
+	private static final int VARP_QUIVER_AMMO_COUNT = 4141;
+
+	/**
+	 * The quiver's contents, from whichever source the client will admit to:
+	 * the live container, the last container event seen this session, or the
+	 * varplayers. Must run on the client thread. The result is remembered so
+	 * the panel's status line can show what the planner sees — debugging
+	 * "it doesn't see my arrows" needs the number on screen, not guesswork.
+	 */
+	private Map<Integer, Integer> readQuiver()
+	{
+		Map<Integer, Integer> quiver =
+			snapshot(client.getItemContainer(CONTAINER_QUIVER_AMMO), new HashSet<>());
+		if (quiver.isEmpty() && !quiverAmmo.isEmpty())
+		{
+			quiver = new HashMap<>(quiverAmmo);
+		}
+		if (quiver.isEmpty())
+		{
+			int id = client.getVarpValue(VARP_QUIVER_AMMO_ID);
+			int count = client.getVarpValue(VARP_QUIVER_AMMO_COUNT);
+			if (id > 0 && count > 0)
+			{
+				quiver.put(ChargedVariants.sameStats(itemManager.canonicalize(id)), count);
+			}
+		}
+		quiverAmmo = quiver;
+		return quiver;
+	}
+
+	/** Total arrows the planner can see inside the quiver, for the status line. */
+	public int getQuiverAmmoCount()
+	{
+		int total = 0;
+		for (int count : quiverAmmo.values())
+		{
+			total += count;
+		}
+		return total;
+	}
 
 	/**
 	 * Merges the quiver's ammo stacks into the worn-equipment pool, so a
@@ -354,8 +411,7 @@ public class CoxGearPlannerPlugin extends Plugin
 		{
 			PlayerSnapshot player = snapshotPlayer();
 			Map<ItemSource, Map<Integer, Integer>> snapshot = withQuiverAmmo(
-				getItemsSnapshot(),
-				snapshot(client.getItemContainer(CONTAINER_QUIVER_AMMO), new HashSet<>()));
+				getItemsSnapshot(), readQuiver());
 			boolean includeGroup = config.includeGroupStorage();
 
 			PlanExplanation explanation = config.showDebug() ? new PlanExplanation() : null;
