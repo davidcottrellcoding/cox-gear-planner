@@ -707,8 +707,11 @@ public class CoxGearPlannerPanel extends PluginPanel
 				// No decision to make, but the slot still contributes, and
 				// without a number a slot doing nothing looks the same as one
 				// doing a great deal.
+				// Worn base gear is FREE — no inventory slot, no swap — so the
+				// minimum switch value never applies to it; a 0.0s entry just
+				// means the slot barely matters, not that it flouts the limit.
 				label = new JLabel("<html>" + advice.getSlot().getDisplayName() + ": "
-					+ advice.getItemName() + " — already worn, worth "
+					+ advice.getItemName() + " — worn for free, worth "
 					+ formatSaved(advice.getSecondsSaved()) + " vs "
 					+ (advice.getWearInstead() == null
 						? "an empty slot" : escape(advice.getWearInstead())) + "</html>");

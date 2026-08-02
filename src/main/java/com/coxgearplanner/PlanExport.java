@@ -139,7 +139,7 @@ public final class PlanExport
 			sb.append("\nSWITCH DECISIONS\n");
 			for (SwitchAdvisor.Advice a : advice)
 			{
-				String verdict = a.isAlreadyShared() ? "shared"
+				String verdict = a.isAlreadyShared() ? "worn free"
 					: a.isWorthIt() ? "CARRY"
 					: a.isOverLimit() ? "over limit"
 					: "skip";
