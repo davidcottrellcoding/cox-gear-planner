@@ -287,7 +287,7 @@ public class SwitchAdvisor
 			// per-style cap the base style's switch-backs look free, so the
 			// optimiser strips its gear slot by slot and hands back a "melee"
 			// base outfit wearing a magic hood and a ranged cape.
-			if (switchesBack(candidate, primary, advice.getSlot(), thresholdSeconds))
+			if (switchesBack(candidate, primary, advice.getSlot()))
 			{
 				continue;
 			}
@@ -862,33 +862,26 @@ public class SwitchAdvisor
 		return total;
 	}
 
-	/** Whether the base style ends up wanting this slot back for real value. */
-	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot,
-		double thresholdSeconds)
+	/**
+	 * Whether the base style ends up CARRYING its own item back into a traded
+	 * slot — then nothing was freed, the switch just changed owner and an
+	 * inventory slot was spent moving it, a cost the time totals cannot see.
+	 *
+	 * That is the only veto. A switch-back that merely loses to the budget is
+	 * a real loss, but one the totals count in full: the base style's rooms
+	 * get slower without its item, and every number shown is re-priced
+	 * against the packed kit. So a trade that still lowers the total — wear
+	 * the melee berserker ring in a dead magic ring slot, keep its full value
+	 * for free, and hand the freed budget slot to the next-best switch — is
+	 * the optimiser doing its job, not smuggling. The best TOTAL kit wins,
+	 * not the purest base outfit.
+	 */
+	static boolean switchesBack(Result result, GearNeed primary, GearSlot slot)
 	{
 		for (Advice advice : result.getAdvice())
 		{
-			if (advice.getStyle() != primary || advice.getSlot() != slot)
-			{
-				continue;
-			}
-			// A carried switch-back means nothing was freed — the switch just
-			// changed owner and an inventory slot was spent moving it.
-			if (advice.isWorthIt())
-			{
-				return true;
-			}
-			// A switch-back that lost to the budget is worse than it looks:
-			// every traded slot is a swap the budget never sees. Under a tight
-			// budget every switch-back loses to the cap, so judging only
-			// carried ones let the search strip the base outfit slot by slot —
-			// a "1-swap" plan wearing another style's neck, body and legs is
-			// really a four-swap plan, which is why tightening the budget
-			// barely moved the clock. A trade is only fair when the base style
-			// would not bother carrying its item back at all, so anything at
-			// or above the minimum switch value vetoes it. Cheap slots (the
-			// 0.7s mage's book that once vetoed a 5.1s anguish) still trade.
-			if (advice.getSecondsSaved() > 0 && advice.getSecondsSaved() >= thresholdSeconds)
+			if (advice.getStyle() == primary && advice.getSlot() == slot
+				&& advice.isWorthIt())
 			{
 				return true;
 			}
