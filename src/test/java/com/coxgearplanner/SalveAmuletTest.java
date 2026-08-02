@@ -46,6 +46,38 @@ public class SalveAmuletTest
 		assertEquals(1.0, fury.salveRangedMagicMult, 1e-9);
 	}
 
+	/**
+	 * The Soul Wars imbues are distinct item ids with identical effects. When
+	 * they were unknown, an (ei) imbued at Soul Wars was invisible and the
+	 * search fell through to an old melee-only (e) — which then "lost 6.8s" on
+	 * a magic loadout it never claimed to help.
+	 */
+	@Test
+	public void soulWarsImbuesCountAsTheRealThing()
+	{
+		EquipmentTotals ei = new EquipmentTotals();
+		RoomTimeEstimator.addSalveBonus(ei, RoomTimeEstimator.SALVE_EI_SW);
+		assertEquals(1.20, ei.salveMeleeMult, 1e-9);
+		assertEquals(1.20, ei.salveRangedMagicMult, 1e-9);
+		assertEquals(1.20, ei.salveMagicMult, 1e-9);
+
+		EquipmentTotals i = new EquipmentTotals();
+		RoomTimeEstimator.addSalveBonus(i, RoomTimeEstimator.SALVE_I_SW);
+		assertEquals(1.1667, i.salveRangedMagicMult, 1e-4);
+		assertEquals(1.15, i.salveMagicMult, 1e-9);
+
+		// A Soul Wars (ei) outranks an old (e) sitting in the same bank
+		Map<Integer, Integer> bank = new HashMap<>();
+		bank.put(RoomTimeEstimator.SALVE_E, 1);
+		bank.put(RoomTimeEstimator.SALVE_EI_SW, 1);
+		Map<ItemSource, Map<Integer, Integer>> items = new EnumMap<>(ItemSource.class);
+		items.put(ItemSource.BANK, bank);
+
+		SetupBuilder.Pick pick = RoomTimeEstimator.findSalve(items, true);
+		assertEquals(RoomTimeEstimator.SALVE_EI_SW, pick.getItemId());
+		assertEquals("Salve amulet (ei)", pick.getOption().getName());
+	}
+
 	@Test
 	public void findSalvePrefersTheBestOwnedVariant()
 	{
