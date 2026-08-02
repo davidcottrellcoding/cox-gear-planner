@@ -121,7 +121,9 @@ public class VariantItemsTest
 		snapshot.put(ItemSource.BANK, bank);
 
 		// Dragon arrows live only in the quiver
-		snapshot = CoxGearPlannerPlugin.withQuiverAmmo(snapshot, 11212, 2000);
+		Map<Integer, Integer> quiver = new HashMap<>();
+		quiver.put(11212, 2000);
+		snapshot = CoxGearPlannerPlugin.withQuiverAmmo(snapshot, quiver);
 
 		SetupBuilder.Pick ammo = RoomTimeEstimator.findAmmo(20997, snapshot, true);
 		assertNotNull(ammo);
@@ -131,7 +133,7 @@ public class VariantItemsTest
 
 		// No quiver ammo leaves the snapshot untouched
 		Map<ItemSource, Map<Integer, Integer>> empty = new EnumMap<>(ItemSource.class);
-		assertTrue(CoxGearPlannerPlugin.withQuiverAmmo(empty, 0, 0).isEmpty());
+		assertTrue(CoxGearPlannerPlugin.withQuiverAmmo(empty, new HashMap<>()).isEmpty());
 	}
 
 	@Test

@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.69";
+	static final String VERSION = "1.70";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -223,26 +223,32 @@ public class CoxGearPlannerPlugin extends Plugin
 		return result;
 	}
 
-	// Dizana's quiver stores its ammo in varplayers, not in any item container
-	private static final int VARP_QUIVER_AMMO_ID = 4142;
-	private static final int VARP_QUIVER_AMMO_COUNT = 4141;
+	/**
+	 * Ammo stored inside Dizana's quiver sits in its OWN item container
+	 * (gameval InventoryID.DIZANAS_QUIVER_AMMO), not in the equipment one —
+	 * and not in the varplayers this first shipped against, which track the
+	 * temporary swap slot and stay empty while arrows rest in the quiver.
+	 */
+	private static final int CONTAINER_QUIVER_AMMO = 879;
 
 	/**
-	 * Merges ammo stored inside Dizana's quiver into the worn-equipment pool.
-	 * The quiver's contents live in varplayers rather than an item container,
-	 * so a maxed stack of dragon arrows in the quiver was invisible and the
-	 * planner suggested rune arrows from the bank instead.
+	 * Merges the quiver's ammo stacks into the worn-equipment pool, so a
+	 * maxed stack of dragon arrows in the quiver counts as owned instead of
+	 * the planner suggesting rune arrows from the bank.
 	 */
 	static Map<ItemSource, Map<Integer, Integer>> withQuiverAmmo(
-		Map<ItemSource, Map<Integer, Integer>> snapshot, int ammoId, int count)
+		Map<ItemSource, Map<Integer, Integer>> snapshot, Map<Integer, Integer> quiver)
 	{
-		if (ammoId <= 0 || count <= 0)
+		if (quiver == null || quiver.isEmpty())
 		{
 			return snapshot;
 		}
 		Map<Integer, Integer> worn = new HashMap<>(
 			snapshot.getOrDefault(ItemSource.EQUIPMENT, Collections.emptyMap()));
-		worn.merge(ChargedVariants.sameStats(ammoId), count, Integer::sum);
+		for (Map.Entry<Integer, Integer> stack : quiver.entrySet())
+		{
+			worn.merge(stack.getKey(), stack.getValue(), Integer::sum);
+		}
 		snapshot.put(ItemSource.EQUIPMENT, worn);
 		return snapshot;
 	}
@@ -349,8 +355,7 @@ public class CoxGearPlannerPlugin extends Plugin
 			PlayerSnapshot player = snapshotPlayer();
 			Map<ItemSource, Map<Integer, Integer>> snapshot = withQuiverAmmo(
 				getItemsSnapshot(),
-				client.getVarpValue(VARP_QUIVER_AMMO_ID),
-				client.getVarpValue(VARP_QUIVER_AMMO_COUNT));
+				snapshot(client.getItemContainer(CONTAINER_QUIVER_AMMO), new HashSet<>()));
 			boolean includeGroup = config.includeGroupStorage();
 
 			PlanExplanation explanation = config.showDebug() ? new PlanExplanation() : null;

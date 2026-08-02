@@ -21,7 +21,7 @@ dependencies {
 }
 
 group = 'com.coxgearplanner'
-version = '1.69'
+version = '1.70'
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
