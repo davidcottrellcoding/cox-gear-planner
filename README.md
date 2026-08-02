@@ -6,8 +6,9 @@ shared storage** — using OSRS DPS maths for the rooms in your raid.
 
 ## Pull it down and run it
 
-Requires only a JDK (11+) and git. Development happens on the
-`worktree-plugin-build` branch, so clone and run from there:
+Requires only a JDK (17 or newer — any current release works) and git.
+Development happens on the `worktree-plugin-build` branch, so clone and run
+from there:
 
 ```
 git clone https://github.com/davidcottrellcoding/cox-gear-planner.git
@@ -304,6 +305,10 @@ every level, so this cannot quietly become an additive stack later.
 ## Building and running
 
 See **Pull it down and run it** at the top for the clone-and-run steps.
+If the build fails with `Unsupported class file major version` or a "BUG!
+exception in phase 'semantic analysis'" error, your Gradle and JDK versions
+have drifted apart — `git pull` (the wrapper is kept current) and use a JDK
+of 17 or newer.
 
 ```
 ./gradlew runClient        # dev client with the plugin loaded
