@@ -165,6 +165,24 @@ public final class PlanExport
 				}
 				sb.append("\n");
 			}
+			// Room extras and near-misses live outside the per-style switches
+			for (RoomTimeEstimator.RoomTime time : result.getTimes())
+			{
+				for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
+				{
+					sb.append("  ").append(pad("BRING", 11))
+						.append(pad("for " + time.getDisplayName(), 18))
+						.append(pad(extra.getPick().getOption().getName(), 26))
+						.append(String.format("%.1fs there%n", extra.getSecondsSaved()));
+				}
+				if (time.getSalveTried() != null)
+				{
+					sb.append("  ").append(pad("skip", 11))
+						.append(pad("for " + time.getDisplayName(), 18))
+						.append(pad(time.getSalveTried().getOption().getName(), 26))
+						.append(String.format("%.1fs slower there%n", time.getSalveLostSeconds()));
+				}
+			}
 		}
 
 		for (SetupBuilder.Section section : loadout.getStyleSections())

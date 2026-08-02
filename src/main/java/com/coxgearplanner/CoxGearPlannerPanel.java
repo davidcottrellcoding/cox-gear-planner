@@ -742,6 +742,37 @@ public class CoxGearPlannerPanel extends PluginPanel
 			summary.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
 			resultsPanel.add(summary);
 		}
+
+		// Room-specific extras and near-misses — the salve amulet above all.
+		// They are not style switches, so they never appear in the list above,
+		// and that reads as "never considered" when the truth is "tried, and
+		// here is the number". Say it where the user is actually looking.
+		for (RoomTimeEstimator.RoomTime time : result.getTimes())
+		{
+			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
+			{
+				JLabel label = new JLabel("<html><b>Bring</b> "
+					+ extra.getPick().getOption().getName()
+					+ " for " + time.getDisplayName() + " only: saves ~"
+					+ formatSaved(extra.getSecondsSaved()) + " there</html>");
+				label.setForeground(COLOR_ON_HAND);
+				label.setFont(FontManager.getRunescapeSmallFont());
+				label.setAlignmentX(Component.LEFT_ALIGNMENT);
+				resultsPanel.add(label);
+			}
+			if (time.getSalveTried() != null)
+			{
+				JLabel label = new JLabel("<html><b>Skip</b> "
+					+ time.getSalveTried().getOption().getName()
+					+ " for " + time.getDisplayName() + ": ~"
+					+ formatSaved(time.getSalveLostSeconds())
+					+ " slower than what you'd wear there</html>");
+				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				label.setFont(FontManager.getRunescapeSmallFont());
+				label.setAlignmentX(Component.LEFT_ALIGNMENT);
+				resultsPanel.add(label);
+			}
+		}
 	}
 
 	private static String formatSaved(double seconds)

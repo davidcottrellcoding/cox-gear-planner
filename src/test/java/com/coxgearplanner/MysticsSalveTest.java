@@ -68,6 +68,29 @@ public class MysticsSalveTest
 		bank.put(ItemSource.BANK, pool);
 	}
 
+	/**
+	 * When the salve genuinely loses, the plan must say so with a number —
+	 * "not suggested" and "never considered" are indistinguishable otherwise.
+	 */
+	@Test
+	public void aLosingSalveIsRecordedWithItsCost()
+	{
+		// A neck so strong the salve trial cannot win
+		statsById.put(ANGUISH, new ItemStats(true, 1.0, 0, ItemEquipmentStats.builder()
+			.slot(2).arange(150).rstr(80).build()));
+
+		Set<CoxRoom> rooms = EnumSet.of(CoxRoom.MYSTICS);
+		RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
+		estimator.getResolver().setDpsContext(estimator, player, rooms, true);
+		RoomTimeEstimator.RoomTime mystics =
+			estimator.estimate(rooms, bank, true, player, 1, true, null).get(0);
+
+		assertTrue("no salve extra when it loses", mystics.getExtraSwitches().isEmpty());
+		assertNotNull("the verdict is recorded", mystics.getSalveTried());
+		assertEquals(SALVE_EI, mystics.getSalveTried().getItemId());
+		assertTrue("with the seconds it would cost", mystics.getSalveLostSeconds() > 0);
+	}
+
 	@Test
 	public void theSalveWinsTheMysticsAndIsPacked()
 	{

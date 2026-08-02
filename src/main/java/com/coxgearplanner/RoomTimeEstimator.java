@@ -237,6 +237,9 @@ public class RoomTimeEstimator
 		private final SetupBuilder.Pick weapon;
 		/** Room-specific items the general loadout doesn't cover. */
 		final List<ExtraSwitch> extraSwitches = new ArrayList<>();
+		/** A salve tried for this undead room but slower; null when won or untried. */
+		SetupBuilder.Pick salveTried;
+		double salveLostSeconds;
 		/** The target this entry is for, and its party-scaled HP pool. */
 		MonsterProfile monster;
 		double totalHp;
@@ -290,6 +293,18 @@ public class RoomTimeEstimator
 		public List<ExtraSwitch> getExtraSwitches()
 		{
 			return extraSwitches;
+		}
+
+		/** The salve that was tried here and lost, or null. */
+		public SetupBuilder.Pick getSalveTried()
+		{
+			return salveTried;
+		}
+
+		/** How much slower the tried salve was, in seconds. */
+		public double getSalveLostSeconds()
+		{
+			return salveLostSeconds;
 		}
 
 		/** The monster this entry was computed against; null when infeasible. */
@@ -701,6 +716,11 @@ public class RoomTimeEstimator
 			roomTime.monster = monster;
 			roomTime.totalHp = yourShare;
 			roomTime.partName = part;
+			if (salveLostSeconds > 0)
+			{
+				roomTime.salveTried = salve;
+				roomTime.salveLostSeconds = salveLostSeconds;
+			}
 
 			if (explanation != null)
 			{
