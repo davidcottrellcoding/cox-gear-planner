@@ -680,8 +680,18 @@ public class CoxGearPlannerPanel extends PluginPanel
 
 		int skippable = 0;
 		double skippedCost = 0;
+		// The advice list sorts shared (no-decision) entries last; the room
+		// extras are decisions too, so they go BEFORE that wall of "already
+		// worn" lines — burying "Bring the salve" under fifteen informational
+		// entries reads as the salve not being offered at all.
+		boolean extrasShown = false;
 		for (SwitchAdvisor.Advice advice : advices)
 		{
+			if (advice.isAlreadyShared() && !extrasShown)
+			{
+				renderRoomExtras(result);
+				extrasShown = true;
+			}
 			String styleName = advice.getStyle().getDisplayName().toLowerCase();
 			JLabel label;
 			if (advice.isAlreadyShared())
@@ -732,6 +742,11 @@ public class CoxGearPlannerPanel extends PluginPanel
 			resultsPanel.add(label);
 		}
 
+		if (!extrasShown)
+		{
+			renderRoomExtras(result);
+		}
+
 		if (skippable > 0)
 		{
 			JLabel summary = new JLabel("<html><b>" + skippable + " switch(es) not worth it</b> — frees "
@@ -742,11 +757,17 @@ public class CoxGearPlannerPanel extends PluginPanel
 			summary.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
 			resultsPanel.add(summary);
 		}
+	}
 
-		// Room-specific extras and near-misses — the salve amulet above all.
-		// They are not style switches, so they never appear in the list above,
-		// and that reads as "never considered" when the truth is "tried, and
-		// here is the number". Say it where the user is actually looking.
+	/**
+	 * Room-specific extras and near-misses — the salve amulet above all. They
+	 * are not style switches, so they would never appear among the advice
+	 * entries, and that reads as "never considered" when the truth is "tried,
+	 * and here is the number". Rendered with the decisions, above the wall of
+	 * already-worn entries.
+	 */
+	private void renderRoomExtras(PlanResult result)
+	{
 		for (RoomTimeEstimator.RoomTime time : result.getTimes())
 		{
 			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
