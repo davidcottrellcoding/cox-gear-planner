@@ -36,21 +36,26 @@ the new version number.
 
 The dev client does not go through the Jagex Launcher, so it shows the old
 username/password login — which no longer works for accounts migrated to a
-Jagex account. One-time fix (RuneLite's documented flow):
+Jagex account. One-time fix (RuneLite's documented flow; the flag lives in
+RuneLite's own configuration tool, NOT in the Jagex Launcher's settings):
 
-1. Open the **Jagex Launcher**, go to RuneLite's settings inside it, and add
-   `--insecure-write-credentials` to the client launch arguments.
-2. Launch RuneLite through the Jagex Launcher once and log in normally. It
-   writes a `credentials.properties` file into your `.runelite` folder.
-3. Remove the launch argument again, then start the dev client with
-   `gradlew runClient` — it picks up those credentials and logs you straight
-   in, no password prompt.
+1. Close RuneLite. From the **Start menu**, run **"RuneLite (configure)"**
+   (installed next to the normal RuneLite entry; needs launcher 2.6.3+; on
+   Mac: `/Applications/RuneLite.app/Contents/MacOS/RuneLite --configure`).
+2. Add `--insecure-write-credentials` to the **Client arguments** field and
+   press **Save**.
+3. Launch RuneLite through the Jagex Launcher (press Play as normal) and log
+   in. It writes a `credentials.properties` file into your `.runelite`
+   folder.
+4. Re-open "RuneLite (configure)" and remove the argument again.
+5. Start the dev client with `gradlew runClient` — it picks up those
+   credentials and logs you straight in, no password prompt.
 
-The credentials file is stored in plain text, hence "insecure": anyone with
-access to your user folder could log into the account with it. Delete
-`.runelite/credentials.properties` to revoke it at any time. Accounts that
-were never migrated to a Jagex account can ignore all of this and simply
-type their username and password into the dev client.
+The credentials file grants direct account access — do not share it. Delete
+`.runelite/credentials.properties` to revoke it at any time (or use "End
+sessions" in account settings on runescape.com). Accounts that were never
+migrated to a Jagex account can ignore all of this and simply type their
+username and password into the dev client.
 
 ![Raid loadout](totalgear.png)
 
