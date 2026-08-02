@@ -35,7 +35,7 @@ public final class GearSetBonus
 	private static final int OBSIDIAN_HELM = 21298;
 	private static final int OBSIDIAN_BODY = 21301;
 	private static final int OBSIDIAN_LEGS = 21304;
-	private static final int[] OBSIDIAN_WEAPONS = {6523, 6525, 6528}; // ak, ek, om
+	private static final int[] OBSIDIAN_WEAPONS = {6523, 6525, 6528, 23235}; // ak, ek, om, om (t)
 
 	/** A set the player owns, expressed as the slots it would occupy. */
 	public static class SetOption

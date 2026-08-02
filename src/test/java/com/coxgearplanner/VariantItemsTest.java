@@ -73,6 +73,39 @@ public class VariantItemsTest
 				.anyMatch(o -> o.getName().equals("Blazing blowpipe")));
 	}
 
+	/**
+	 * Special-case passives are keyed by exact weapon id, so an ornamented
+	 * copy must hit every id table its base item is in — the fang's double
+	 * stab roll and the Guardians' pickaxe formula above all: a dragon
+	 * pickaxe (or) that missed the tier table dealt ZERO damage there.
+	 */
+	@Test
+	public void ornamentedWeaponsKeepTheirPassives()
+	{
+		// Fang (or): identical dps to the plain fang, double roll included
+		MonsterProfile stabTarget = new MonsterProfile(
+			"Dummy", 100, 180, 1, 150, 150, 150, 0, 0, false, false, GearNeed.MELEE);
+		PlayerSnapshot maxed = new PlayerSnapshot(99, 99, 99, 99, 99);
+		EquipmentTotals eq = new EquipmentTotals();
+		eq.stabAtk = 105;
+		eq.meleeStr = 103;
+		eq.speedTicks = 5;
+		EquipmentTotals eq2 = new EquipmentTotals();
+		eq2.stabAtk = 105;
+		eq2.meleeStr = 103;
+		eq2.speedTicks = 5;
+		assertEquals(RoomTimeEstimator.meleeDps(26219, eq, maxed, stabTarget, true),
+			RoomTimeEstimator.meleeDps(27246, eq2, maxed, stabTarget, true), 1e-9);
+
+		// Every pickaxe variant hits the Guardians at the dragon tier
+		for (int id : new int[]{11920, 12797, 25063, 25376, 13243, 13244, 23680})
+		{
+			assertEquals("pickaxe " + id + " must damage the Guardians",
+				(50 + 85 + 61) / 150.0,
+				RoomTimeEstimator.guardianDamageMultiplier(id, 85), 1e-9);
+		}
+	}
+
 	@Test
 	public void seekingArrowsFeedTheArrowWeapons()
 	{

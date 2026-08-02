@@ -33,7 +33,7 @@ public final class GearDatabase
 			ItemOption.of("Osmumten's fang", 26219, 27246), // + ornament
 			ItemOption.twoHanded("Soulreaper axe", 28338, 33335), // + ornament
 			ItemOption.twoHanded("Noxious halberd", 29796),
-			ItemOption.of("Ghrazi rapier", 22324),
+			ItemOption.of("Ghrazi rapier", 22324, 25734), // + holy
 			ItemOption.of("Blade of saeldor (c)", 23995, 24551),
 			ItemOption.of("Dragon hunter lance", 22978), // 20% vs draconic (Olm)
 			ItemOption.of("Inquisitor's mace", 24417),
@@ -45,8 +45,8 @@ public final class GearDatabase
 			ItemOption.of("Abyssal tentacle", 12006),
 			ItemOption.of("Abyssal bludgeon", 13263),
 			ItemOption.of("Zamorakian hasta", 11889),
-			ItemOption.of("Abyssal whip", 4151),
-			ItemOption.of("Dragon scimitar", 4587)));
+			ItemOption.of("Abyssal whip", 4151, 12773, 12774), // + volcanic/frozen
+			ItemOption.of("Dragon scimitar", 4587, 20000))); // + or
 		melee.put(GearSlot.SHIELD, Arrays.asList(
 			ItemOption.of("Avernic defender", 22322, 24186), // + trouver
 			ItemOption.of("Dragon defender", 12954, 19722), // + t
@@ -274,7 +274,8 @@ public final class GearDatabase
 
 		UTILITIES.put(GearNeed.PICKAXE, Arrays.asList(
 			ItemOption.of("Crystal pickaxe", 23680),
-			ItemOption.of("Dragon pickaxe", 11920),
+			ItemOption.of("Dragon pickaxe", 11920, 12797, 25063, 25376), // + ornaments
+			ItemOption.of("Infernal pickaxe", 13243, 13244), // empty still mines fine
 			ItemOption.of("Rune pickaxe", 1275)));
 		UTILITIES.put(GearNeed.AXE, Arrays.asList(
 			ItemOption.of("Crystal axe", 23673),
@@ -283,13 +284,14 @@ public final class GearDatabase
 		UTILITIES.put(GearNeed.LOCKPICK, Collections.singletonList(
 			ItemOption.of("Lockpick", 1523)));
 		UTILITIES.put(GearNeed.FIRE_SPELLS, Arrays.asList(
+			ItemOption.of("Mystic smoke battlestaff", 12000),
 			ItemOption.of("Smoke battlestaff", 11998),
 			ItemOption.of("Fire battlestaff", 1387),
 			ItemOption.of("Staff of fire", 1401)));
 		UTILITIES.put(GearNeed.DEF_REDUCTION, Arrays.asList(
-			ItemOption.of("Dragon warhammer", 13576),
+			ItemOption.of("Dragon warhammer", 13576, 26710), // + or
 			ItemOption.of("Elder maul", 21003),
-			ItemOption.of("Bandos godsword", 11804)));
+			ItemOption.of("Bandos godsword", 11804, 20370))); // + g
 	}
 
 	public static Map<GearSlot, List<ItemOption>> loadout(GearNeed style)

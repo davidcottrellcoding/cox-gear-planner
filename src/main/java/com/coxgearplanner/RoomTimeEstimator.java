@@ -24,7 +24,8 @@ public class RoomTimeEstimator
 {
 	// Weapon ids with special handling
 	private static final Set<Integer> SCYTHES = new HashSet<>(Arrays.asList(22325, 25736, 25739));
-	private static final int FANG = 26219;
+	/** Osmumten's fang and its ornament — the double stab roll applies to both. */
+	private static final Set<Integer> FANGS = new HashSet<>(Arrays.asList(26219, 27246));
 	private static final int TBOW = 20997;
 	private static final int DHCB = 21012;
 	/** Dart-fed blowpipes: no quiver ammo, the dart strength is baked in here. */
@@ -181,6 +182,11 @@ public class RoomTimeEstimator
 		PICKAXE_TIER.put(1271, 31);  // adamant
 		PICKAXE_TIER.put(1275, 41);  // rune
 		PICKAXE_TIER.put(11920, 61); // dragon
+		PICKAXE_TIER.put(12797, 61); // dragon (or)
+		PICKAXE_TIER.put(25063, 61); // dragon (or), trailblazer
+		PICKAXE_TIER.put(25376, 61); // dragon (or), trailblazer without infernal
+		PICKAXE_TIER.put(13243, 61); // infernal
+		PICKAXE_TIER.put(13244, 61); // infernal (empty) — still mines like a dragon
 		PICKAXE_TIER.put(23680, 61); // crystal — the formula caps at the dragon tier
 	}
 
@@ -1365,7 +1371,7 @@ public class RoomTimeEstimator
 		}
 	}
 
-	private static double meleeDps(int weaponId, EquipmentTotals eq,
+	static double meleeDps(int weaponId, EquipmentTotals eq,
 		PlayerSnapshot p, MonsterProfile m, boolean elite)
 	{
 		// Piety; aggressive style (+3 strength)
@@ -1408,7 +1414,7 @@ public class RoomTimeEstimator
 			double acc = CombatFormulas.accuracy(
 				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult * demonbane,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
-			if (weaponId == FANG && i == 0)
+			if (FANGS.contains(weaponId) && i == 0)
 			{
 				// The fang rolls accuracy twice, but only on stab styles —
 				// that restriction came in on 17 Jan 2024. Applying it to
