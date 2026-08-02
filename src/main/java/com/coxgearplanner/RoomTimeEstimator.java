@@ -27,7 +27,10 @@ public class RoomTimeEstimator
 	private static final int FANG = 26219;
 	private static final int TBOW = 20997;
 	private static final int DHCB = 21012;
-	private static final int BLOWPIPE = 12926;
+	/** Dart-fed blowpipes: no quiver ammo, the dart strength is baked in here. */
+	private static final Set<Integer> BLOWPIPES = new HashSet<>(Arrays.asList(
+		12926,   // toxic blowpipe
+		30374)); // blazing blowpipe
 	private static final int SHADOW = 27275;
 	private static final Set<Integer> SANG = new HashSet<>(Arrays.asList(22323, 25731));
 	private static final int TRIDENT_SWAMP = 12899;
@@ -44,7 +47,9 @@ public class RoomTimeEstimator
 	// Which ranged weapons consume which ammo class
 	private static final Set<Integer> ARROW_WEAPONS = new HashSet<>(Arrays.asList(20997, 12788));
 	private static final Set<Integer> BOLT_WEAPONS = new HashSet<>(Arrays.asList(26374, 21012, 11785, 21902, 9185));
-	private static final Set<Integer> ARROW_IDS = new HashSet<>(Arrays.asList(11212, 21326, 892, 890));
+	private static final Set<Integer> ARROW_IDS = new HashSet<>(Arrays.asList(
+		11212, 21326, 892, 890,
+		33595, 33589, 33583)); // seeking dragon/amethyst/rune
 	private static final Set<Integer> BOLT_IDS = new HashSet<>(Arrays.asList(21946, 21944, 9243, 9242));
 
 	// Bow of faerdhinen + crystal armour set effect (per piece: acc%, dmg%)
@@ -139,6 +144,7 @@ public class RoomTimeEstimator
 		WEAPON_REACH.put(27275, 8);  // tumeken's shadow
 		// 5 tiles — cannot reach the portal even on longrange
 		WEAPON_REACH.put(12926, 5);  // toxic blowpipe
+		WEAPON_REACH.put(30374, 5);  // blazing blowpipe
 	}
 
 	/** Base reach of a weapon in tiles, defaulting to the common 7. */
@@ -917,7 +923,7 @@ public class RoomTimeEstimator
 	private void addAmmo(EquipmentTotals totals, int weaponId,
 		Map<ItemSource, Map<Integer, Integer>> items, boolean includeGroupStorage)
 	{
-		if (weaponId == BLOWPIPE)
+		if (BLOWPIPES.contains(weaponId))
 		{
 			totals.rangedStr += BLOWPIPE_DART_RSTR;
 			return;

@@ -120,6 +120,7 @@ public final class GearDatabase
 				25865, 25867, 25884, 25886, 25888, 25890, 25892, 25894, 25896), // + recolours
 			ItemOption.of("Zaryte crossbow", 26374),
 			ItemOption.of("Dragon hunter crossbow", 21012), // strong vs the draconic Great Olm
+			ItemOption.of("Blazing blowpipe", 30374),
 			ItemOption.of("Toxic blowpipe", 12926),
 			ItemOption.of("Armadyl crossbow", 11785),
 			ItemOption.of("Dragon crossbow", 21902),
@@ -153,8 +154,11 @@ public final class GearDatabase
 			ItemOption.of("Amulet of fury", 6585, 12436),
 			ItemOption.of("Amulet of glory", 1712, 1704)));
 		ranged.put(GearSlot.AMMO, Arrays.asList(
+			ItemOption.of("Seeking dragon arrow", 33595),
 			ItemOption.of("Dragon arrow", 11212),
+			ItemOption.of("Seeking amethyst arrow", 33589),
 			ItemOption.of("Amethyst arrow", 21326),
+			ItemOption.of("Seeking rune arrow", 33583),
 			ItemOption.of("Rune arrow", 892),
 			ItemOption.of("Adamant arrow", 890),
 			ItemOption.of("Diamond dragon bolts (e)", 21946),

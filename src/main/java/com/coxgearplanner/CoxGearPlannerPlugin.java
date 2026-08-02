@@ -43,7 +43,7 @@ import com.google.inject.Provides;
 public class CoxGearPlannerPlugin extends Plugin
 {
 	/** Shown in the panel title; keep in sync with build.gradle. */
-	static final String VERSION = "1.66";
+	static final String VERSION = "1.67";
 
 	// Item container ids. Raw values are used because the InventoryID API
 	// has been migrated between RuneLite versions.
@@ -208,6 +208,9 @@ public class CoxGearPlannerPlugin extends Plugin
 			}
 			// Collapse noted items and placeholders onto the base item id
 			int canonical = itemManager.canonicalize(item.getId());
+			// ...then ornament kits and alternate imbues onto the id the
+			// planner knows (same stats, different id)...
+			canonical = ChargedVariants.sameStats(canonical);
 			// ...then collapse uncharged/inactive forms onto the charged item,
 			// so an uncharged scythe counts as owning a scythe.
 			int charged = ChargedVariants.canonical(canonical);

@@ -18,6 +18,14 @@ public final class ChargedVariants
 {
 	private static final Map<Integer, Integer> TO_CHARGED = new HashMap<>();
 
+	/**
+	 * Same-stats variants — ornament kits and alternate imbue sources — mapped
+	 * onto the id the planner's tables know. Purely cosmetic: no charging
+	 * needed and no stat difference, so unlike {@link #TO_CHARGED} these never
+	 * raise the CHARGE IT FIRST flag.
+	 */
+	private static final Map<Integer, Integer> SAME_STATS = new HashMap<>();
+
 	private ChargedVariants()
 	{
 	}
@@ -27,11 +35,51 @@ public final class ChargedVariants
 		TO_CHARGED.put(uncharged, charged);
 	}
 
+	private static void same(int variant, int base)
+	{
+		SAME_STATS.put(variant, base);
+	}
+
+	static
+	{
+		// Ornament kits — identical stats, purely cosmetic
+		same(28688, 12926); // toxic blowpipe (ornament, loaded)
+		same(28687, 12924); // toxic blowpipe (ornament, empty) -> then the charged map
+		same(19720, 12002); // occult necklace (or)
+		same(20366, 19553); // amulet of torture (or)
+		same(22249, 19547); // necklace of anguish (or)
+		same(23444, 19544); // tormented bracelet (or)
+		same(12436, 6585);  // amulet of fury (or)
+		same(19722, 12954); // dragon defender (t)
+
+		// Alternate imbues — Soul Wars and the PvP Arena mint their own ids
+		// with effects identical to the Nightmare Zone imbue
+		same(25258, 11770); // seers ring (i), soul wars
+		same(26767, 11770); // seers ring (i), pvp arena
+		same(25260, 11771); // archers ring (i), soul wars
+		same(26768, 11771); // archers ring (i), pvp arena
+		same(25262, 11772); // warrior ring (i), soul wars
+		same(26769, 11772); // warrior ring (i), pvp arena
+		same(25264, 11773); // berserker ring (i), soul wars
+		same(26770, 11773); // berserker ring (i), pvp arena
+		same(25252, 13202); // ring of the gods (i), soul wars
+		same(26764, 13202); // ring of the gods (i), pvp arena
+		same(25193, 21752); // granite ring (i), soul wars
+		same(26685, 21752); // granite ring (i), pvp arena
+	}
+
+	/** Same-stats variant (ornament kit, alternate imbue) -> the known id. */
+	public static int sameStats(int itemId)
+	{
+		return SAME_STATS.getOrDefault(itemId, itemId);
+	}
+
 	static
 	{
 		// Forms whose name does not follow the _UNCHARGED/_INACTIVE pattern,
 		// so the generated table below cannot find them.
 		map(12924, 12926); // toxic blowpipe (empty) -> loaded
+		map(30373, 30374); // blazing blowpipe (empty) -> loaded
 		map(11907, 11905); // trident of the seas (full)
 		map(22290, 22288); // trident of the seas (e), uncharged
 		map(22294, 22292); // trident of the swamp (e), uncharged
