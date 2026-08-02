@@ -32,6 +32,26 @@ The client keeps running an old build until you restart it, so after every
 pull: close the client, `runClient` again, and confirm the panel title shows
 the new version number.
 
+### Logging in with a Jagex account
+
+The dev client does not go through the Jagex Launcher, so it shows the old
+username/password login — which no longer works for accounts migrated to a
+Jagex account. One-time fix (RuneLite's documented flow):
+
+1. Open the **Jagex Launcher**, go to RuneLite's settings inside it, and add
+   `--insecure-write-credentials` to the client launch arguments.
+2. Launch RuneLite through the Jagex Launcher once and log in normally. It
+   writes a `credentials.properties` file into your `.runelite` folder.
+3. Remove the launch argument again, then start the dev client with
+   `gradlew runClient` — it picks up those credentials and logs you straight
+   in, no password prompt.
+
+The credentials file is stored in plain text, hence "insecure": anyone with
+access to your user folder could log into the account with it. Delete
+`.runelite/credentials.properties` to revoke it at any time. Accounts that
+were never migrated to a Jagex account can ignore all of this and simply
+type their username and password into the dev client.
+
 ![Raid loadout](totalgear.png)
 
 ## What it actually does
