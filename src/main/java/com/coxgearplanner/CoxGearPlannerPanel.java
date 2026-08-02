@@ -742,11 +742,35 @@ public class CoxGearPlannerPanel extends PluginPanel
 		{
 			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
 			{
-				JLabel label = new JLabel("<html><b>Bring</b> "
-					+ extra.getPick().getOption().getName()
-					+ " for " + time.getDisplayName() + " only: saves ~"
-					+ formatSaved(extra.getSecondsSaved()) + " there</html>");
-				label.setForeground(COLOR_ON_HAND);
+				// Room extras face the same limits as every other switch: the
+				// minimum switch value and, in shared-budget mode, the budget.
+				JLabel label;
+				if (extra.isBrought())
+				{
+					label = new JLabel("<html><b>Bring</b> "
+						+ extra.getPick().getOption().getName()
+						+ " for " + time.getDisplayName() + " only: saves ~"
+						+ formatSaved(extra.getSecondsSaved()) + " there</html>");
+					label.setForeground(COLOR_ON_HAND);
+				}
+				else if (extra.isOverBudget())
+				{
+					label = new JLabel("<html><b>Over limit</b> "
+						+ extra.getPick().getOption().getName()
+						+ " for " + time.getDisplayName() + ": worth ~"
+						+ formatSaved(extra.getSecondsSaved())
+						+ " there but exceeds your " + activeLimitText() + "</html>");
+					label.setForeground(COLOR_GROUP);
+				}
+				else
+				{
+					label = new JLabel("<html><b>Skip</b> "
+						+ extra.getPick().getOption().getName()
+						+ " for " + time.getDisplayName() + ": only ~"
+						+ formatSaved(extra.getSecondsSaved())
+						+ " there — below your minimum switch value</html>");
+					label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				}
 				rows.add(new AdviceRow(extra.getSecondsSaved(), label));
 			}
 			if (time.getSalveTried() != null)

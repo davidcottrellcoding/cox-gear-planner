@@ -220,12 +220,19 @@ public class RoomTimeEstimator
 			private final SetupBuilder.Pick pick;
 			private final GearSlot slot;
 			private final double secondsSaved;
+			/** False when it did not qualify — the room fights without it. */
+			private final boolean brought;
+			/** Qualified on time but lost its slot to the swap budget. */
+			private final boolean overBudget;
 
-			ExtraSwitch(SetupBuilder.Pick pick, GearSlot slot, double secondsSaved)
+			ExtraSwitch(SetupBuilder.Pick pick, GearSlot slot, double secondsSaved,
+				boolean brought, boolean overBudget)
 			{
 				this.pick = pick;
 				this.slot = slot;
 				this.secondsSaved = secondsSaved;
+				this.brought = brought;
+				this.overBudget = overBudget;
 			}
 
 			public SetupBuilder.Pick getPick()
@@ -241,6 +248,16 @@ public class RoomTimeEstimator
 			public double getSecondsSaved()
 			{
 				return secondsSaved;
+			}
+
+			public boolean isBrought()
+			{
+				return brought;
+			}
+
+			public boolean isOverBudget()
+			{
+				return overBudget;
 			}
 		}
 
@@ -365,6 +382,14 @@ public class RoomTimeEstimator
 	private boolean forceThrall;
 	/** Seconds a per-room alternate must save that room to be brought. */
 	private double perRoomSwitchSeconds = 3;
+	/** Extra item ids the swap budget has vetoed — auditioned but not brought. */
+	private java.util.Set<Integer> vetoedExtras = Collections.emptySet();
+
+	/** Item ids the swap budget refuses to bring as room extras. */
+	public void setVetoedExtras(java.util.Set<Integer> vetoedExtras)
+	{
+		this.vetoedExtras = vetoedExtras;
+	}
 
 	/**
 	 * The max hit of the last loadout the dps maths priced, for the per-kill
@@ -643,9 +668,25 @@ public class RoomTimeEstimator
 			Map<GearSlot, SetupBuilder.Pick> accepted = new java.util.LinkedHashMap<>();
 			if (bestSalve != null)
 			{
-				accepted.put(GearSlot.NECK, bestSalve);
-				extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
-					yourShare / bestPlainDps - yourShare / bestDps));
+				// The salve is a switch like any other: it has to clear the
+				// minimum switch value, and the swap budget can veto it. A
+				// salve that fails either test is recorded (so the panel can
+				// price the decision) but the room fights without it.
+				double saved = yourShare / bestPlainDps - yourShare / bestDps;
+				boolean vetoed = vetoedExtras.contains(bestSalve.getItemId());
+				if (!vetoed && saved >= Math.max(perRoomSwitchSeconds, 0.1))
+				{
+					accepted.put(GearSlot.NECK, bestSalve);
+					extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
+						saved, true, false));
+				}
+				else
+				{
+					extras.add(new RoomTime.ExtraSwitch(bestSalve, GearSlot.NECK,
+						saved, false, vetoed));
+					bestDps = bestPlainDps;
+					bestSalve = null;
+				}
 			}
 			boolean twoHanded = bestWeapon.getOption().isTwoHanded();
 			for (GearSlot slot : GearSlot.values())
@@ -681,9 +722,19 @@ public class RoomTimeEstimator
 					double saved = yourShare / bestDps - yourShare / bestAltDps;
 					if (saved >= Math.max(perRoomSwitchSeconds, 0.1))
 					{
-						accepted.put(slot, bestAlt);
-						extras.add(new RoomTime.ExtraSwitch(bestAlt, slot, saved));
-						bestDps = bestAltDps;
+						if (vetoedExtras.contains(bestAlt.getItemId()))
+						{
+							// Qualified on time, lost its slot to the budget
+							extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
+								saved, false, true));
+						}
+						else
+						{
+							accepted.put(slot, bestAlt);
+							extras.add(new RoomTime.ExtraSwitch(bestAlt, slot,
+								saved, true, false));
+							bestDps = bestAltDps;
+						}
 					}
 				}
 			}
@@ -718,7 +769,10 @@ public class RoomTimeEstimator
 			label += ")";
 			for (RoomTime.ExtraSwitch extra : extras)
 			{
-				label += " + " + extra.getPick().getOption().getName();
+				if (extra.isBrought())
+				{
+					label += " + " + extra.getPick().getOption().getName();
+				}
 			}
 			if (phases > 1)
 			{
@@ -774,8 +828,12 @@ public class RoomTimeEstimator
 
 				for (RoomTime.ExtraSwitch extra : extras)
 				{
+					String verdict = extra.isBrought() ? "bring for this room"
+						: extra.isOverBudget() ? "qualified but lost to the swap budget"
+						: "below the minimum switch value";
 					explanation.addWeaponChoice(String.format(
-						"    bring for this room: %s (%s) — saves %.1fs here",
+						"    %s: %s (%s) — saves %.1fs here",
+						verdict,
 						extra.getPick().getOption().getName(),
 						extra.getSlot().getDisplayName().toLowerCase(),
 						extra.getSecondsSaved()));

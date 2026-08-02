@@ -235,7 +235,7 @@ public final class RaidLoadoutBuilder
 			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
 			{
 				SetupBuilder.Pick pick = extra.getPick();
-				if (worn.contains(pick.getItemId()))
+				if (!extra.isBrought() || worn.contains(pick.getItemId()))
 				{
 					continue;
 				}

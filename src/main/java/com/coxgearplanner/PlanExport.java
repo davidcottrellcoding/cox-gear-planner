@@ -170,7 +170,9 @@ public final class PlanExport
 			{
 				for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : time.getExtraSwitches())
 				{
-					sb.append("  ").append(pad("BRING", 11))
+					String verdict = extra.isBrought() ? "BRING"
+						: extra.isOverBudget() ? "over limit" : "skip";
+					sb.append("  ").append(pad(verdict, 11))
 						.append(pad("for " + time.getDisplayName(), 18))
 						.append(pad(extra.getPick().getOption().getName(), 26))
 						.append(String.format("%.1fs there%n", extra.getSecondsSaved()));

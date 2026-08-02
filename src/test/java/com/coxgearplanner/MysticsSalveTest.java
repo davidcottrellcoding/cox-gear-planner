@@ -106,6 +106,32 @@ public class MysticsSalveTest
 	private static final PlayerSnapshot MAXED = new PlayerSnapshot(99, 99, 99, 99, 99);
 
 	/**
+	 * The salve faces the same limits as every other switch: below the minimum
+	 * switch value it is recorded but NOT brought — no free ride just because
+	 * it is a room extra rather than a style switch.
+	 */
+	@Test
+	public void aSubThresholdSalveStaysHome()
+	{
+		Set<CoxRoom> rooms = EnumSet.of(CoxRoom.MYSTICS);
+		RoomTimeEstimator estimator = new RoomTimeEstimator(itemManager);
+		estimator.getResolver().setDpsContext(estimator, player, rooms, true);
+		// A threshold no switch could clear
+		estimator.setPerRoomSwitchSeconds(999);
+
+		RoomTimeEstimator.RoomTime mystics =
+			estimator.estimate(rooms, bank, true, player, 1, true, null).get(0);
+
+		assertTrue("the audition is still recorded",
+			!mystics.getExtraSwitches().isEmpty());
+		RoomTimeEstimator.RoomTime.ExtraSwitch salve = mystics.getExtraSwitches().get(0);
+		assertTrue("but it is not brought", !salve.isBrought());
+		assertTrue("and not for budget reasons", !salve.isOverBudget());
+		assertTrue("the room line does not name it",
+			!mystics.getDetail().contains("Salve"));
+	}
+
+	/**
 	 * When the salve genuinely loses, the plan must say so with a number —
 	 * "not suggested" and "never considered" are indistinguishable otherwise.
 	 */
@@ -163,6 +189,8 @@ public class MysticsSalveTest
 			!mystics.getExtraSwitches().isEmpty());
 		RoomTimeEstimator.RoomTime.ExtraSwitch salve = mystics.getExtraSwitches().get(0);
 		assertEquals(SALVE_EI, salve.getPick().getItemId());
+		assertTrue("it clears the minimum switch value and is brought",
+			salve.isBrought());
 		assertTrue("its value is measured for the debug panel",
 			salve.getSecondsSaved() > 0);
 		assertTrue("the room line must name it: " + mystics.getDetail(),

@@ -558,6 +558,8 @@ public class SwitchAdvisor
 		List<RoomTimeEstimator.RoomTime> buildTimes = times;
 		List<RoomTimeEstimator.RoomTime> real = times;
 		java.util.Set<Integer> previousKit = null;
+		java.util.Set<Integer> vetoedExtras = new java.util.HashSet<>();
+		estimator.setVetoedExtras(vetoedExtras);
 
 		for (int pass = 0; pass < MAX_SETTLE_PASSES; pass++)
 		{
@@ -590,8 +592,9 @@ public class SwitchAdvisor
 
 			// Only change flags when another rebuild will follow, so the
 			// returned loadout always matches the advice it was built from.
-			if (pass == MAX_SETTLE_PASSES - 1
-				|| (kitStable && !improveAllocation(advice, totalSwapItems, thresholdSeconds)))
+			boolean changed = improveAllocation(advice, totalSwapItems, thresholdSeconds);
+			changed |= chargeExtrasToBudget(real, advice, totalSwapItems, vetoedExtras);
+			if (pass == MAX_SETTLE_PASSES - 1 || (kitStable && !changed))
 			{
 				break;
 			}
@@ -601,9 +604,90 @@ public class SwitchAdvisor
 	}
 
 	/**
+	 * Room extras spend the shared budget like every other armour swap. When
+	 * carried switches plus brought extras exceed it, the cheapest item — from
+	 * either pool — is cut: an advice entry gets demoted, an extra gets vetoed
+	 * (the estimator then re-times its room without it on the next pass).
+	 * Shields stay free, as everywhere else. Only the shared-budget mode is
+	 * charged; the per-style cap has no cross-pool ledger to enforce.
+	 */
+	private boolean chargeExtrasToBudget(
+		List<RoomTimeEstimator.RoomTime> real,
+		List<Advice> advice,
+		int totalSwapItems,
+		java.util.Set<Integer> vetoedExtras)
+	{
+		if (totalSwapItems <= 0)
+		{
+			return false;
+		}
+
+		Map<Integer, Double> extras = new java.util.HashMap<>();
+		for (RoomTimeEstimator.RoomTime rt : real)
+		{
+			for (RoomTimeEstimator.RoomTime.ExtraSwitch extra : rt.getExtraSwitches())
+			{
+				if (extra.isBrought() && extra.getSlot() != GearSlot.SHIELD)
+				{
+					extras.merge(extra.getPick().getItemId(), extra.getSecondsSaved(), Math::max);
+				}
+			}
+		}
+
+		List<Advice> carried = new ArrayList<>();
+		for (Advice a : advice)
+		{
+			if (!a.isAlreadyShared() && a.isWorthIt() && a.getSlot() != GearSlot.SHIELD)
+			{
+				carried.add(a);
+			}
+		}
+
+		boolean changed = false;
+		while (carried.size() + extras.size() > totalSwapItems)
+		{
+			Advice cheapestAdvice = null;
+			for (Advice a : carried)
+			{
+				if (cheapestAdvice == null || a.getSecondsSaved() < cheapestAdvice.getSecondsSaved())
+				{
+					cheapestAdvice = a;
+				}
+			}
+			Map.Entry<Integer, Double> cheapestExtra = null;
+			for (Map.Entry<Integer, Double> e : extras.entrySet())
+			{
+				if (cheapestExtra == null || e.getValue() < cheapestExtra.getValue())
+				{
+					cheapestExtra = e;
+				}
+			}
+
+			if (cheapestExtra != null && (cheapestAdvice == null
+				|| cheapestExtra.getValue() < cheapestAdvice.getSecondsSaved()))
+			{
+				vetoedExtras.add(cheapestExtra.getKey());
+				extras.remove(cheapestExtra.getKey());
+			}
+			else if (cheapestAdvice != null)
+			{
+				cheapestAdvice.worthIt = false;
+				cheapestAdvice.overLimit = true;
+				carried.remove(cheapestAdvice);
+			}
+			else
+			{
+				break; // nothing left to cut
+			}
+			changed = true;
+		}
+		return changed;
+	}
+
+	/**
 	 * One rebalance step on the kit-priced values. Only the shared-budget mode
 	 * is rebalanced: with a per-style cap or no cap at all the initial spend
-	 * has no cross-style scarcity to misjudge.
+	 * has no cross-pool scarcity to misjudge.
 	 */
 	private boolean improveAllocation(List<Advice> advice, int totalSwapItems,
 		double thresholdSeconds)
