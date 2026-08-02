@@ -4,6 +4,34 @@ A RuneLite plugin that plans a **Chambers of Xeric** loadout from the gear you
 actually own — personal bank, inventory, worn equipment and **Group Ironman
 shared storage** — using OSRS DPS maths for the rooms in your raid.
 
+## Pull it down and run it
+
+Requires only a JDK (11+) and git. Development happens on the
+`worktree-plugin-build` branch, so clone and run from there:
+
+```
+git clone https://github.com/davidcottrellcoding/cox-gear-planner.git
+cd cox-gear-planner
+git checkout worktree-plugin-build
+./gradlew runClient        # gradlew.bat runClient on Windows
+```
+
+`runClient` launches a RuneLite development client with the plugin already
+loaded — log in, open the sidebar panel, and check the version in its title
+matches the one at the top of `build.gradle`.
+
+Already cloned and just want the latest fixes? From the repo folder:
+
+```
+git checkout worktree-plugin-build
+git pull
+./gradlew runClient
+```
+
+The client keeps running an old build until you restart it, so after every
+pull: close the client, `runClient` again, and confirm the panel title shows
+the new version number.
+
 ![Raid loadout](totalgear.png)
 
 ## What it actually does
@@ -250,7 +278,7 @@ every level, so this cannot quietly become an additive stack later.
 
 ## Building and running
 
-Requires only a JDK (11+):
+See **Pull it down and run it** at the top for the clone-and-run steps.
 
 ```
 ./gradlew runClient        # dev client with the plugin loaded
