@@ -219,6 +219,24 @@ public class RoomTimeEstimator
 	// Ranged strength of dragon darts, which the blowpipe's own stats omit
 	private static final int BLOWPIPE_DART_RSTR = 20;
 
+	/** Defence-lowering specials cost half the bar. */
+	private static final int SPEC_COST = 50;
+	/** Special attack energy regenerates 10% per 30 seconds. */
+	private static final double SPEC_REGEN_PER_SECOND = 10.0 / 30.0;
+	private static final int ELDER_MAUL = 21003;
+
+	/** Defence kept per LANDED special: DWH takes 30% off, the elder maul 35%. */
+	static double specOnHitFactor(int weaponId)
+	{
+		return weaponId == ELDER_MAUL ? 0.65 : 0.70;
+	}
+
+	/** Expected defence factor of one attempt; a missed special still shaves 5%. */
+	static double expectedSpecFactor(double hitChance, double onHitFactor)
+	{
+		return hitChance * onHitFactor + (1 - hitChance) * 0.95;
+	}
+
 	public static class RoomTime
 	{
 		/**
@@ -510,13 +528,198 @@ public class RoomTimeEstimator
 			for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(room))
 			{
 				results.add(estimateTarget(room, encounter, items, includeGroupStorage,
-					player, partySize, hpMult, elitePrayers, explanation));
+					player, partySize, hpMult, elitePrayers, explanation, null));
 			}
 		}
+		applyDefenceSpecials(results, items, includeGroupStorage, player,
+			partySize, hpMult, elitePrayers, explanation);
 		return results;
 	}
 
-	/** One target: an ordinary room's monster, or one of Olm's three parts. */
+	/**
+	 * Models opening the spec-target fights with defence-lowering specials.
+	 *
+	 * Tekton is opened with two; each fresh melee-hand instance at Olm gets
+	 * one, because every phase spawns a NEW hand that must be hit again. The
+	 * attempts are paid for from a special-energy ledger — a full bar at the
+	 * start plus 10% per 30 seconds of estimated raid, 50% per attempt — and
+	 * spent in raid order, Tekton long before Olm. Each landed special scales
+	 * defence by the weapon's factor, a miss still shaves 5%, and the hit
+	 * chance is the crush accuracy of the packed spec weapon in your melee
+	 * armour against the target's CURRENT (already reduced) defence. The
+	 * affected rooms are then re-timed against the reduced profile, which can
+	 * also flip which weapon wins them. Lightbearer regen is not modelled.
+	 */
+	private void applyDefenceSpecials(
+		List<RoomTime> results,
+		Map<ItemSource, Map<Integer, Integer>> items,
+		boolean includeGroupStorage,
+		PlayerSnapshot player,
+		int partySize,
+		double hpMult,
+		boolean elitePrayers,
+		PlanExplanation explanation)
+	{
+		SetupBuilder.Pick spec = SetupBuilder.pickBest(
+			GearDatabase.utility(GearNeed.DEF_REDUCTION), items, includeGroupStorage);
+		if (spec == null)
+		{
+			return;
+		}
+
+		double raidSeconds = 0;
+		for (RoomTime rt : results)
+		{
+			if (rt.isFeasible())
+			{
+				raidSeconds += rt.getSeconds();
+			}
+		}
+		int attempts = (int) ((100 + raidSeconds * SPEC_REGEN_PER_SECOND) / SPEC_COST);
+		int remaining = attempts;
+
+		Map<GearSlot, SetupBuilder.Pick> meleePicks =
+			resolver.resolve(GearNeed.MELEE, items, includeGroupStorage);
+		double onHit = specOnHitFactor(spec.getItemId());
+		String specName = spec.getOption().getName();
+
+		Double tektonFactor = null;
+		int tektonSpecs = 0;
+
+		for (int i = 0; i < results.size(); i++)
+		{
+			RoomTime rt = results.get(i);
+			MonsterProfile monster = rt.getMonster();
+			if (!rt.isFeasible() || monster == null || !monster.isSpecTarget()
+				|| remaining <= 0)
+			{
+				continue;
+			}
+
+			double factor;
+			String note;
+			if (rt.getRoom() == CoxRoom.TEKTON)
+			{
+				// One monster, two defence profiles: the same two specials
+				// reduce both, and only cost the ledger once.
+				if (tektonFactor == null)
+				{
+					tektonSpecs = Math.min(2, remaining);
+					remaining -= tektonSpecs;
+					tektonFactor = chainedSpecFactor(spec, meleePicks, player,
+						monster, elitePrayers, onHit, tektonSpecs);
+				}
+				factor = tektonFactor;
+				note = String.format(" [%d× %s spec]", tektonSpecs, specName);
+			}
+			else
+			{
+				int phases = RoomMonsters.olmClawPhases(partySize);
+				int specd = Math.min(phases, remaining);
+				remaining -= specd;
+				double perPhase = chainedSpecFactor(spec, meleePicks, player,
+					monster, elitePrayers, onHit, 1);
+				// Phases the ledger could not afford fight at full defence;
+				// averaging the factor is an approximation, noted here.
+				factor = (specd * perPhase + (phases - specd)) / phases;
+				note = String.format(" [%s spec, %d/%d phases]", specName, specd, phases);
+			}
+
+			if (factor >= 0.999)
+			{
+				continue;
+			}
+
+			for (RoomMonsters.Encounter encounter : RoomMonsters.getAll(rt.getRoom()))
+			{
+				if (!encounter.getProfile().getName().equals(monster.getName()))
+				{
+					continue;
+				}
+				RoomMonsters.Encounter reduced = new RoomMonsters.Encounter(
+					encounter.getProfile().withReducedDefence(factor), encounter.getCount());
+				results.set(i, estimateTarget(rt.getRoom(), reduced, items,
+					includeGroupStorage, player, partySize, hpMult, elitePrayers,
+					explanation, note));
+			}
+		}
+
+		if (explanation != null)
+		{
+			explanation.addWeaponChoice(String.format(
+				"defence specials: %s, %d attempt(s) affordable from 100%% + regen over ~%.0fs",
+				specName, attempts, raidSeconds));
+		}
+	}
+
+	/** Expected defence factor after several attempts, accuracy re-rolled each time. */
+	private double chainedSpecFactor(
+		SetupBuilder.Pick spec,
+		Map<GearSlot, SetupBuilder.Pick> meleePicks,
+		PlayerSnapshot player,
+		MonsterProfile monster,
+		boolean elitePrayers,
+		double onHit,
+		int specs)
+	{
+		double factor = 1;
+		for (int i = 0; i < specs; i++)
+		{
+			double acc = specHitChance(spec, meleePicks, player, monster, elitePrayers, factor);
+			factor *= expectedSpecFactor(acc, onHit);
+		}
+		return factor;
+	}
+
+	/** Crush accuracy of the spec weapon in the melee kit vs the (reduced) target. */
+	private double specHitChance(
+		SetupBuilder.Pick spec,
+		Map<GearSlot, SetupBuilder.Pick> meleePicks,
+		PlayerSnapshot player,
+		MonsterProfile monster,
+		boolean elitePrayers,
+		double defenceFactor)
+	{
+		ItemStats specStats = itemManager.getItemStats(spec.getItemId());
+		boolean twoHanded = specStats != null && specStats.getEquipment() != null
+			&& specStats.getEquipment().isTwoHanded();
+		int crush = 0;
+		for (GearSlot slot : GearSlot.values())
+		{
+			if (slot == GearSlot.WEAPON || slot == GearSlot.AMMO
+				|| (slot == GearSlot.SHIELD && twoHanded))
+			{
+				continue;
+			}
+			SetupBuilder.Pick pick = meleePicks.get(slot);
+			if (pick == null)
+			{
+				continue;
+			}
+			ItemStats stats = itemManager.getItemStats(pick.getItemId());
+			if (stats != null && stats.getEquipment() != null)
+			{
+				crush += stats.getEquipment().getAcrush();
+			}
+		}
+		if (specStats != null && specStats.getEquipment() != null)
+		{
+			crush += specStats.getEquipment().getAcrush();
+		}
+		int effAtk = CombatFormulas.effectiveLevel(player.getAttack(), elitePrayers ? 1.20 : 1.0, 0);
+		int def = (int) Math.floor(monster.getDefenceLevel() * defenceFactor);
+		return CombatFormulas.accuracy(
+			CombatFormulas.attackRoll(effAtk, crush),
+			CombatFormulas.defenceRoll(def, monster.getDCrush()));
+	}
+
+	/**
+	 * One target: an ordinary room's monster, or one of Olm's three parts.
+	 *
+	 * @param specNote appended to the room line when the target's defence has
+	 * been reduced by opening specials, so the label says why the numbers
+	 * assume a softer monster than the wiki lists.
+	 */
 	private RoomTime estimateTarget(
 		CoxRoom room,
 		RoomMonsters.Encounter encounter,
@@ -526,7 +729,8 @@ public class RoomTimeEstimator
 		int partySize,
 		double hpMult,
 		boolean elitePrayers,
-		PlanExplanation explanation)
+		PlanExplanation explanation,
+		String specNote)
 	{
 		MonsterProfile monster = encounter.getProfile();
 		boolean multiPart = RoomMonsters.getAll(room).size() > 1;
@@ -794,6 +998,10 @@ public class RoomTimeEstimator
 		if (phases > 1)
 		{
 			label += String.format(" ×%.0f phases", phases);
+		}
+		if (specNote != null)
+		{
+			label += specNote;
 		}
 		if (monster.getStyleNote() != null)
 		{

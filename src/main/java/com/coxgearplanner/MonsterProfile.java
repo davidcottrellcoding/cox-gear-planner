@@ -70,6 +70,8 @@ public class MonsterProfile
 	 * (giving up the rapid speed bonus) or cannot attack it at all.
 	 */
 	private int minReach;
+	/** Fights you open with defence-lowering specials (Tekton, Olm's melee hand). */
+	private boolean specTarget;
 
 	MonsterProfile(String name, int hp, int defenceLevel, int magicLevel,
 		int dStab, int dSlash, int dCrush, int dMagic, int dRange,
@@ -156,6 +158,46 @@ public class MonsterProfile
 	{
 		this.minReach = tiles;
 		return this;
+	}
+
+	/** Marks this fight as one you open with defence-lowering specials. */
+	MonsterProfile specTarget()
+	{
+		this.specTarget = true;
+		return this;
+	}
+
+	public boolean isSpecTarget()
+	{
+		return specTarget;
+	}
+
+	/**
+	 * A copy of this profile with its Defence level scaled down — how the
+	 * estimator models landed defence-lowering specials. Everything else,
+	 * including the magic level a magic defence roll usually comes from,
+	 * carries over untouched.
+	 */
+	MonsterProfile withReducedDefence(double factor)
+	{
+		MonsterProfile copy = new MonsterProfile(name, hp,
+			(int) Math.floor(defenceLevel * factor), magicLevel,
+			dStab, dSlash, dCrush, dMagic, dRange, large, draconic,
+			usableStyles.toArray(new GearNeed[0]));
+		copy.undead = undead;
+		copy.demon = demon;
+		copy.magicDamageMult = magicDamageMult;
+		copy.nonFireDamageMult = nonFireDamageMult;
+		copy.elementalWeakness = elementalWeakness;
+		copy.demonbaneEffectiveness = demonbaneEffectiveness;
+		copy.magicDefenceFromDefence = magicDefenceFromDefence;
+		copy.preferredStyles = preferredStyles;
+		copy.styleNote = styleNote;
+		copy.requiredWeapon = requiredWeapon;
+		copy.sizeTiles = sizeTiles;
+		copy.minReach = minReach;
+		copy.specTarget = specTarget;
+		return copy;
 	}
 
 	MonsterProfile size(int tiles)

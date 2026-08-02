@@ -68,12 +68,12 @@ public final class RoomMonsters
 			new Encounter(new MonsterProfile(
 				"Tekton (unenraged)", 150, 205, 205, 155, 165, 105, 0, 0, true, false,
 				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(4)
-				.magicDamage(0.20)
+				.magicDamage(0.20).specTarget()
 				.prefers("meleed at the anvil — no safespot", GearNeed.MELEE), 1),
 			new Encounter(new MonsterProfile(
 				"Tekton (enraged)", 150, 205, 205, 280, 290, 180, 0, 0, true, false,
 				GearNeed.MELEE, GearNeed.RANGED, GearNeed.MAGIC).size(4)
-				.magicDamage(0.20)
+				.magicDamage(0.20).specTarget()
 				.prefers("enraged after the anvil — far harder to hit", GearNeed.MELEE), 1)));
 
 		// Two separate muttadiles with very different stats. The large one is
@@ -224,7 +224,7 @@ public final class RoomMonsters
 		ENCOUNTERS.put(CoxRoom.OLM, Arrays.asList(
 			new Encounter(new MonsterProfile(
 				"Olm left claw (melee hand)", 600, 175, 175, 50, 50, 50, 200, 200, true, true,
-				GearNeed.MELEE).size(3)
+				GearNeed.MELEE).size(3).specTarget()
 				.prefers("takes damage from melee only", GearNeed.MELEE), 1),
 			new Encounter(new MonsterProfile(
 				"Olm right claw (mage hand)", 600, 175, 87, 200, 200, 200, 50, 200, true, true,
