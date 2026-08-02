@@ -1243,7 +1243,11 @@ public class RoomTimeEstimator
 	}
 
 	/**
-	 * Confliction gauntlets grant a second accuracy roll.
+	 * Confliction gauntlets grant a second accuracy roll — on MAGIC attacks
+	 * only. They are a magic glove; crediting the second roll to melee and
+	 * ranged as well made them look like best-in-slot gloves for every style,
+	 * which let the base outfit claim them and left the actual magic swaps
+	 * fighting in lesser gloves.
 	 *
 	 * The wiki gives the exact form as Ptwo / (1 + Ptwo - Pone), which needs
 	 * the raw attack and defence rolls, and alongside it this average over the
@@ -1324,7 +1328,6 @@ public class RoomTimeEstimator
 			double acc = CombatFormulas.accuracy(
 				CombatFormulas.attackRoll(effAtk, s[0]) * salve * bane * inq * eq.setAccMult * demonbane,
 				CombatFormulas.defenceRoll(m.getDefenceLevel(), s[1]));
-			acc = withConfliction(acc, eq);
 			if (weaponId == FANG && i == 0)
 			{
 				// The fang rolls accuracy twice, but only on stab styles —
@@ -1431,7 +1434,7 @@ public class RoomTimeEstimator
 			avgMax = Math.floor(maxHit * (1 + eq.crystalDmg));
 		}
 
-		double acc = withConfliction(CombatFormulas.accuracy(atkRoll, defRoll), eq);
+		double acc = CombatFormulas.accuracy(atkRoll, defRoll);
 		// Rapid is one tick faster, but a target that demands more reach than
 		// the weapon has forces longrange, which gives that tick back.
 		int speed = needsLongrange(weaponId, m)

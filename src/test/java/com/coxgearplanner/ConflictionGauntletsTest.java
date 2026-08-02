@@ -72,4 +72,26 @@ public class ConflictionGauntletsTest
 		double after = RoomTimeEstimator.withConfliction(0.96, worn());
 		assertEquals("virtually no effect at 95% and above", 0.96, after, 0.005);
 	}
+
+	/**
+	 * The second roll is a MAGIC passive. Crediting it to melee and ranged too
+	 * made the gauntlets look like best-in-slot gloves for every style, so the
+	 * base outfit claimed them while the magic swaps fought in lesser gloves.
+	 */
+	@Test
+	public void theSecondRollAppliesToMagicOnly()
+	{
+		PlayerSnapshot maxed = new PlayerSnapshot(99, 99, 99, 99, 99);
+		MonsterProfile mystic = RoomMonsters.get(CoxRoom.MYSTICS).getProfile();
+
+		EquipmentTotals plain = new EquipmentTotals();
+		plain.magicAtk = 100;
+		EquipmentTotals gauntlets = new EquipmentTotals();
+		gauntlets.magicAtk = 100;
+		gauntlets.confliction = true;
+
+		assertTrue("magic accuracy improves",
+			RoomTimeEstimator.magicDps(27275, gauntlets, maxed, mystic, true)
+				> RoomTimeEstimator.magicDps(27275, plain, maxed, mystic, true));
+	}
 }
