@@ -305,6 +305,30 @@ public class BudgetPipelineTest
 		return false;
 	}
 
+	/**
+	 * Skip-vs-over-limit must follow the printed number, not the internal
+	 * gains the spend was decided on — a 2.1s "skip" beside a 2.0s "over
+	 * limit" reads as arbitrary because it is. In shared-budget mode a
+	 * leftover is over the limit exactly when its kit-priced value clears
+	 * the minimum switch value.
+	 */
+	@Test
+	public void verdictLabelsFollowTheRepricedValues()
+	{
+		Run run = runPipeline(1);
+		for (SwitchAdvisor.Advice a : run.advice)
+		{
+			if (a.isAlreadyShared() || a.isWorthIt())
+			{
+				continue;
+			}
+			assertTrue(String.format(
+				"%s: %.1fs labelled %s", a.getItemName(), a.getSecondsSaved(),
+				a.isOverLimit() ? "over limit" : "skip"),
+				a.isOverLimit() == (a.getSecondsSaved() >= 3));
+		}
+	}
+
 	/** More budget can never cost time — the knob must be monotonic. */
 	@Test
 	public void theBudgetIsMonotonic()

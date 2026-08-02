@@ -592,13 +592,34 @@ public class SwitchAdvisor
 
 			// Only change flags when another rebuild will follow, so the
 			// returned loadout always matches the advice it was built from.
+			if (pass == MAX_SETTLE_PASSES - 1)
+			{
+				break;
+			}
 			boolean changed = improveAllocation(advice, totalSwapItems, thresholdSeconds);
 			changed |= chargeExtrasToBudget(real, advice, totalSwapItems, vetoedExtras);
-			if (pass == MAX_SETTLE_PASSES - 1 || (kitStable && !changed))
+			if (kitStable && !changed)
 			{
 				break;
 			}
 			buildTimes = real;
+		}
+
+		// Verdict labels must follow the same numbers the panel prints. The
+		// over-limit flag was set from the advisor's internal gains at spend
+		// time, so a 2.1s leftover could read "skip" beside a 2.0s "over
+		// limit". In shared-budget mode a leftover is over the limit exactly
+		// when its kit-priced value would justify a slot at all — the minimum
+		// switch value — and a plain skip below that.
+		if (totalSwapItems > 0)
+		{
+			for (Advice a : advice)
+			{
+				if (!a.isAlreadyShared() && !a.isWorthIt())
+				{
+					a.overLimit = a.getSecondsSaved() >= Math.max(thresholdSeconds, 0.1);
+				}
+			}
 		}
 		return new SettledPlan(loadout, real);
 	}
