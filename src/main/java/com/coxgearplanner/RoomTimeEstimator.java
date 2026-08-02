@@ -240,6 +240,8 @@ public class RoomTimeEstimator
 		/** A salve tried for this undead room but slower; null when won or untried. */
 		SetupBuilder.Pick salveTried;
 		double salveLostSeconds;
+		/** What the losing salve was measured against — the worn neck's name. */
+		String salveComparedTo;
 		/** The target this entry is for, and its party-scaled HP pool. */
 		MonsterProfile monster;
 		double totalHp;
@@ -305,6 +307,12 @@ public class RoomTimeEstimator
 		public double getSalveLostSeconds()
 		{
 			return salveLostSeconds;
+		}
+
+		/** Name of the neck the losing salve was measured against. */
+		public String getSalveComparedTo()
+		{
+			return salveComparedTo;
 		}
 
 		/** The monster this entry was computed against; null when infeasible. */
@@ -720,6 +728,9 @@ public class RoomTimeEstimator
 			{
 				roomTime.salveTried = salve;
 				roomTime.salveLostSeconds = salveLostSeconds;
+				SetupBuilder.Pick neck = bestPicks.get(GearSlot.NECK);
+				roomTime.salveComparedTo = neck != null
+					? neck.getOption().getName() : "an empty neck";
 			}
 
 			if (explanation != null)

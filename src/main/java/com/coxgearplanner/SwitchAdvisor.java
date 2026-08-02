@@ -551,19 +551,38 @@ public class SwitchAdvisor
 		int totalSwapItems)
 	{
 		RaidLoadoutBuilder.RaidLoadout loadout = null;
+		// Later passes rebuild from the latest re-timed rooms, not the stale
+		// first-pass ones — so what the kit packs (weapons, room extras) and
+		// what the displayed times use are the same thing at convergence,
+		// rather than a salve packed by pass one that pass two rejects.
+		List<RoomTimeEstimator.RoomTime> buildTimes = times;
 		List<RoomTimeEstimator.RoomTime> real = times;
+		java.util.Set<Integer> previousKit = null;
 
 		for (int pass = 0; pass < MAX_SETTLE_PASSES; pass++)
 		{
-			loadout = RaidLoadoutBuilder.build(rooms, times, advice, primary,
+			loadout = RaidLoadoutBuilder.build(rooms, buildTimes, advice, primary,
 				snapshot, includeGroupStorage, estimator.getResolver(), needsCharging);
 			if (loadout == null)
 			{
 				return new SettledPlan(null, times);
 			}
 
+			// The salve always AUDITIONS against the kit even when it is not
+			// packed: its verdict ("saves X" / "loses X") has to exist either
+			// way, and whether it gets packed is decided by whether a room
+			// keeps it — not by whether an earlier pass happened to bring it.
+			java.util.Set<Integer> kitIds = new java.util.HashSet<>(loadout.getCarriedIds());
+			SetupBuilder.Pick salve = RoomTimeEstimator.findSalve(snapshot, includeGroupStorage);
+			if (salve != null)
+			{
+				kitIds.add(salve.getItemId());
+			}
+			boolean kitStable = kitIds.equals(previousKit);
+			previousKit = kitIds;
+
 			Map<ItemSource, Map<Integer, Integer>> kit =
-				CoxGearPlannerPlugin.kitContents(loadout.getCarriedIds(), snapshot);
+				CoxGearPlannerPlugin.kitContents(kitIds, snapshot);
 			real = estimator.estimate(rooms, kit, includeGroupStorage, player,
 				partySize, elitePrayers, null);
 			repriceAgainstKit(advice, rooms, loadout.getCarriedIds(), snapshot,
@@ -572,10 +591,11 @@ public class SwitchAdvisor
 			// Only change flags when another rebuild will follow, so the
 			// returned loadout always matches the advice it was built from.
 			if (pass == MAX_SETTLE_PASSES - 1
-				|| !improveAllocation(advice, totalSwapItems, thresholdSeconds))
+				|| (kitStable && !improveAllocation(advice, totalSwapItems, thresholdSeconds)))
 			{
 				break;
 			}
+			buildTimes = real;
 		}
 		return new SettledPlan(loadout, real);
 	}

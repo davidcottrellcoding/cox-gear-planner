@@ -762,11 +762,18 @@ public class CoxGearPlannerPanel extends PluginPanel
 			}
 			if (time.getSalveTried() != null)
 			{
+				// Name the exact comparison — "slower" against WHAT decides
+				// whether this matches what a DPS calculator says, and the
+				// verdict is measured in the gear the plan packs, which is
+				// not necessarily the best gear the bank could dress.
+				String weapon = time.getWeapon() != null
+					? " on " + time.getWeapon().getOption().getName() : "";
 				JLabel label = new JLabel("<html><b>Skip</b> "
 					+ time.getSalveTried().getOption().getName()
 					+ " for " + time.getDisplayName() + ": ~"
 					+ formatSaved(time.getSalveLostSeconds())
-					+ " slower than what you'd wear there</html>");
+					+ " slower than " + escape(time.getSalveComparedTo())
+					+ escape(weapon) + " there</html>");
 				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 				label.setFont(FontManager.getRunescapeSmallFont());
 				label.setAlignmentX(Component.LEFT_ALIGNMENT);

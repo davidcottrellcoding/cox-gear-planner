@@ -89,6 +89,25 @@ public class MysticsSalveTest
 		assertNotNull("the verdict is recorded", mystics.getSalveTried());
 		assertEquals(SALVE_EI, mystics.getSalveTried().getItemId());
 		assertTrue("with the seconds it would cost", mystics.getSalveLostSeconds() > 0);
+		assertNotNull("and what it was measured against", mystics.getSalveComparedTo());
+
+		// The verdict must survive the settle: the salve is not packed, but it
+		// still auditions against the kit so the panel can say WHY it stays home
+		SwitchAdvisor advisor = new SwitchAdvisor(estimator);
+		List<RoomTimeEstimator.RoomTime> times = java.util.Collections.singletonList(mystics);
+		SwitchAdvisor.Result switches = advisor.advise(
+			times, bank, true, player, 1, true, 3, 0, 0, null);
+		estimator.getResolver().pinResolved(switches.getPrimary(),
+			switches.getBasePicks(), bank, true);
+		SwitchAdvisor.SettledPlan settled = advisor.settle(rooms, times,
+			switches.getAdvice(), switches.getPrimary(), bank, true, player, 1,
+			true, java.util.Collections.emptySet(), 3, 0);
+
+		RoomTimeEstimator.RoomTime settledMystics = settled.getRealTimes().get(0);
+		assertNotNull("the losing verdict survives the kit re-time",
+			settledMystics.getSalveTried());
+		assertTrue("the unpacked salve stays out of the kit",
+			!settled.getLoadout().getCarriedIds().contains(SALVE_EI));
 	}
 
 	@Test
